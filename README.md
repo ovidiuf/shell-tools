@@ -1,2 +1,5 @@
 # shell-tools
-A repository of ready-to-use command line tools
+
+A collection of ready-to-use command line tools. Includes searchjar, setw/cdw, etc.
+
+
