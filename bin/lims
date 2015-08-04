@@ -8,7 +8,8 @@ function usage()
 cat <<EOF
 
 A program that prints the first and the last line of the specified file, optionally 
-truncating the lines to their first n characters.
+truncating the lines to their first n characters. Useful to determine the temporal
+span of log files.
 
 Usage:
 
