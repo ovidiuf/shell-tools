@@ -1,0 +1,35 @@
+#!/bin/bash
+
+display_usage()
+{
+    echo
+    echo "Usage: searchjar <targetdir> <string>";
+}
+
+if [ "$1" = "" -o "$i" = "-help" -o "$i" = "--help" ]; then
+    display_usage;
+    exit 0;
+fi
+
+string=$1
+targetdir=$2
+
+if [ "$targetdir" = "" ]; then
+    targetdir="."
+fi
+
+if [ ! -d $targetdir ]; then
+    echo "No such directory: $targetdir" 1>&2
+    exit 1
+fi
+
+find $targetdir -name "*.jar" | while read i; do
+        if jar tfv $i | grep "$string" > ./.searchjar.tmp; then 
+                found=`cat ./.searchjar.tmp`
+                echo "$i: $found"
+        fi;
+done
+
+rm ./.searchjar.tmp
+
+

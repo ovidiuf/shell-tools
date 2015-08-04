@@ -1,0 +1,34 @@
+#!/bin/bash
+#
+# prints the first and the last line of a file
+#
+
+function usage()
+{
+cat <<EOF
+
+A program that prints the first and the last line of the specified file, optionally 
+truncating the lines to their first n characters.
+
+Usage:
+
+       lims <file_name> [nubmer_of_characters]
+
+EOF
+}
+
+[ -z "$1" ] && { usage; exit 1; }
+
+number_of_characters=$2
+
+first_line=$(head -n 1 $1)
+last_line=$(tail -n 1 $1)
+
+if [ -n "${number_of_characters}" ]; then
+    first_line=${first_line:0:${number_of_characters}}
+    last_line=${last_line:0:${number_of_characters}}
+fi
+
+echo $1
+echo "    ${first_line}"
+echo "    ${last_line}"
