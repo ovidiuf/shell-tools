@@ -2,8 +2,11 @@
 
 display_usage()
 {
-    echo
-    echo "Usage: searchjar <targetdir> <string>";
+cat <<EOF
+
+Usage: searchjar <targetdir> <string>
+
+EOF
 }
 
 if [ "$1" = "" -o "$i" = "-help" -o "$i" = "--help" ]; then
