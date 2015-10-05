@@ -1,0 +1,324 @@
+#!/bin/bash
+
+#
+# Global variables
+#
+
+export verbose=false
+export debug=false
+export dry_run=false
+export help=false
+
+#
+# Activated by --verbose|-v. Relies on a "verbose" global variable
+#
+function debug
+{
+    ${verbose} && echo "$@" 1>&2;
+    return 0
+}
+
+#
+# Send error information at stderr and exit. The return code is 255.
+#
+function fail
+{
+    echo "[error]: $@" 1>&2 && exit 255
+}
+
+function debug-arguments
+{
+    #${verbose} && echo "${FUNCNAME[1]}($@)" 1>&2;
+    # we need a more elaborate debug function because we need to mask some arguments
+    local line
+    if ${verbose}; then
+        while [ -n "$1" ]; do
+            local arg=$1
+            if [ "--aws-secret-key" = "${arg}" ]; then
+                shift
+                arg="--aws-secret-key ***"
+            fi
+            if [ -z "${line}" ]; then
+                line=${arg}
+            else
+                line="${line} ${arg}"
+            fi
+            shift
+        done
+        echo "${FUNCNAME[1]}(${line})" 1>&2;
+    fi
+
+    return 0
+}
+
+#
+# Send info at stderr (not to interfere with function returns)
+#
+function info
+{
+    echo "$@" 1>&2;
+    return 0
+}
+
+#
+# Send a warning at stderr (not to interfere with function returns)
+#
+function warn
+{
+    echo "[warning]: $@" 1>&2;
+    return 0
+}
+
+#
+# Send a TODO message at stderr (not to interfere with function returns)
+#
+function todo
+{
+    echo "[TODO]: $@" 1>&2;
+    return 0
+}
+
+#
+# Send error information at stderr (but not exit)
+#
+function error
+{
+    echo "[error]: $@" 1>&2;
+    return 0
+}
+
+#
+# displays the arguments at stderr as [dry-run]. Does NOT exit.
+#
+function dry-run
+{
+    echo "[dry-run]: $@" 1>&2;
+    return 0
+}
+#
+# Process common options setting and exporting global variables (so these values are passed to sub-shells). There is no
+# way (or I don't know of any way) to modify the caller's positional parameters as to remove the parameters processed
+# by this function, but it sets an "args" global variable that contains the remaining parameters, so you can use that.
+#
+# Note that if you need to convert exported global variables back into common command line arguments (to pass them
+# over ssh, for example), use 'serialize-common-arguments' function.
+#
+# The function will remove only the first occurence of --verbose, -v, --debug because lower layers may need the second
+# occurence - as a command parameter of its own, for example
+#
+#
+# Usage:
+#           process-common-options $@
+#
+#           for i in ${args}; do
+#               # process remaining parameters as ${i}
+#           done
+#
+# Option Handled       Global Variable Set      Notes
+#
+# --verbose            export verbose=true
+# -v                   export verbose=true
+#
+# --debug              export verbose=true      This should be used when we want to debug the process with a debugger
+#                      export debug=true
+#
+# --dry-run            export dry_run=true
+#
+# --help               export help=true
+# -h                   export help=true
+#
+function process-common-arguments
+{
+    debug-arguments $@
+    args=""
+
+    while [ $# -gt 0 ]; do
+        if ! ${verbose} && [ "$1" = "--verbose" -o "$1" = "-v" ]; then
+            export verbose=true
+            # the second --verbose|-v will go into arguments
+        elif ! ${verbose} && [ "$1" = "--debug" ]; then
+            export verbose=true
+            # we need to set this to pass it to sub-processes as argument
+            export debug=true
+            # the second --debug will go into arguments
+        elif [ "$1" = "--dry-run" ]; then
+            export dry_run=true
+        elif [ "$1" = "-h" -o "$1" = "--help" ]; then
+            export help=true
+        else
+            [ "${args}" = "" ] && args=$1 || args="${args} $1"
+        fi
+        shift
+    done
+}
+
+function serialize-common-arguments
+{
+    ${verbose} && echo "--verbose"
+    ${debug} && echo "--debug"
+    ${dry_run} && echo "--dry-run"
+    ${help} && echo "--help"
+}
+
+#
+# returns the value associate with the variable name or fail if the variable is not found
+#
+function config
+{
+    variable_name=$1
+    [ "${variable_name}" = "" ] && fail "no variable name specified"
+
+    local value="${!variable_name}"
+    [ "${value}" = "" ] && fail "configuration variable '${variable_name}' has no value associated with it. Check your em configuration file"
+
+    echo "${value}"
+}
+
+#
+# Returns the name of an unique file (that can be used as a temporary file). The file name path is absolute
+# and can be used as returned. The function does not create the file, nor deletes it.
+#
+function unique-file()
+{
+    local dir=$1    # optional
+    local prefix=$2 # optional
+
+    [ -z ${dir} ] && dir=/tmp
+    [ -d ${dir} ] || fail "directory ${dir} does not exist"
+
+    [ -z ${prefix} ] && prefix="em"
+
+    echo "${dir}/${prefix}-"`date +'%y%m%d%H%M%S'`"${RANDOM}"
+}
+
+########################################################################################################################
+# File editing and manipulation
+########################################################################################################################
+
+#
+# move <source-file> <destination-file>
+#
+# Overwrite the destination-file with the source-file *only if the files differ*. The default behavior is to
+# remove the source file upon success.
+#
+# If the files are identical, fail.
+#
+# Note that this behavior is built-in into replace-regex and replace-regex-line, so use those with priority.
+#
+function move()
+{
+    local src=$1
+    local dest=$2
+
+    [ "${src}" = "" ] && fail "no source file specified"
+    [ -f ${src} ] || fail "no such file ${src}"
+    [ "${dest}" = "" ] && fail "no destination file specified"
+    [ -f ${dest} ] || fail "no such file ${dest}"
+
+    diff ${src} ${dest} > /dev/null && fail "files ${src} and ${dest} are identical, no replacement was made"
+    mv ${src} ${dest} || fail "failed to move ${src} over ${dest}"
+}
+
+#
+# Removes the whole line if it contains the regular expression
+#
+# Return 0 if something was actually removed or 1 if the file was not changed
+#
+# TODO add tests if I need to change it
+#
+function remove-regex-line()
+{
+    local regex=$1
+    local file=$2
+    local tmp=$(unique-file)
+    sed -e '/'"${regex}"'/d' ${file} > ${tmp} || fail "fail to execute sed -e '/'${regex}'/d' on ${file}"
+    diff ${file} ${tmp} > /dev/null && { rm ${tmp}; debug "${regex} not in ${file}"; return 1; } # identical files, no replacement made
+    mv ${tmp} ${file} && { debug "line matching '${regex}' was removed from ${file}"; return 0; } || fail "failed to restore ${file}"
+}
+
+#
+# Replaces source_regex with target_regex. The source_regex and target_regex will be used in the same sed expression,
+# so \1 will work. It has the "move" functionality (see function move()) built-in.
+#
+# Example:
+#
+# replace-regex "^\(Defaults[ \t]*requiretty[ \t]*\)$" "#\1" /etc/sudoers
+#
+# The function returns 0 if the file was modified and 1 if no modification occured
+#
+function replace-regex()
+{
+    local source_regex=$1
+    local target_regex=$2
+    local file=$3
+
+    local tmp=$(unique-file)
+    sed -e 's/'"${source_regex}"'/'"${target_regex}"'/g' ${file} > ${tmp} || fail "fail to execute sed -e 's/'${source_regex}'/'"${target_regex}"'/g' on ${file}"
+    diff ${file} ${tmp} > /dev/null && { rm ${tmp}; debug "${source_regex} not found in ${file}, no replacement was made"; return 1; } # identical files, no replacement made
+    mv ${tmp} ${file} && { debug "'${source_regex}' replaced in ${file}"; return 0; } || fail "failed to restore ${file}"
+}
+
+########################################################################################################################
+#
+########################################################################################################################
+
+#
+# returns the top level directory in the given zip archive or fails
+#
+function get-top-level-dir-in-zip-archive
+{
+    debug-arguments $@
+
+    local zip_file=$1
+    [ "${zip_file}" = "" ] && fail "'zip_file' not provided"
+    [ -f ${zip_file} ] || fail "zip file ${zip_file} does not exist"
+
+    local result
+    result=$(unzip -l ${zip_file} | grep -v Archive | grep -v Length | grep -v "\-\-\-" | head -1 | awk '{print $4}') || fail "failed to read directory name from zip file ${zip_file}"
+    [ -z "${result}" ] && fail "read empty top directory name from zip file ${zip_file}"
+    echo ${result}
+
+#
+# returns the absolute path of the given argument (either file or directory). The file
+# or directory presented as argument must exist on storage, otherwise the method fails
+#
+function get-absolute-path()
+{
+    local file_or_dir=$1
+    [ -z "${file_or_dir}" ] && { echo "get-absolute-path(): argument not provided" 1>&2; exit 1; }
+
+    # if absolute, return
+
+    if [ "${file_or_dir:0:1}" = "/" ]; then
+        # absolute path
+        if [ -f ${file_or_dir} -o -d ${file_or_dir} ]; then
+            echo ${file_or_dir}
+            return 0
+        else
+            echo "${file_or_dir} does not exist"
+            exit 1;
+        fi
+    fi
+
+    # relative
+    local file_name
+    local dir_name
+    if [ -f ${file_or_dir} ]; then
+        file_name=$(basename ${file_or_dir})
+        dir_name=$(dirname ${file_or_dir})
+    elif [ -d ${file_or_dir} ]; then
+        dir_name=${file_or_dir}
+    else
+        echo "${file_or_dir} does not exist"
+        exit 1;
+    fi
+
+    local absolute_dir
+    absolute_dir=$(cd ${dir_name}; pwd) || exit 1
+
+    local result=${absolute_dir}
+    [ -n "${file_name}" ] && result=${result}/${file_name}
+    echo "${result}"
+}
+
+
