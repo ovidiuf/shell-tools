@@ -5,8 +5,8 @@ Linux and Cygwin systems.
 
 ## Tools
 
-cdw
-searchjar
+* cdw
+* searchjar
 
 ## Installation
 
