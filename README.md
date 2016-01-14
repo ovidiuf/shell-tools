@@ -3,6 +3,11 @@
 A collection of ready-to-use command line tools. Includes searchjar, setw/cdw, etc. Can be used both on
 Linux and Cygwin systems.
 
+## Tools
+
+cdw
+searchjar
+
 ## Installation
 
 
