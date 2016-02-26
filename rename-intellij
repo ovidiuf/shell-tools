@@ -1,0 +1,82 @@
+#!/bin/bash
+#
+# Renames an IntelliJ project updating all metadata to be consistent
+#
+# Usage:
+#
+# rename-intellij <new-project-name> [intellij-metadata-directory]
+#
+# If not IntelliJ metadata directory is provided, it will use the current directory
+# If the new project name contains spaces, it must be quoted.
+#
+#
+
+new_name=$1
+
+function display_help()
+{
+    echo
+    echo "Usage:"
+    echo
+    echo "        rename-intellij \"<new-project-name>\" [intellij-metadata-dir]"
+    echo
+    echo "Quote the new project name if it contains spaces."
+    echo
+}
+
+if [ "${new_name}" = "" ]; then
+    display_help;
+    exit
+fi
+
+if [ "$2" != "" ]; then
+    metadata_dir=$2
+else
+    metadata_dir="."
+fi
+
+if [ ! -d "${metadata_dir}" ]; then
+    echo "no such directory ${metadata_dir}"
+    exit 1
+fi
+
+if ! output=`ls ${metadata_dir}/*.ipr`; then
+    echo "no *.ipr file found in ${metadata_dir}, it does not seem to be an IntelliJ project directory"
+    exit 2
+fi
+
+project_name=`basename "${output}" .ipr`
+
+echo "renaming '${project_name}' to '${new_name}'"
+
+if ! mv "${metadata_dir}/${project_name}.ipr" "${metadata_dir}/${new_name}.ipr"; then
+    echo "failed to rename ${metadata_dir}/${project_name}.ipr to ${metadata_dir}/${new_name}.ipr"
+    exit 3
+else
+    echo "renamed ${metadata_dir}/${project_name}.ipr to ${metadata_dir}/${new_name}.ipr"
+fi
+
+if ! mv "${metadata_dir}/${project_name}.iml" "${metadata_dir}/${new_name}.iml"; then
+    echo "failed to rename ${metadata_dir}/${project_name}.iml to ${metadata_dir}/${new_name}.iml"
+    exit 4
+else
+    echo "renamed ${metadata_dir}/${project_name}.iml to ${metadata_dir}/${new_name}.iml"
+fi
+
+echo "s/${project_name}\.iml/${new_name}\.iml/g"  > ./.regex
+
+if ! cat "${metadata_dir}/${new_name}.ipr" | sed -f ./.regex > ./.tmp; then
+    echo "failed to update ${metadata_dir}/${new_name}.ipr"
+    rm -f ./.regex
+    exit 5
+fi
+
+rm -f ./.regex
+
+if ! mv ./.tmp "${metadata_dir}/${new_name}.ipr"; then
+    echo "failed to mv ./tmp to ${metadata_dir}/${new_name}.ipr"
+    exit 6
+fi
+
+echo "done"
+
