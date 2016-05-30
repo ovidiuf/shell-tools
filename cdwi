@@ -6,5 +6,7 @@
 #
 
 [ -f ~/.WD ] || { echo "No ~/.WD file found. Use 'setw' to set a work directory first." 1>&2; return 1; }
-cd $(cat ~/.WD)
+
+dir=$(cat ~/.WD)
+cd ${dir}
 
