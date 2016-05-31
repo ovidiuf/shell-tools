@@ -1,0 +1,23 @@
+#!/bin/bash
+
+wd=$(pwd)
+
+[[ ! ${wd} =~ /profiles/ ]] && { echo "current directory ${wd} does not seem to be a JBoss profile directory" 1>&2; exit 1; }
+
+jboss_home=${wd%%/profiles*}
+profile=${wd##*/profiles/}
+
+[ -z "${profile}" ] && { echo "could not figure out the profile name from ${wd}" 1>&2; exit 1; }
+
+echo ${jboss_home} > ~/.JB
+
+our_basename=$(basename $0)
+
+if [ "${our_basename}" = "setp" ]; then
+    echo ${profile} > ~/.JBP
+elif [ "${our_basename}" = "setp1" ]; then
+    echo ${profile} > ~/.JBP1
+else
+	echo "we don't know how to handle ${our_basename}" 1>&2;
+        exit 1;
+fi
