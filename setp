@@ -15,8 +15,8 @@ our_basename=$(basename $0)
 
 if [ "${our_basename}" = "setp" ]; then
     echo ${profile} > ~/.JBP
-elif [ "${our_basename}" = "setp1" ]; then
-    echo ${profile} > ~/.JBP1
+elif [ "${our_basename}" = "setp2" ]; then
+    echo ${profile} > ~/.JBP2
 else
 	echo "we don't know how to handle ${our_basename}" 1>&2;
         exit 1;
