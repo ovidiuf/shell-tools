@@ -1,0 +1,105 @@
+#!/bin/bash
+
+function main() {
+
+    local log_file=$1
+
+    [ -z "${log_file}"  ] && { echo "specify a log file" 1>&2; exit 1; }
+
+    cat ${log_file} | while read line; do
+        process_line "${line}";
+    done
+}
+
+function process_line() {
+
+    local line="$1"
+    
+    local offset_or_timestamp=$(get-offset-or-timestamp "${line}")
+
+    [ -n "${offset_or_timestamp}" ] && current_offset_or_timestamp=${offset_or_timestamp}
+
+    local heap=$(echo ${line} | grep "Heap: ")
+
+     [ -z "${heap}" ] && return
+
+     heap=${heap##*Heap: }
+     heap=${heap%%, [Metaspace:*}
+
+     local heap_before=${heap%%(*}
+     heap_before=$(process_measurement ${heap_before}) || exit 1
+
+     local heap_after=${heap##*->}
+     heap_after=${heap_after%%(*}
+     heap_after=$(process_measurement ${heap_after}) || exit 1
+
+     local heap_max=${heap##*(}
+     heap_max=${heap_max%)*}
+     heap_max=$(process_measurement ${heap_max}) || exit 1
+
+     echo "${current_offset_or_timestamp}, ${heap_before}, ${heap_after}, ${heap_max}"
+}
+
+#
+# processes a single memory measurement. The measurement contains the measure unit, which can be M or G.
+# The result is conversion to MB.
+#
+function process_measurement() {
+
+    local measurement=$1
+    [ -z "${measurement}" ] && { echo "memory measurement not provided" 1>&2; exit 1; }
+
+    local measure_unit=${measurement:${#measurement}-1}
+    local quantity=${measurement:0:${#measurement}-1}
+
+    if [ "${measure_unit}" = "M" ]; then
+        echo ${quantity}
+    elif [ "${measure_unit}" = "G" ]; then
+        echo ${quantity} 1024 | awk '{printf "%5.1f\n",$1*$2}' || exit 1
+    else
+        echo "measure unit is not M or G but ${measure_unit}" 1>&2;
+        exit 1;
+    fi
+}
+
+#
+# if it does not detect the pattern, returns the empty string at stdout
+#
+function get-offset-or-timestamp() {
+
+    local line="$1"
+
+    # offset pattern
+    local offset=$(echo ${line} | grep "^[0-9]*\.[0-9][0-9][0-9]: ")
+
+    if [ -n "${offset}" ]; then
+        offset=${offset%%: *}
+        echo "${offset}"
+        return 0
+    fi
+
+    #
+    # no offset detected, try timestamp
+    #
+    local timestamp=$(echo ${line} | grep "^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]\.[0-9][0-9][0-9]+[0-9][0-9][0-9][0-9]:")
+
+    if [ -n "${timestamp}" ]; then
+        timestamp=${timestamp%%: *}
+
+#2016-05-23T23:27:27.695+0200
+        local year=${timestamp:0:4}
+        local month=${timestamp:5:2}
+        local day=${timestamp:8:2}
+        local hour=${timestamp:11:2}
+        local minute=${timestamp:14:2}
+        local second=${timestamp:17:2}
+        echo "${month}/${day}/${year} ${hour}:${minute}:${second}"
+        return 0
+    fi
+
+}
+
+
+current_offset_or_timestamp=""
+
+main $@;

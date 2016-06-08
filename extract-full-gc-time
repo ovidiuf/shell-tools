@@ -1,0 +1,14 @@
+#!/bin/bash
+
+function main() {
+
+    local log_file=$1
+
+    [ -z "${log_file}"  ] && { echo "specify a log file" 1>&2; exit 1; }
+
+    #cat ${log_file} | grep Full | sed -e 's/^\(.*\): \[Full.*)], \(.*\) secs\] \[Times.*$/\1, \2/'
+    cat ${log_file} | grep Full | sed -e 's/^\(.*\): \[Full.*), \(.*\) secs\]/\1, \2/'
+
+}
+
+main $@;
