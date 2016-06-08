@@ -20,6 +20,8 @@ EOF
 #
 command=""
 
+current_offset_or_timestamp=""
+
 function main() {
 
     local log_file
@@ -55,25 +57,56 @@ function process_line() {
 
     [ -n "${offset_or_timestamp}" ] && current_offset_or_timestamp=${offset_or_timestamp}
 
+    if [ "${command}" = "heap" ]; then
+        display-heap-data
+    elif [ "${command}" = "permgen" ]; then
+        display-permgen-data
+    else
+        echo "[error]: unknown command \"${command}\"" 1>&2;
+        exit 1;
+    fi
+}
+
+function display-heap-data() {
+
     local heap=$(echo ${line} | grep "Heap: ")
 
-     [ -z "${heap}" ] && return
+    [ -z "${heap}" ] && return
 
-     heap=${heap##*Heap: }
-     heap=${heap%%, [Metaspace:*}
+    heap=${heap##*Heap: }
+    heap=${heap%%, [Metaspace:*}
 
-     local heap_before=${heap%%(*}
-     heap_before=$(process_measurement ${heap_before}) || exit 1
+    local heap_before=${heap%%(*}
+    heap_before=$(process_measurement ${heap_before}) || exit 1
 
-     local heap_after=${heap##*->}
-     heap_after=${heap_after%%(*}
-     heap_after=$(process_measurement ${heap_after}) || exit 1
+    local heap_after=${heap##*->}
+    heap_after=${heap_after%%(*}
+    heap_after=$(process_measurement ${heap_after}) || exit 1
 
-     local heap_max=${heap##*(}
-     heap_max=${heap_max%)*}
-     heap_max=$(process_measurement ${heap_max}) || exit 1
+    local heap_max=${heap##*(}
+    heap_max=${heap_max%)*}
+    heap_max=$(process_measurement ${heap_max}) || exit 1
 
-     echo "${current_offset_or_timestamp}, ${heap_before}, ${heap_after}, ${heap_max}"
+    echo "${current_offset_or_timestamp}, ${heap_before}, ${heap_after}, ${heap_max}"
+}
+
+function display-permgen-data() {
+
+    local permgen=$(echo ${line} | grep "perm gen")
+
+    [ -z "${permgen}" ] && return
+
+    local total
+    local used
+
+    line=${line#*total }
+    total=${line%%,*}
+    total=$(process_measurement ${total}) || exit 1
+    line=${line#*used }
+    used=${line%% *}
+    used=$(process_measurement ${used}) || exit 1
+
+    echo "${current_offset_or_timestamp}, ${used}, ${total}"
 }
 
 #
@@ -92,8 +125,10 @@ function process_measurement() {
         echo ${quantity}
     elif [ "${measure_unit}" = "G" ]; then
         echo ${quantity} 1024 | awk '{printf "%5.1f\n",$1*$2}' || exit 1
+    elif [ "${measure_unit}" = "K" ]; then
+        echo ${quantity} 1024 | awk '{printf "%5.1f\n",$1/$2}' || exit 1
     else
-        echo "measure unit is not M or G but ${measure_unit}" 1>&2;
+        echo "measure unit is not K, M or G but ${measure_unit}" 1>&2;
         exit 1;
     fi
 }
@@ -135,6 +170,5 @@ function get-offset-or-timestamp() {
 }
 
 
-current_offset_or_timestamp=""
 
 main $@;
