@@ -86,7 +86,6 @@ function get-offset-or-timestamp() {
     if [ -n "${timestamp}" ]; then
         timestamp=${timestamp%%: *}
 
-#2016-05-23T23:27:27.695+0200
         local year=${timestamp:0:4}
         local month=${timestamp:5:2}
         local day=${timestamp:8:2}
