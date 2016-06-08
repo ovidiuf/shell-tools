@@ -1,10 +1,46 @@
 #!/bin/bash
 
+function help() {
+
+cat <<EOF
+
+Utility to parse G1 garbage collection logs and extract metrics such as the heap size before
+and after collection, permanent generation size or full GC collection time.
+
+Usage:
+
+    process-g1-log heap|permgen|fullgc <gc-log-file>
+
+EOF
+
+}
+
+#
+# 'command' is a global variable as it applies to entire logic
+#
+command=""
+
 function main() {
 
-    local log_file=$1
+    local log_file
 
-    [ -z "${log_file}"  ] && { echo "specify a log file" 1>&2; exit 1; }
+    while [ -n "$1" ]; do
+
+        if [ -z "${command}" ]; then
+            command=$1
+        elif [ -z "${log_file}" ]; then
+            log_file=$1
+        fi
+        shift
+    done
+
+    [ -z "${command}" -o "${command}" = "help" -o "${command}" = "--help" -o "${command}" = "-help" -o "${command}" = "-h" ] && \
+        { help; exit 0; }
+
+    [ "${command}" != "heap" -a "${command}" != "permgen" -a "${command}" != "heap" ] && \
+        { echo "[error]: unknown command \"${command}\"" 1>&2; exit 1; }
+
+    [ -z "${log_file}"  ] && { echo "[error]: a log file must be specified" 1>&2; exit 1; }
 
     cat ${log_file} | while read line; do
         process_line "${line}";
