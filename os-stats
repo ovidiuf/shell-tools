@@ -21,11 +21,15 @@ the background, an attempt to start another will fail. It can be configured at s
 
     --output=<output-file>  specifies the name of the output file.  If not specified,  the default
       file to write to is /tmp/os-stats.csv. /dev/stdout can be used to send the output to stdout.
+      Note that if  --foreground   option is used,   the output will forcibly  go to  /dev/stdout,
+      regardless on whether --output option was used or not.
+
+    --interval=<seconds> specifies the sampling interval length, in seconds.  If not specified the
+      default is 10 seconds.
 
     --foreground -  runs in foreground from the controlling terminal, instead of background, which
       is the default. In foreground mode, the output is switched automatically to /dev/stdout and
       --output option is ignored.
-
 
 The script can also be used as a command line manager of the process running in the background:
 
@@ -33,10 +37,10 @@ The script can also be used as a command line manager of the process running in 
 
 Commands:
 
-    status - display whether an os-stats process already runs on the system, and information about
-      it (such as the PID), if running.
+    status - display whether a background os-stats process already runs on the system, and provides
+      more information about it (such as the PID), if the process is found running.
 
-    stop - stop the ons-stats process, if running.
+    stop - stop the background os-stats process, if running.
 
     version - display the version and exit.
 
@@ -216,6 +220,9 @@ while [ -n "$1" ]; do
         foreground=true
     elif [[ "$1" =~ ^--output= ]]; then
         output_file=${1:9}
+    elif [[ "$1" =~ ^--interval= ]]; then
+        interval_sec=${1:11}
+        expr ${interval_sec} + 1 >/dev/null 2>&1 || fail "--interval=${interval_sec} not a valid integer"
     elif [ "$1" = "--help" ]; then
         command="help"
     elif [ -z "${command}" ]; then
