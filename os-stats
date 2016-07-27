@@ -5,7 +5,7 @@
 
 version=1.0
 interval_sec=10
-output_file=/tmp/os-stats.csv
+default_output_file=/tmp/os-stats.csv
 
 verbose=false
 mac=false
@@ -23,7 +23,8 @@ the background, an attempt to start another will fail. It can be configured at s
       file to write to is /tmp/os-stats.csv. /dev/stdout can be used to send the output to stdout.
 
     --foreground -  runs in foreground from the controlling terminal, instead of background, which
-      is the default.
+      is the default. In foreground mode, the output is switched automatically to /dev/stdout and
+      --output option is ignored.
 
 
 The script can also be used as a command line manager of the process running in the background:
@@ -46,7 +47,6 @@ EOF
 # Activated by --verbose|-v. Relies on a "verbose" global variable
 #
 function debug {
-
     ${verbose} && echo "$@" 1>&2;
     return 0
 }
@@ -54,11 +54,14 @@ function debug {
 #
 # Send error information at stderr and exit. The return code is 255.
 #
-function fail
-{
+function fail {
     echo "[error]: $@" 1>&2 && exit 255
 }
 
+function warn {
+    echo "[warn]: $@" 1>&2
+    return 0
+}
 
 function do-stop() {
 
@@ -201,6 +204,10 @@ function write-event-to-file() {
 #
 command=""
 foreground=false
+os_name=$(uname -s)
+[ "${os_name}" = "Darwin" ] && mac=true
+[ "${os_name}" = "Linux" ] && linux=true
+
 while [ -n "$1" ]; do
 
     if [ "$1" = "-v" -o "$1" = "--verbose" ]; then
@@ -223,11 +230,18 @@ if [ -n "${command}" ]; then
 fi
 
 pid=$(background-process-pid)
-[ -n "${pid}" ] && { echo "an os-stats process already runs in the background (pid ${pid})"; exit 1; }
+[ -n "${pid}" ] && fail "an os-stats process already runs in the background (pid ${pid})"
 
-os_name=$(uname -s)
-[ "${os_name}" = "Darwin" ] && mac=true
-[ "${os_name}" = "Linux" ] && linux=true
+
+#
+# adjust configuration based on command line input
+#
+if ${foreground}; then
+    [ -n "${output_file}" ] && warn "--output will be ignored when the foreground option is used"
+    output_file=/dev/stdout
+else
+    [ -z "${output_file}" ] && output_file=${default_output_file}
+fi
 
 if ${foreground}; then
     loop
