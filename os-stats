@@ -1,14 +1,64 @@
 #!/bin/bash
 #
-# A program that runs in the background, reads O/S level statistics in a loop and writes them in a CSV file.
-# If the process runs already in the background, attempting to start another one will fail.
-#
-# The script can  also be used as a command line manager of the process running in the background.
-#
-# os-stats status|stop
+# See do-help()
 #
 
-sleep_secs=1
+version=1.0
+interval_sec=1
+output_file=/tmp/os-stats.csv
+
+verbose=false
+mac=false
+linux=false
+
+function do-help() {
+
+cat <<EOF
+
+os-stats is a program designed to run in the background, one instance per VM.   It reads O/S level
+statistics in a loop and writes them in a CSV file.  If an os-stats process  is already running in
+the background, an attempt to start another will fail. It can be configured at startup at follows:
+
+    --output=<output-file>  specifies the name of the output file.  If not specified,  the default
+      file to write to is /tmp/os-stats.csv. /dev/stdout can be used to send the output to stdout.
+
+    --foreground -  runs in foreground from the controlling terminal, instead of background, which
+      is the default.
+
+
+The script can also be used as a command line manager of the process running in the background:
+
+    os-stats help|status|stop|version
+
+Commands:
+
+    status - display whether an os-stats process already runs on the system, and information about
+      it (such as the PID), if running.
+
+    stop - stop the ons-stats process, if running.
+
+    version - display the version and exit.
+
+EOF
+}
+
+#
+# Activated by --verbose|-v. Relies on a "verbose" global variable
+#
+function debug {
+
+    ${verbose} && echo "$@" 1>&2;
+    return 0
+}
+
+#
+# Send error information at stderr and exit. The return code is 255.
+#
+function fail
+{
+    echo "[error]: $@" 1>&2 && exit 255
+}
+
 
 function do-stop() {
 
@@ -34,6 +84,11 @@ function do-status() {
     fi
 }
 
+function do-version() {
+
+    echo ${version}
+}
+
 #
 # outputs the pid(s) of all os-stats background processes (those who have 1 as parent)
 #
@@ -52,32 +107,108 @@ function background-process-pid() {
     IFS="$(printf ' \t\n')"
 }
 
-function loop-in-background() {
+function loop() {
 
-    write-event-to-file header;
+    debug "starting the background process"
+
+    write-event-to-file headers;
 
     while true; do
         write-event-to-file
-        sleep ${sleep_secs}
+        sleep ${interval_sec}
     done
 }
 
+#
+# returns at stdout a set of memory metrics (or the corresponding headers, depending on 'mode') read from /proc/meminfo
+# or equivalent. The values have /proc/meminfo semantics. For more detaisl see:
+# https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux/6/html/Deployment_Guide/s2-proc-meminfo.html
+#
+function get-memory-stats() {
+
+    local mode=$1
+    local headers
+    [ "${mode}" = "headers" ] && headers=true || headers=false
+
+    local metrics="MemTotal MemFree SwapTotal SwapFree"
+    local output=""
+
+    if ${headers}; then
+        for i in ${metrics}; do
+            [ -n "${output}" ] && output="${output}, "
+            output="${output} ${i} (KB)"
+        done
+    else
+        for i in ${metrics}; do
+            [ -n "${output}" ] && output="${output}, "
+            output="${output} $(get-memory-metric ${i})"
+        done
+    fi
+
+    echo "${output}"
+}
+
+#
+# metric - literals that match /proc/meminfo
+#
+# fails on problems
+#
+function get-memory-metric() {
+
+    local metric=$1
+    local s
+
+    if ${linux}; then
+        s=$(grep "^${metric}:" /proc/meminfo)
+    elif ${mac}; then
+        if [ "${metric}" = "MemTotal" ]; then
+            s=$(sysctl hw.memsize)
+            s=${s#*: }
+        else
+            fail "don't know how to handle memory metric '${metric}' on mac"
+        fi
+    else
+        fail "unknown operating system"
+    fi
+
+    echo ${s}
+}
+
+#
+# writes a header or readings, depending on the value of the first argument
+#
 function write-event-to-file() {
 
     local mode=$1
-    local header=false
-    [ "${mode}" = "header" ] && header=true
+    local headers
+    [ "${mode}" = "headers" ] && headers=true || headers=false
 
-    ${header} && timestamp="time" || timestamp=$(date +'%m/%d/%y %H:%M:%S')
-    echo "${timestamp}" >> os-stats.csv
+    ${headers} && timestamp="Time" || timestamp=$(date +'%m/%d/%y %H:%M:%S')
+    memory_info=$(get-memory-stats ${mode})
+
+    line="${timestamp}, ${memory_info}"
+
+    echo ${line} >> ${output_file}
 }
 
 #
 # command line handling
 #
 command=""
+foreground=false
 while [ -n "$1" ]; do
-    [ -z "${command}" ] && command=$1
+
+    if [ "$1" = "-v" -o "$1" = "--verbose" ]; then
+        verbose=true
+    elif [ "$1" = "--foreground" ]; then
+        foreground=true
+    elif [[ "$1" =~ ^--output= ]]; then
+        output_file=${1:9}
+    elif [ "$1" = "--help" ]; then
+        command="help"
+    elif [ -z "${command}" ]; then
+        command=$1
+    fi
     shift;
 done
 
@@ -89,7 +220,15 @@ fi
 pid=$(background-process-pid)
 [ -n "${pid}" ] && { echo "an os-stats process already runs in the background (pid ${pid})"; exit 1; }
 
-loop-in-background &
+os_name=$(uname -s)
+[ "${os_name}" = "Darwin" ] && mac=true
+[ "${os_name}" = "Linux" ] && linux=true
+
+if ${foreground}; then
+    loop
+else
+    loop &
+fi
 
 
 
