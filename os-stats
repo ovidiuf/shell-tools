@@ -162,7 +162,7 @@ function get-memory-metric() {
     if ${linux}; then
         s=$(grep "^${metric}:" /proc/meminfo)
         s=${s#*: }
-        s=${s% kb}
+        s=${s% kB}
     elif ${mac}; then
         if [ "${metric}" = "MemTotal" ]; then
             s=$(sysctl hw.memsize)
