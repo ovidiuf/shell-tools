@@ -3,7 +3,7 @@
 # See do-help()
 #
 
-version=1.1
+version=1.2
 interval_sec=10
 default_output_file=/tmp/os-stats.csv
 
@@ -200,7 +200,12 @@ function write-event-to-file() {
 
     line="${timestamp}, ${memory_info}"
 
-    echo ${line} >> ${output_file}
+    # on some systems >> /dev/stdout fails with permission denied so we just simply echo
+    if [ ${output_file} = "/dev/stdout" ]; then
+        echo ${line}
+    else
+        echo ${line} >> ${output_file}
+    fi
 }
 
 #
