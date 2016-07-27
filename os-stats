@@ -225,6 +225,8 @@ while [ -n "$1" ]; do
         expr ${interval_sec} + 1 >/dev/null 2>&1 || fail "--interval=${interval_sec} not a valid integer"
     elif [ "$1" = "--help" ]; then
         command="help"
+    elif [ "${1:0:2}" = "--" ]; then
+        fail "unknown option ${1}"
     elif [ -z "${command}" ]; then
         command=$1
     fi
