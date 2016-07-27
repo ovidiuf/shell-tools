@@ -149,9 +149,10 @@ function get-memory-stats() {
 }
 
 #
-# metric - literals that match /proc/meminfo
+# metric - literals that match /proc/meminfo.
 #
-# fails on problems
+# Currently the metric is sized in KB, to match /proc/meminfo but in the future we may want to add
+# a conversion function. Fails on problems.
 #
 function get-memory-metric() {
 
@@ -160,6 +161,8 @@ function get-memory-metric() {
 
     if ${linux}; then
         s=$(grep "^${metric}:" /proc/meminfo)
+        s=${s#*: }
+        s=${s% kb}
     elif ${mac}; then
         if [ "${metric}" = "MemTotal" ]; then
             s=$(sysctl hw.memsize)
