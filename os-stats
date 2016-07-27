@@ -167,7 +167,8 @@ function get-memory-metric() {
         if [ "${metric}" = "MemTotal" ]; then
             s=$(sysctl hw.memsize)
             s=${s#*: }
-            s=$(echo ${s} 1024 | awk '{printf "%d",$1/$2}') || exit 1
+            # convert to KB
+            s=$(echo ${s} 1024 | awk '{printf "%d",$1/$2}') || fail "${s} conversion to KB failed"
         else
             fail "don't know how to handle memory metric '${metric}' on mac"
         fi
