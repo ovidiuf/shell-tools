@@ -4,7 +4,7 @@
 #
 
 version=1.0
-interval_sec=1
+interval_sec=10
 output_file=/tmp/os-stats.csv
 
 verbose=false
@@ -167,6 +167,7 @@ function get-memory-metric() {
         if [ "${metric}" = "MemTotal" ]; then
             s=$(sysctl hw.memsize)
             s=${s#*: }
+            s=$(echo ${s} 1024 | awk '{printf "%d",$1/$2}') || exit 1
         else
             fail "don't know how to handle memory metric '${metric}' on mac"
         fi
