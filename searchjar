@@ -9,7 +9,10 @@ Usage: searchjar <target_dir> <pattern>
 By default, it silently ignores the JARs that cannot be open, possibly because their format is corrupted.
 This is a technique used by the WildFly patch installer to make sure that older JARs are not used by mistake.
 
-The '/' in the pattern string are replaced with '.' when searching.
+The '/' in the pattern string are replaced with '.' when searching. This replacement is quite useful when
+looking for classes that caused a NoClassDefFoundError:
+
+Exception in thread "main" java.lang.NoClassDefFoundError: org/xnio/Option
 
 EOF
 }
@@ -35,6 +38,8 @@ if [ ! -d ${target_dir} ]; then
 fi
 
 find ${target_dir} -name "*.jar" | while read i; do
+
+        #echo -n "."
 
         if jar tfv ${i} 2>/dev/null | grep "${pattern}" > ./.searchjar.tmp; then
                 found=`cat ./.searchjar.tmp`
