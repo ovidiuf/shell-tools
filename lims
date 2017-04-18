@@ -11,25 +11,138 @@ A program that prints the first and the last line of the specified file, optiona
 truncating the lines to their first n characters. Useful to determine the temporal
 span of log files.
 
+The default behavior is to print the first and the last line of the file, irrespective
+of their content. There are situations when those lines do not contain timestamps, or
+they are empty, so the output in those cases is not so useful. Additional flags
+provide a more refined behavior, described below.
+
 Usage:
 
-       lims <file_name> [nubmer_of_characters]
+       lims [options] <file_name> [nubmer_of_characters]
+
+Options:
+
+       -t - display the first and the last line that contain timestamps, instead of
+            the first physical and the last physical line in the file. The current
+            implementation may be quite slow under some circumstances.
+
 
 EOF
 }
 
-[ -z "$1" ] && { usage; exit 1; }
+#
+# return 0 if the line starts with a timestamp, 1 otherwise
+#
+function starts-with-timestamp() {
 
-number_of_characters=$2
+    local line=$1
 
-first_line=$(head -n 1 $1)
-last_line=$(tail -n 1 $1)
+    if echo "${line}" | grep -q "^[0-9]" > /dev/null; then
+        return 0
+    fi
 
-if [ -n "${number_of_characters}" ]; then
-    first_line=${first_line:0:${number_of_characters}}
-    last_line=${last_line:0:${number_of_characters}}
-fi
+    return 1;
+}
 
-echo $1
-echo "    ${first_line}"
-echo "    ${last_line}"
+function first-line-that-starts-with-timestamp() {
+
+    #
+    # scan the file forward
+    #
+
+    local filename=$1
+    local line_count
+    line_count=$(wc -l ${filename}) || exit 1
+    line_count=${line_count% *}
+    line_count=$(echo ${line_count} | sed -e 's/ *//')
+
+    local line_number=1
+
+    while [ ${line_number} -le ${line_count} ]; do
+
+        local line
+        line=$(sed -n ${line_number}p ${filename})
+        if starts-with-timestamp ${line}; then
+            echo ${line}
+            break
+        fi
+
+        ((line_number++))
+    done
+}
+
+function last-line-that-starts-with-timestamp () {
+
+    #
+    # scan the file backward
+    #
+
+    local filename=$1
+    local line_count
+    line_count=$(wc -l ${filename}) || exit 1
+    line_count=${line_count% *}
+    line_count=$(echo ${line_count} | sed -e 's/ *//')
+
+    local line_number=${line_count}
+
+    while [ ${line_number} -gt 0 ]; do
+
+        local line
+        line=$(sed -n ${line_number}p ${filename})
+        if starts-with-timestamp ${line}; then
+            echo ${line}
+            break
+        fi
+
+        ((line_number--))
+    done
+}
+
+function main() {
+
+    [ -z "$1" ] && { usage; exit 1; }
+
+    local filename
+    local number_of_characters
+    local seek_timestamps=false
+
+    while [ -n "$1" ]; do
+
+        if [ "$1" = "-t" ]; then
+            seek_timestamps=true
+        elif [ -z "${filename}" ]; then
+           filename=$1
+        elif [ -z "${number_of_characters}" ]; then
+           number_of_characters=$1
+        fi
+        shift;
+    done
+
+    local first_line
+    local last_line
+
+    if ${seek_timestamps}; then
+
+        first_line=$(first-line-that-starts-with-timestamp ${filename}) || exit 1
+        last_line=$(last-line-that-starts-with-timestamp ${filename}) || exit 1
+
+    else
+        #
+        # we do not seek timestamps, we use the physical position in file
+        #
+        first_line=$(head -n 1 ${filename})
+        last_line=$(tail -n 1 ${filename})
+    fi
+
+    if [ -n "${number_of_characters}" ]; then
+        first_line=${first_line:0:${number_of_characters}}
+        last_line=${last_line:0:${number_of_characters}}
+    fi
+
+    echo ${filename}
+    echo "    ${first_line}"
+    echo "    ${last_line}"
+
+}
+
+main $@
