@@ -6,8 +6,9 @@ cat <<EOF
 
 Usage: searchjar <target_dir> <pattern>
 
-By default, it silently ignores the JARs that cannot be open, possibly because their format is corrupted.
-This is a technique used by the WildFly patch installer to make sure that older JARs are not used by mistake.
+The command looks into all JAR and WAR files. By default, it silently ignores the archives that cannot be open, 
+possibly because their format is corrupted. This way, it avoids JARs that are purposefully "corrupted" by 
+the WildFly patch installer to make sure that older JARs are not used by mistake.
 
 The '/' in the pattern string are replaced with '.' when searching. This replacement is quite useful when
 looking for classes that caused a NoClassDefFoundError:
