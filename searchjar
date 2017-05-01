@@ -37,7 +37,7 @@ if [ ! -d ${target_dir} ]; then
     exit 1
 fi
 
-find ${target_dir} -name "*.jar" | while read i; do
+find ${target_dir} -name "*.[jw]ar" | while read i; do
 
         #echo -n "."
 
@@ -47,6 +47,6 @@ find ${target_dir} -name "*.jar" | while read i; do
         fi;
 done
 
-rm ./.searchjar.tmp
+[ -f ./.searchjar.tmp ] && rm ./.searchjar.tmp
 
 
