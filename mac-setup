@@ -1,18 +1,141 @@
 #!/usr/bin/env bash
 
-function usage() {
+DEBUG=false
+
+function help() {
 
 cat <<EOF
 
-...
+The authoritative source of logic to fully configure a new development Mac or to periodically
+update a previously configured Mac.  Executing the utility without any argument displays this
+help.
+
+Usage:
+
+        mac-setup init|update|help
+
+
+Commands:
+
+    init - assumes this machine is a new Mac and fully configures it, installing the entire set
+      of utilities and applying all initial expected configuration. The function is supposed to
+      be idempotent.
+
+    update - updates all utilities or select utilities if necessary. The function is supposed to
+      be idempotent.
 
 EOF
 }
 
 function main() {
 
-  usage;
+    #
+    # This code was written to be as portable as possible, so it can be executed by a really old
+    # version of bash - at this point we don't know if we have a new bash version
+    #
 
+    local command
+
+    while [ -n "$1" ]; do
+
+        if [ "$1" = "-d" ]; then
+            DEBUG=true
+        elif [ -z "${command}" ]; then
+            command=$1
+        fi
+
+        shift;
+
+    done
+
+    [ -z "${command}" ] && command="help"
+
+    ${command} && return 0 || return 1
+}
+
+#
+# commands
+#
+function init() {
+
+    brew install;
+    bash update;
+}
+
+function update() {
+
+    brew update;
+    bash update;
+}
+
+#
+# internal
+#
+
+#
+# an error will stop the entire script execution and make it exit with a non-zero value
+#
+function error() {
+
+    echo "[error]: $@" 1>&2
+    exit 1
+}
+
+function debug() {
+
+    ${DEBUG} && echo "${FUNCNAME[1]}(): $@" 1<&2;
+}
+
+#
+# arg1: command (install|update|...). Invoked without any command does an "update"
+#
+function brew() {
+
+    #
+    # This code was written to be as portable as possible, so it can be executed by a really old
+    # version of bash - at this point we don't know if we have a new bash version
+    #
+
+    local command=${1:-update}
+
+    debug "command=${command}"
+
+    local exists=false
+
+    /usr/local/bin/brew --version 1>/dev/null && exists=true
+
+    debug "exists=${exists}"
+
+    if [ "${command}" = "install" ]; then
+
+        ${exists} && error "brew already installed"
+
+        debug "installing brew"
+
+        /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" || error "fail to install brew"
+
+    elif [ "${command}" = "update" ]; then
+
+        ! ${exists} && error "brew was not installed yet, cannot update ..."
+    else
+
+        error "unknown command ${command}"
+    fi
+}
+
+#
+# Invoked without any command does an "update"
+#
+function bash() {
+
+    #
+    # This code was written to be as portable as possible, so it can be executed by a really old
+    # version of bash - at this point we don't know if we have a new bash version
+    #
+
+    local command=${1:-update}
+
+    debug "${FUNCNAME[O]} ${command}"
 }
 
 main "$@"
