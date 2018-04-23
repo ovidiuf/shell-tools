@@ -1,6 +1,14 @@
 #!/usr/bin/env bash
 
+
+#
+# TODO installed by hand so far:
+#
+# brew cask install thunderbird + find a solution to apply configuration automatically.
+
 DEBUG=false
+
+DEFAULT_FORMULAE=("bash" "git")
 
 function help() {
 
