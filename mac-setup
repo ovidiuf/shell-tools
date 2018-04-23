@@ -4,7 +4,11 @@
 #
 # TODO installed by hand so far:
 #
-# brew cask install thunderbird + find a solution to apply configuration automatically.
+# * Thunderbird: brew cask install thunderbird + find a solution to apply configuration automatically.
+# * "Secure Pipes" + configuration
+# * James' https://github.com/jwtodd/miscellany/blob/develop/bootstrap.sh + https://kb.novaordis.com/index.php/Brew
+
+
 
 DEBUG=false
 
