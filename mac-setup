@@ -1,13 +1,5 @@
 #!/usr/bin/env bash
 
-#
-# TODO installed by hand so far:
-#
-# * Thunderbird: brew cask install thunderbird + find a solution to apply configuration automatically.
-# * "Secure Pipes" + configuration
-# * James' https://github.com/jwtodd/miscellany/blob/develop/bootstrap.sh + https://kb.novaordis.com/index.php/Brew
-
-
 DEBUG=false
 
 DEFAULT_FORMULAE=("bash" "git")
@@ -19,7 +11,8 @@ cat <<EOF
 The authoritative source of logic to fully configure a new development Mac or to periodically
 update a previously configured Mac. Executing the utility with 'help' displays this.
 Theoretically is safe to repeatedly run the utility without any bad side effects, except
-updating components to their latest versions.
+updating components to their latest versions. Most of the utility are installed and updated with
+brew and we resort to custom only when brew cannot help.
 
 Usage:
 
@@ -32,6 +25,7 @@ EOF
 function setup-sequence() {
 
     install-or-update-brew;
+    install-or-update-bash4;
 }
 
 function main() {
@@ -91,6 +85,13 @@ function install-or-update-brew() {
     fi
 }
 
+function install-or-update-bash4() {
+
+    info "upgrading bash ..."
+
+    brew install bash && info "bash installed/upgraded ..." || { error "failed to install/upgrade bash"; exit 1; }
+}
+
 #
 # an error will stop the entire script execution and make it exit with a non-zero value
 #
@@ -109,58 +110,5 @@ function info() {
 
     echo "[mac-setup]: $@" 1>&2;
 }
-
-
-#
-# arg1: command (install|update|...). Invoked without any command does an "update"
-#
-#function brew() {
-#
-#    #
-#    # This code was written to be as portable as possible, so it can be executed by a really old
-#    # version of bash - at this point we don't know if we have a new bash version
-#    #
-#
-#    local command=${1:-update}
-#
-#    debug "command=${command}"
-#
-#    local exists=false
-#
-#    /usr/local/bin/brew --version 1>/dev/null && exists=true
-#
-#    debug "exists=${exists}"
-#
-#    if [ "${command}" = "install" ]; then
-#
-#        ${exists} && error "brew already installed"
-#
-#        debug "installing brew"
-#
-#        /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" || error "fail to install brew"
-#
-#    elif [ "${command}" = "update" ]; then
-#
-#        ! ${exists} && error "brew was not installed yet, cannot update ..."
-#    else
-#
-#        error "unknown command ${command}"
-#    fi
-#}
-#
-##
-## Invoked without any command does an "update"
-##
-#function bash() {
-#
-#    #
-#    # This code was written to be as portable as possible, so it can be executed by a really old
-#    # version of bash - at this point we don't know if we have a new bash version
-#    #
-#
-#    local command=${1:-update}
-#
-#    debug "${FUNCNAME[O]} ${command}"
-#}
 
 main "$@"
