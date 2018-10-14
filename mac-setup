@@ -85,8 +85,8 @@ function install-or-update-brew() {
         info "installing brew ..."
 
         /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" && \
-            info "brew installed" \
-            exit 1
+            info "brew installed" || \
+            { error "failed to install brew"; exit 1 }
     fi
 }
 
