@@ -76,24 +76,19 @@ function install-or-update-brew() {
 
     if brew --version 1>/dev/null 2>&1; then
 
-        # upgrade
-
-        echo "upgrading brew ..."
+        info "upgrading brew ..."
+        brew update && info "brew updated" || exit 1
+        brew doctor && info "brew installation verified" || exit 1
 
     else
 
-        # new install
+        info "installing brew ..."
 
-        echo "installing brew ..."
-
+        /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" && \
+            info "brew installed" \
+            exit 1
     fi
-
-
 }
-
-#
-# internal
-#
 
 #
 # an error will stop the entire script execution and make it exit with a non-zero value
@@ -106,8 +101,14 @@ function error() {
 
 function debug() {
 
-    ${DEBUG} && echo "${FUNCNAME[1]}(): $@" 1<&2;
+    ${DEBUG} && echo "${FUNCNAME[1]}(): $@" 1>&2;
 }
+
+function info() {
+
+    echo "[mac-setup]: $@" 1>&2;
+}
+
 
 #
 # arg1: command (install|update|...). Invoked without any command does an "update"
