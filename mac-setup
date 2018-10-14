@@ -26,8 +26,8 @@ function setup-sequence() {
 
     #install-or-update-brew;
     #install-or-update-bash4;
-    install-or-update-gnu-sed;
-    #install-or-update-thunderbird;
+    #install-or-update-gnu-sed;
+    install-thunderbird;
 }
 
 function main() {
@@ -135,7 +135,11 @@ function install-or-update-gnu-sed() {
     brew install gnu-sed --with-default-names && info "GNU sed ${text}ed" || { error "failed to ${text} GNU sed"; exit 1; }
 }
 
-#function install-or-update-thunderbird() {
-#}
+function install-thunderbird() {
+
+    [ -d /Applications/Thunderbird.app ] && { info "Thunderbird already installed"; return 0; }
+
+    info "installing Thunderbird ..."
+}
 
 main "$@"
