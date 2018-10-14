@@ -2,7 +2,7 @@
 
 DEBUG=false
 
-DEFAULT_FORMULAE=("bash" "git")
+declare -A POST_INSTALLATION_STEPS
 
 function help() {
 
@@ -28,6 +28,9 @@ function setup-sequence() {
     #install-or-update-bash4;
     #install-or-update-gnu-sed;
     install-thunderbird;
+
+
+    post-configuration-report-and-next-steps;
 }
 
 function main() {
@@ -87,6 +90,27 @@ function info() {
     echo "[mac-setup]: $@" 1>&2;
 }
 
+function post-configuration-report-and-next-steps() {
+
+    if [ "${#POST_INSTALLATION_STEPS[@]}" = "0" ]; then
+        echo ""
+        echo "There are no post-installation steps."
+        echo ""
+        return 0;
+    fi
+
+    echo ""
+    echo "Post-installation steps:"
+    echo ""
+
+    local cnt=1
+
+    for i in "${!POST_INSTALLATION_STEPS[@]}"; do
+        echo "$((cnt++)). ${POST_INSTALLATION_STEPS[${i}]}"
+        echo ""
+    done
+}
+
 function install-or-update-brew() {
 
     if brew --version 1>/dev/null 2>&1; then
@@ -142,6 +166,8 @@ function install-thunderbird() {
     info "installing Thunderbird ..."
 
     brew cask install thunderbird && info "Thunderbird installed ..." || { error "failed to install Thunderbird"; exit 1; }
+
+    POST_INSTALLATION_STEPS["thunderbird"]="Start Thunderbird and configure accounts manually."
 }
 
 main "$@"
