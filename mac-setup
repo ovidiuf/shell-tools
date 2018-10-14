@@ -77,6 +77,7 @@ function install-or-update-brew() {
     if brew --version 1>/dev/null 2>&1; then
 
         info "upgrading brew ..."
+
         brew update && info "brew updated" || exit 1
         brew doctor && info "brew installation verified" || exit 1
 
@@ -95,7 +96,7 @@ function install-or-update-brew() {
 #
 function error() {
 
-    echo "[error]: $@" 1>&2
+    echo "[mac-setup error]: $@" 1>&2
     exit 1
 }
 
