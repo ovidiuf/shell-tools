@@ -124,7 +124,7 @@ function install-or-update-gnu-sed() {
 
     local upgrade=false
 
-    sed --version | grep "GNU sed" > /dev/null 2>&1 && upgrade=true
+    sed --version 2>&1 | grep "GNU sed" > /dev/null 2>&1 && upgrade=true
 
     local text
 
