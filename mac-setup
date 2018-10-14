@@ -140,6 +140,8 @@ function install-thunderbird() {
     [ -d /Applications/Thunderbird.app ] && { info "Thunderbird already installed"; return 0; }
 
     info "installing Thunderbird ..."
+
+    brew cask install thunderbird && info "Thunderbird installed ..." || { error "failed to install Thunderbird"; exit 1; }
 }
 
 main "$@"
