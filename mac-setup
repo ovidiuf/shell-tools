@@ -24,8 +24,10 @@ EOF
 
 function setup-sequence() {
 
-    install-or-update-brew;
-    install-or-update-bash4;
+    #install-or-update-brew;
+    #install-or-update-bash4;
+    install-or-update-gnu-sed;
+    #install-or-update-thunderbird;
 }
 
 function main() {
@@ -66,32 +68,6 @@ function main() {
     setup-sequence;
 }
 
-function install-or-update-brew() {
-
-    if brew --version 1>/dev/null 2>&1; then
-
-        info "upgrading brew ..."
-
-        brew update && info "brew updated" || exit 1
-        brew doctor && info "brew installation verified" || exit 1
-
-    else
-
-        info "installing brew ..."
-
-        /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" && \
-            info "brew installed" || \
-            { error "failed to install brew"; exit 1; }
-    fi
-}
-
-function install-or-update-bash4() {
-
-    info "upgrading bash ..."
-
-    brew install bash && info "bash installed/upgraded ..." || { error "failed to install/upgrade bash"; exit 1; }
-}
-
 #
 # an error will stop the entire script execution and make it exit with a non-zero value
 #
@@ -110,5 +86,56 @@ function info() {
 
     echo "[mac-setup]: $@" 1>&2;
 }
+
+function install-or-update-brew() {
+
+    if brew --version 1>/dev/null 2>&1; then
+
+        info "upgrading brew ..."
+
+        brew update && info "brew updated" || exit 1
+        brew doctor && info "brew installation verified" || exit 1
+
+    else
+
+        info "installing brew ..."
+
+        /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" && \
+            info "brew installed" || \
+            { error "failed to install brew"; exit 1; }
+
+        info "installing cask ..."
+
+        brew tap caskroom/cask && info "cask installed" || exit 1
+
+        info "running homebrew doctor ..."
+        brew doctor info "doctor ok" || exit 1
+    fi
+}
+
+function install-or-update-bash4() {
+
+    info "installing/upgrading bash ..."
+
+    brew install bash && info "bash installed/upgraded ..." || { error "failed to install/upgrade bash"; exit 1; }
+}
+
+function install-or-update-gnu-sed() {
+
+    local upgrade=false
+
+    sed --version | grep "GNU sed" > /dev/null 2>&1 && upgrade=true
+
+    local text
+
+    ${upgrade} && text="upgrad" || text="install"
+
+    info "${text}ing GNU sed ..."
+
+    brew install gnu-sed --with-default-names && info "GNU sed ${text}ed" || { error "failed to ${text} GNU sed"; exit 1; }
+}
+
+#function install-or-update-thunderbird() {
+#}
 
 main "$@"
