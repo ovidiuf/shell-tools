@@ -1,10 +1,25 @@
 #!/bin/bash
 
-[ -d /Volumes/base ] || { echo "/Volumes/base not mounted" 1>&2; exit 1; }
-[ -d /Volumes/livingroom ] || { echo "/Volumes/livingroom not mounted" 1>&2; exit 1; }
-[ -d /Volumes/RackStationB ] || { echo "The target USB drive was not mounted" 1>&2; exit 1; }
+#[ -d /Volumes/base ] || { echo "/Volumes/base not mounted" 1>&2; exit 1; }
+#[ -d /Volumes/livingroom ] || { echo "/Volumes/livingroom not mounted" 1>&2; exit 1; }
+#[ -d /Volumes/RackStationB ] || { echo "The target USB drive was not mounted" 1>&2; exit 1; }
+#
+#rsync -avz /Volumes/base /Volumes/RackStationB && echo "base synchronized" || { echo "failed to synchronize base" 1>&2; exit 1; }
+#rsync -avz /Volumes/livingroom /Volumes/RackStationB && echo "livingroom synchronized" || { echo "failed to synchronize livingroom" 1>&2; exit 1; }
 
-rsync -avz /Volumes/base /Volumes/RackStationB && echo "base synchronized" || { echo "failed to synchronize base" 1>&2; exit 1; }
-rsync -avz /Volumes/livingroom /Volumes/RackStationB && echo "livingroom synchronized" || { echo "failed to synchronize livingroom" 1>&2; exit 1; }
+function display_help() {
 
+cat <<EOF
+
+Utility to backup selected RackStation filesystem on a local disk, via rsync/ssh.
+
+EOF
+
+}
+function main() {
+
+
+}
+
+main "$@"
 
