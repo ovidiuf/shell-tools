@@ -1,17 +1,12 @@
 #!/bin/bash
 
-#FILESYSTEMS_TO_BACKUP="\
-#/volume1/base \
-#/volume1/dovecot \
-#/volume1/jspwiki \
-#/volume1/timesnap \
-#/volume2/livingroom \
-#/volume3/projects \
-#/volume4/backups"
-
 FILESYSTEMS_TO_BACKUP="\
+/volume1/base \
+/volume1/dovecot \
 /volume1/jspwiki \
 /volume1/timesnap \
+/volume2/livingroom \
+/volume3/projects \
 /volume4/backups"
 
 LOCAL_RACKSTATIONB_MOUNT_POINT=/rackstationb
