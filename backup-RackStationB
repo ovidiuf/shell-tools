@@ -14,16 +14,7 @@ FILESYSTEMS_TO_BACKUP="\
 /volume1/timesnap \
 /volume4/backups"
 
-RACKSTATION_IP=192.168.1.4
-
 LOCAL_RACKSTATIONB_MOUNT_POINT=/rackstationb
-
-#[ -d /Volumes/base ] || { echo "/Volumes/base not mounted" 1>&2; exit 1; }
-#[ -d /Volumes/livingroom ] || { echo "/Volumes/livingroom not mounted" 1>&2; exit 1; }
-#[ -d /Volumes/RackStationB ] || { echo "The target USB drive was not mounted" 1>&2; exit 1; }
-#
-#rsync -avz /Volumes/base /Volumes/RackStationB && echo "base synchronized" || { echo "failed to synchronize base" 1>&2; exit 1; }
-#rsync -avz /Volumes/livingroom /Volumes/RackStationB && echo "livingroom synchronized" || { echo "failed to synchronize livingroom" 1>&2; exit 1; }
 
 function display_help() {
 
@@ -35,6 +26,8 @@ EOF
 
 }
 function main() {
+
+    [ -z "${RACKSTATION_IP}" ] && { echo "RACKSTATION_IP environment variable not set" 1>&2; exit 1; }
 
     for i in ${FILESYSTEMS_TO_BACKUP}; do
         backup-filesystem ${i} || echo "failed to backup filesystem ${i}" 1>&2;
@@ -59,7 +52,7 @@ function backup-filesystem() {
     fi
 
     rsync -avzhe ssh --rsync-path=/usr/syno/bin/rsync root@${RACKSTATION_IP}:${rackstation_filesystem} ${local_dir} && echo "${rackstation_filesystem} ok"
-
 }
+
 main "$@"
 
