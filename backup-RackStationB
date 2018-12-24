@@ -16,11 +16,14 @@ function display_help() {
 cat <<EOF
 
 Utility to backup selected RackStation filesystem on a local disk, via rsync/ssh.
+Needs RACKSTATION_IP to be setup in the environment.
 
 EOF
 
 }
 function main() {
+
+    [ "$1" = "help" -o "$1" = "--help" ] && { display_help; exit 0; }
 
     [ -z "${RACKSTATION_IP}" ] && { echo "RACKSTATION_IP environment variable not set" 1>&2; exit 1; }
 
