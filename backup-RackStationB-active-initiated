@@ -11,7 +11,7 @@ FILESYSTEMS_TO_BACKUP="\
 
 LOCAL_RACKSTATIONB_MOUNT_POINT=/rackstationb
 
-function display_help {
+function display_help() {
 
 cat <<EOF
 
@@ -22,7 +22,7 @@ EOF
 
 }
 
-function main {
+function main() {
 
     local backup_node_address="${BACKUP_NODE_ADDRESS}"
     local backup_node_port="${BACKUP_NODE_PORT}"
@@ -54,7 +54,7 @@ function main {
 #    done
 }
 
-function backup-filesystem {
+function backup-filesystem() {
 
     local rackstation_filesystem=$1
 
