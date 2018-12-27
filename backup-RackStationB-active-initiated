@@ -80,7 +80,7 @@ function backup-filesystem() {
 #
 #    rsync -avzhe ssh --rsync-path=/usr/syno/bin/rsync root@${backup_node_address}:${BACKUP_NODE_MOUNT_POINT} ${local_dir} && echo "${rackstation_filesystem} ok"
 
-    echo rsync -avzhe "ssh -l a4Ev6F2 -p ${backup_node_port}" ${rackstation_filesystem} ${backup_node_address}:${BACKUP_NODE_MOUNT_POINT}
+    rsync -avzhe "ssh -l a4Ev6F2 -p ${backup_node_port}" ${rackstation_filesystem} ${backup_node_address}:${BACKUP_NODE_MOUNT_POINT}
 
 }
 
