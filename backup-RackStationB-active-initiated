@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/bash
 
 FILESYSTEMS_TO_BACKUP="\
 /volume1/base \
