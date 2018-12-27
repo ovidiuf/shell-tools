@@ -54,30 +54,33 @@ function main() {
     [ -z "${backup_node_port}" ] && { echo "[error]: backup node port not provided. Set it as value of BACKUP_NODE_PORT environment variable or with --port=... command line parameter" 1>&2; exit 1; }
 
     for i in ${FILESYSTEMS_TO_BACKUP}; do
-        backup-filesystem ${i} || echo "failed to backup filesystem ${i}" 1>&2;
+        backup-filesystem ${backup_node_address} ${backup_node_port} ${i} || echo "failed to backup filesystem ${i}" 1>&2;
     done
 }
 
 function backup-filesystem() {
 
-    local rackstation_filesystem=$1
+    local backup_node_address=$1
+    local backup_node_port=$2
+    local rackstation_filesystem=$3
 
     echo "backing up ${rackstation_filesystem} ..."
 
-    return 0
+#    local volume_dir=${rackstation_filesystem/\//}
+#    volume_dir=${volume_dir%%/*}
+#
+#    local local_dir=${BACKUP_NODE_MOUNT_POINT}/${volume_dir}
+#
+#    if [ ! -d ${local_dir} ]; then
+#
+#        mkdir ${local_dir} || { echo "failed to create directory ${local_dir}" 1>&2; return 1; }
+#
+#    fi
+#
+#    rsync -avzhe ssh --rsync-path=/usr/syno/bin/rsync root@${backup_node_address}:${BACKUP_NODE_MOUNT_POINT} ${local_dir} && echo "${rackstation_filesystem} ok"
 
-    local volume_dir=${rackstation_filesystem/\//}
-    volume_dir=${volume_dir%%/*}
+    echo rsync -avzhe "ssh -l a4Ev6F2 -p ${backup_node_port}" ${rackstation_filesystem} ${backup_node_address}:${BACKUP_NODE_MOUNT_POINT}
 
-    local local_dir=${BACKUP_NODE_MOUNT_POINT}/${volume_dir}
-
-    if [ ! -d ${local_dir} ]; then
-
-        mkdir ${local_dir} || { echo "failed to create directory ${local_dir}" 1>&2; return 1; }
-
-    fi
-
-    rsync -avzhe ssh --rsync-path=/usr/syno/bin/rsync root@${RACKSTATION_IP}:${rackstation_filesystem} ${local_dir} && echo "${rackstation_filesystem} ok"
 }
 
 main "$@"
