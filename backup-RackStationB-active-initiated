@@ -13,7 +13,8 @@ FILESYSTEMS_TO_BACKUP="\
 /volume1/timesnap"
 
 
-BACKUP_NODE_MOUNT_POINT=/rackstationb
+#BACKUP_NODE_MOUNT_POINT=/rackstationb
+BACKUP_NODE_MOUNT_POINT=/tmp/x
 
 function display_help() {
 
