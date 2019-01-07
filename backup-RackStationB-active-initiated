@@ -4,16 +4,16 @@
 [[ -f ${SHLIB_DIR}/std.shlib ]] && . ${SHLIB_DIR}/std.shlib || { echo "[error]: ${SHLIB_DIR}/std.shlib not found" 1>&2; exit 1; }
 [[ -f ${SHLIB_DIR}/ssh.shlib ]] && . ${SHLIB_DIR}/ssh.shlib || { echo "[error]: ${SHLIB_DIR}/ssh.shlib not found" 1>&2; exit 1; }
 
-#FILESYSTEMS_TO_BACKUP="\
-#/volume1/base \
-#/volume1/dovecot \
-#/volume1/jspwiki \
-#/volume1/timesnap \
-#/volume2/livingroom \
-#/volume3/projects \
-#/volume4/backups"
+FILESYSTEMS_TO_BACKUP="\
+/volume1/base \
+/volume1/dovecot \
+/volume1/jspwiki \
+/volume1/timesnap \
+/volume2/livingroom \
+/volume3/projects \
+/volume4/backups"
 
-FILESYSTEMS_TO_BACKUP="/volume1/base"
+#FILESYSTEMS_TO_BACKUP="/volume1/base"
 
 BACKUP_NODE_MODULE_PREFIX="rackstation-"
 RSYNCD_PORT=873
