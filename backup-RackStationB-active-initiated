@@ -13,7 +13,7 @@
 #/volume3/projects \
 #/volume4/backups"
 
-FILESYSTEMS_TO_BACKUP="/volume1/timesnap"
+FILESYSTEMS_TO_BACKUP="/volume1/base"
 
 BACKUP_NODE_MODULE_PREFIX="rackstation-"
 RSYNCD_PORT=873
