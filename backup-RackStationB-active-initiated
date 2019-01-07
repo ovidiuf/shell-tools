@@ -1,16 +1,19 @@
 #!/bin/bash
 
-FILESYSTEMS_TO_BACKUP="\
-/volume1/base \
-/volume1/dovecot \
-/volume1/jspwiki \
-/volume1/timesnap \
-/volume2/livingroom \
-/volume3/projects \
-/volume4/backups"
+#FILESYSTEMS_TO_BACKUP="\
+#/volume1/base \
+#/volume1/dovecot \
+#/volume1/jspwiki \
+#/volume1/timesnap \
+#/volume2/livingroom \
+#/volume3/projects \
+#/volume4/backups"
+
+FILESYSTEMS_TO_BACKUP="/volume1/timesnap"
 
 BACKUP_NODE_MODULE_PREFIX="rackstation-"
 BACKUP_MODE_SSH_USER=a4Ev6F2c
+RSYNCD_PORT=873
 
 function display_help() {
 
@@ -49,10 +52,16 @@ function main() {
 
     [ -z "${backup_node_address}" ] && { echo "[error]: backup node address not provided. Set it as value of BACKUP_NODE_ADDRESS environment variable or with --address=... command line parameter" 1>&2; exit 1; }
     [ -z "${backup_node_port}" ] && { echo "[error]: backup node port not provided. Set it as value of BACKUP_NODE_PORT environment variable or with --port=... command line parameter" 1>&2; exit 1; }
+    
+    local tunnel_pid
+    
+    #tunnel_pid=$(setup-tunnel ${backup_node_address} ${backup_node_port}) || { echo "failed to setup ssh tunnel to ${backup_node_address}" 1>&2; exit 1; }
 
     for i in ${FILESYSTEMS_TO_BACKUP}; do
         backup-filesystem ${backup_node_address} ${backup_node_port} ${i} || echo "failed to backup filesystem ${i}" 1>&2;
     done
+    
+    #tear-down-tunnel ${tunnel_pid}
 }
 
 function backup-filesystem() {
@@ -67,6 +76,37 @@ function backup-filesystem() {
     volume_name=${volume_name%%/*}
     
     rsync -avzh --delete ${rackstation_filesystem} localhost::${BACKUP_NODE_MODULE_PREFIX}${volume_name}
+}
+
+#
+# return a non-empty PID at stdout
+#
+function setup-tunnel() {
+
+    local ssh_address=$1
+    local ssh_port=$2
+    
+    echo "setting up ssh tunnel to ${ssh_address}:${ssh_port}" 1>&2
+
+    ssh -f -N -p ${ssh_port} -i /root/.ssh/NOMB0-a4Ev6F2c-id_rsa-COPY ${BACKUP_MODE_SSH_USER}@${ssh_address} -L ${RSYNCD_PORT}:127.0.0.1:${RSYNCD_PORT}
+    
+    echo "tunnel in place"
+    
+    local ssh_pid
+    ssh_pid=$(ps | grep "ssh.*id_rsa" | grep -v grep | awk '{print $1}')
+    
+    [ -z "${ssh_pid}" ] && { echo "[error]: no ssh PID identified" 1>&2; exit 1; }
+    
+    echo "${ssh_pid}"
+}
+
+function tear-down-tunnel() {
+    
+    local ssh_pid=$1
+    
+    [ -z "${ssh_pid}" ] && return 0;
+    
+    kill ${ssh_pid} && echo "tunnel torn down"
 }
 
 main "$@"
