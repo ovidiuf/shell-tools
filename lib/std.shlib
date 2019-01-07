@@ -1,10 +1,10 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 #
 # Global variables
 #
 
-export verbose=false
+export VERBOSE=false
 export debug=false
 export dry_run=false
 export help=false
@@ -12,26 +12,44 @@ export help=false
 #
 # Activated by --verbose|-v. Relies on a "verbose" global variable
 #
-function debug
-{
-    ${verbose} && echo "$@" 1>&2;
+function debug {
+
+    ${VERBOSE} && echo "$@" 1>&2;
     return 0
 }
 
 #
 # Send error information at stderr and exit. The return code is 255.
 #
-function fail
-{
-    echo "[error]: $@" 1>&2 && exit 255
+function fail {
+
+   echo "[error]: $@" 1>&2 && exit 255
 }
 
-function debug-arguments
-{
-    #${verbose} && echo "${FUNCNAME[1]}($@)" 1>&2;
+#
+# Send error information at stderr (but not exit)
+#
+function error {
+
+    echo "[error]: $@" 1>&2;
+    return 0
+}
+
+#
+# Send a warning at stderr (not to interfere with function returns)
+#
+function warn {
+
+    echo "[warning]: $@" 1>&2;
+    return 0
+}
+
+function debug-arguments {
+
+    #${VERBOSE} && echo "${FUNCNAME[1]}($@)" 1>&2;
     # we need a more elaborate debug function because we need to mask some arguments
     local line
-    if ${verbose}; then
+    if ${VERBOSE}; then
         while [ -n "$1" ]; do
             local arg=$1
             if [ "--aws-secret-key" = "${arg}" ]; then
@@ -54,47 +72,31 @@ function debug-arguments
 #
 # Send info at stderr (not to interfere with function returns)
 #
-function info
-{
-    echo "$@" 1>&2;
-    return 0
-}
+function info {
 
-#
-# Send a warning at stderr (not to interfere with function returns)
-#
-function warn
-{
-    echo "[warning]: $@" 1>&2;
+    echo "$@" 1>&2;
     return 0
 }
 
 #
 # Send a TODO message at stderr (not to interfere with function returns)
 #
-function todo
-{
+function todo {
+
     echo "[TODO]: $@" 1>&2;
     return 0
 }
 
-#
-# Send error information at stderr (but not exit)
-#
-function error
-{
-    echo "[error]: $@" 1>&2;
-    return 0
-}
 
 #
 # displays the arguments at stderr as [dry-run]. Does NOT exit.
 #
-function dry-run
-{
+function dry-run {
+
     echo "[dry-run]: $@" 1>&2;
     return 0
 }
+
 #
 # Process common options setting and exporting global variables (so these values are passed to sub-shells). There is no
 # way (or I don't know of any way) to modify the caller's positional parameters as to remove the parameters processed
@@ -127,34 +129,47 @@ function dry-run
 # --help               export help=true
 # -h                   export help=true
 #
-function process-common-arguments
-{
+function process-common-arguments {
+
     debug-arguments $@
+
     args=""
 
     while [ $# -gt 0 ]; do
-        if ! ${verbose} && [ "$1" = "--verbose" -o "$1" = "-v" ]; then
-            export verbose=true
+
+        if ! ${VERBOSE} && [ "$1" = "--verbose" -o "$1" = "-v" ]; then
+
+            export VERBOSE=true
             # the second --verbose|-v will go into arguments
-        elif ! ${verbose} && [ "$1" = "--debug" ]; then
-            export verbose=true
+
+        elif ! ${VERBOSE} && [ "$1" = "--debug" ]; then
+
+            export VERBOSE=true
             # we need to set this to pass it to sub-processes as argument
             export debug=true
             # the second --debug will go into arguments
+
         elif [ "$1" = "--dry-run" ]; then
+
             export dry_run=true
+
         elif [ "$1" = "-h" -o "$1" = "--help" ]; then
+
             export help=true
+
         else
+
             [ "${args}" = "" ] && args=$1 || args="${args} $1"
+
         fi
+
         shift
     done
 }
 
-function serialize-common-arguments
-{
-    ${verbose} && echo "--verbose"
+function serialize-common-arguments {
+
+    ${VERBOSE} && echo "--VERBOSE"
     ${debug} && echo "--debug"
     ${dry_run} && echo "--dry-run"
     ${help} && echo "--help"
@@ -163,8 +178,8 @@ function serialize-common-arguments
 #
 # returns the value associate with the variable name or fail if the variable is not found
 #
-function config
-{
+function config {
+
     variable_name=$1
     [ "${variable_name}" = "" ] && fail "no variable name specified"
 
@@ -205,8 +220,8 @@ function unique-file()
 #
 # Note that this behavior is built-in into replace-regex and replace-regex-line, so use those with priority.
 #
-function move()
-{
+function move() {
+
     local src=$1
     local dest=$2
 
@@ -226,8 +241,8 @@ function move()
 #
 # TODO add tests if I need to change it
 #
-function remove-regex-line()
-{
+function remove-regex-line() {
+
     local regex=$1
     local file=$2
     local tmp=$(unique-file)
@@ -246,8 +261,8 @@ function remove-regex-line()
 #
 # The function returns 0 if the file was modified and 1 if no modification occured
 #
-function replace-regex()
-{
+function replace-regex() {
+
     local source_regex=$1
     local target_regex=$2
     local file=$3
@@ -265,8 +280,8 @@ function replace-regex()
 #
 # returns the top level directory in the given zip archive or fails
 #
-function get-top-level-dir-in-zip-archive
-{
+function get-top-level-dir-in-zip-archive() {
+
     debug-arguments $@
 
     local zip_file=$1
@@ -277,13 +292,14 @@ function get-top-level-dir-in-zip-archive
     result=$(unzip -l ${zip_file} | grep -v Archive | grep -v Length | grep -v "\-\-\-" | head -1 | awk '{print $4}') || fail "failed to read directory name from zip file ${zip_file}"
     [ -z "${result}" ] && fail "read empty top directory name from zip file ${zip_file}"
     echo ${result}
+}
 
 #
 # returns the absolute path of the given argument (either file or directory). The file
 # or directory presented as argument must exist on storage, otherwise the method fails
 #
-function get-absolute-path()
-{
+function get-absolute-path() {
+
     local file_or_dir=$1
     [ -z "${file_or_dir}" ] && { echo "get-absolute-path(): argument not provided" 1>&2; exit 1; }
 
