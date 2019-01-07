@@ -59,6 +59,7 @@ function ssh-tunnel() {
         local ssh_command="ssh -f -N -o ExitOnForwardFailure=yes"
 
         [[ -n "${remote_host_ssh_port}" ]] && ssh_command="${ssh_command} -p ${remote_host_ssh_port}"
+        [[ -n "${identity_file}" ]] && ssh_command="${ssh_command} -i ${identity_file}"
 
         ssh_command="${ssh_command} ${remote_host_ssh_user}@${remote_host_ssh_host} -L ${local_port}:${remote_hosts_interface_to_forward_to}:${port_on_remote_host_to_forward_to}"
 
