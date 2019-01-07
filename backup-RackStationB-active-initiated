@@ -24,7 +24,7 @@ function display_help() {
 cat <<EOF
 
 Utility to backup selected RackStation filesystem from Rackstation on a backup node, rsync/ssh.
-Needs BACKUP_NODE_ADDRESS, BACKUP_NODE_PORT to be setup in the environment, or passed on command line.
+Needs BACKUP_NODE_ADDRESS, BACKUP_NODE_SSH_PORT to be setup in the environment, or passed on command line.
 
 EOF
 
@@ -33,7 +33,7 @@ EOF
 function main() {
 
     local backup_node_address="${BACKUP_NODE_ADDRESS}"
-    local backup_node_port="${BACKUP_NODE_PORT}"
+    local backup_node_ssh_port="${BACKUP_NODE_SSH_PORT}"
     local backup_node_ssh_user="${BACKUP_NODE_SSH_USER}"
     local backup_node_identity_file="${BACKUP_NODE_IDENTITY_FILE}"
 
@@ -50,7 +50,7 @@ function main() {
 
         elif [[ "${1:0:7}" = "--port=" ]]; then
 
-              backup_node_port=${1:7}
+              backup_node_ssh_port=${1:7}
 
         elif [[ "${1:0:11}" = "--ssh-user=" ]]; then
 
@@ -66,17 +66,17 @@ function main() {
     done
 
     [[ -z "${backup_node_address}" ]] && { echo "[error]: backup node address not provided. Set it as value of BACKUP_NODE_ADDRESS environment variable or with --address=... command line parameter" 1>&2; exit 1; }
-    [[ -z "${backup_node_port}" ]] && { echo "[error]: backup node port not provided. Set it as value of BACKUP_NODE_PORT environment variable or with --port=... command line parameter" 1>&2; exit 1; }
+    [[ -z "${backup_node_ssh_port}" ]] && { echo "[error]: backup node port not provided. Set it as value of BACKUP_NODE_SSH_PORT environment variable or with --port=... command line parameter" 1>&2; exit 1; }
     [[ -z "${backup_node_ssh_user}" ]] && { echo "[error]: backup node SSH user not provided. Set it as value of BACKUP_NODE_SSH_USER environment variable or with --ssh-user=... command line parameter" 1>&2; exit 1; }
     [[ -z "${backup_node_identity_file}" ]] && { echo "[error]: backup node SSH user identity file not provided. Set it as value of BACKUP_NODE_IDENTITY_FILE environment variable or with --identity-file=... command line parameter" 1>&2; exit 1; }
 
     local tunnel_pid
 
-    tunnel_pid=$(ssh-tunnel start "${backup_node_address}" "${backup_node_ssh_user}" "${backup_node_port}" "${backup_node_identity_file}" "${RSYNCD_PORT}" "127.0.0.1" "${RSYNCD_PORT}") || exit 1
+    tunnel_pid=$(ssh-tunnel start "${backup_node_address}" "${backup_node_ssh_user}" "${backup_node_ssh_port}" "${backup_node_identity_file}" "${RSYNCD_PORT}" "127.0.0.1" "${RSYNCD_PORT}") || exit 1
 
     for i in ${FILESYSTEMS_TO_BACKUP}; do
 
-        backup-filesystem ${backup_node_address} ${backup_node_port} ${i} || echo "failed to backup filesystem ${i}" 1>&2;
+        backup-filesystem ${backup_node_address} ${backup_node_ssh_port} ${i} || echo "failed to backup filesystem ${i}" 1>&2;
 
     done
 
@@ -86,7 +86,7 @@ function main() {
 function backup-filesystem() {
 
     local backup_node_address=$1
-    local backup_node_port=$2
+    local backup_node_ssh_port=$2
     local rackstation_filesystem=$3
 
     echo "backing up ${rackstation_filesystem} ..."
