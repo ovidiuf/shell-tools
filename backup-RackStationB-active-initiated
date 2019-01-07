@@ -44,6 +44,10 @@ function main() {
             display_help
             exit 0
 
+        elif [ "$1" = "-v" -o "$1" = "--verbose" ]; then
+
+              export VERBOSE=true
+
         elif [[ "${1:0:10}" = "--address=" ]]; then
 
               backup_node_address=${1:10}
