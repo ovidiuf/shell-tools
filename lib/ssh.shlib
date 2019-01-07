@@ -56,7 +56,11 @@ function ssh-tunnel() {
         [[ -z "${remote_hosts_interface_to_forward_to}" ]] && fail "'remote_hosts_interface_to_forward_to' not specified"
         [[ -z "${port_on_remote_host_to_forward_to}" ]] && fail "'port_on_remote_host_to_forward_to' not specified"
 
-        local ssh_command="ssh -f -N -o ExitOnForwardFailure=yes ${remote_host_ssh_user}@${remote_host_ssh_host} -L ${local_port}:${remote_hosts_interface_to_forward_to}:${port_on_remote_host_to_forward_to}"
+        local ssh_command="ssh -f -N -o ExitOnForwardFailure=yes"
+
+        [[ -n "${remote_host_ssh_port}" ]] && ssh_command="${ssh_command} -p ${remote_host_ssh_port}"
+
+        ssh_command="${ssh_command} ${remote_host_ssh_user}@${remote_host_ssh_host} -L ${local_port}:${remote_hosts_interface_to_forward_to}:${port_on_remote_host_to_forward_to}"
 
         debug "ssh command: ${ssh_command}"
 
