@@ -74,7 +74,7 @@ function main() {
 
     local tunnel_pid
 
-    tunnel_pid=$(ssh-tunnel start "${backup_node_address}" "${backup_node_ssh_user}" "${backup_node_ssh_port}" "${backup_node_identity_file}" "${RSYNCD_PORT}" "127.0.0.1" "${RSYNCD_PORT}") || exit 1
+    #tunnel_pid=$(ssh-tunnel start "${backup_node_address}" "${backup_node_ssh_user}" "${backup_node_ssh_port}" "${backup_node_identity_file}" "${RSYNCD_PORT}" "127.0.0.1" "${RSYNCD_PORT}") || exit 1
 
     for i in ${FILESYSTEMS_TO_BACKUP}; do
 
@@ -82,7 +82,7 @@ function main() {
 
     done
 
-    ssh-tunnel stop ${tunnel_pid}
+    #ssh-tunnel stop ${tunnel_pid}
 }
 
 function backup-filesystem() {
