@@ -80,6 +80,8 @@ function ssh-tunnel() {
 
             echo ${pid}
 
+            info "ssh tunnel successfully established"
+
         else
 
             fail "ssh tunnel failed to launch successfully"
@@ -94,6 +96,8 @@ function ssh-tunnel() {
         debug "stopping ssh tunnel with PID ${pid} ..."
 
         kill ${pid} || warn "failed to stop tunnel with PID ${pid}"
+
+        info "ssh tunnel successfully torn down"
 
     else
         fail "unknown ssh-tunnel command: ${command}"

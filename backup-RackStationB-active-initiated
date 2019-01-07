@@ -1,5 +1,10 @@
 #!/bin/bash
 
+[[ -z "${SHLIB_DIR}" ]] && { echo "[error]: SHLIB_DIR not defined" 1>&2; exit 1; }
+[[ -f ${SHLIB_DIR}/std.shlib ]] && . ${SHLIB_DIR}/std.shlib || { echo "[error]: ${SHLIB_DIR}/std.shlib not found" 1>&2; exit 1; }
+[[ -f ${SHLIB_DIR}/ssh.shlib ]] && . ${SHLIB_DIR}/ssh.shlib || { echo "[error]: ${SHLIB_DIR}/ssh.shlib not found" 1>&2; exit 1; }
+
+
 #FILESYSTEMS_TO_BACKUP="\
 #/volume1/base \
 #/volume1/dovecot \
@@ -12,7 +17,6 @@
 FILESYSTEMS_TO_BACKUP="/volume1/timesnap"
 
 BACKUP_NODE_MODULE_PREFIX="rackstation-"
-BACKUP_MODE_SSH_USER=a4Ev6F2c
 RSYNCD_PORT=873
 
 function display_help() {
@@ -30,38 +34,53 @@ function main() {
 
     local backup_node_address="${BACKUP_NODE_ADDRESS}"
     local backup_node_port="${BACKUP_NODE_PORT}"
+    local backup_node_ssh_user="${BACKUP_NODE_SSH_USER}"
+    local backup_node_identity_file="${BACKUP_NODE_IDENTITY_FILE}"
 
-    while [ -n "$1" ]; do
+    while [[ -n "$1" ]]; do
 
-        if [ "$1" = "help" -o "$1" = "--help" ]; then
+        if [[ "$1" = "help" -o "$1" = "--help" ]]; then
 
             display_help
             exit 0
 
-        elif [ "${1:0:10}" = "--address=" ]; then
+        elif [[ "${1:0:10}" = "--address=" ]]; then
 
               backup_node_address=${1:10}
 
-        elif [ "${1:0:7}" = "--port=" ]; then
+        elif [[ "${1:0:7}" = "--port=" ]]; then
 
               backup_node_port=${1:7}
+
+        elif [[ "${1:0:11}" = "--ssh-user=" ]]; then
+
+              backup_node_ssh_user=${1:11}
+
+        elif [[ "${1:0:16}" = "--identity-file=" ]]; then
+
+              backup_node_identity_file=${1:16}
+
         fi
 
         shift
     done
 
-    [ -z "${backup_node_address}" ] && { echo "[error]: backup node address not provided. Set it as value of BACKUP_NODE_ADDRESS environment variable or with --address=... command line parameter" 1>&2; exit 1; }
-    [ -z "${backup_node_port}" ] && { echo "[error]: backup node port not provided. Set it as value of BACKUP_NODE_PORT environment variable or with --port=... command line parameter" 1>&2; exit 1; }
-    
+    [[ -z "${backup_node_address}" ]] && { echo "[error]: backup node address not provided. Set it as value of BACKUP_NODE_ADDRESS environment variable or with --address=... command line parameter" 1>&2; exit 1; }
+    [[ -z "${backup_node_port}" ]] && { echo "[error]: backup node port not provided. Set it as value of BACKUP_NODE_PORT environment variable or with --port=... command line parameter" 1>&2; exit 1; }
+    [[ -z "${backup_node_ssh_user}" ]] && { echo "[error]: backup node SSH user not provided. Set it as value of BACKUP_NODE_SSH_USER environment variable or with --ssh-user=... command line parameter" 1>&2; exit 1; }
+    [[ -z "${backup_node_identity_file}" ]] && { echo "[error]: backup node SSH user identity file not provided. Set it as value of BACKUP_NODE_IDENTITY_FILE environment variable or with --identity-file=... command line parameter" 1>&2; exit 1; }
+
     local tunnel_pid
-    
-    #tunnel_pid=$(setup-tunnel ${backup_node_address} ${backup_node_port}) || { echo "failed to setup ssh tunnel to ${backup_node_address}" 1>&2; exit 1; }
+
+    tunnel_pid=$(ssh-tunnel start "${backup_node_address}" "${backup_node_ssh_user}" "${backup_node_port}" "${backup_node_identity_file}" "${RSYNCD_PORT}" "127.0.0.1" "${RSYNCD_PORT}") || exit 1
 
     for i in ${FILESYSTEMS_TO_BACKUP}; do
+
         backup-filesystem ${backup_node_address} ${backup_node_port} ${i} || echo "failed to backup filesystem ${i}" 1>&2;
+
     done
-    
-    #tear-down-tunnel ${tunnel_pid}
+
+    ssh-tunnel stop ${tunnel_pid}
 }
 
 function backup-filesystem() {
@@ -76,37 +95,6 @@ function backup-filesystem() {
     volume_name=${volume_name%%/*}
     
     rsync -avzh --delete ${rackstation_filesystem} localhost::${BACKUP_NODE_MODULE_PREFIX}${volume_name}
-}
-
-#
-# return a non-empty PID at stdout
-#
-function setup-tunnel() {
-
-    local ssh_address=$1
-    local ssh_port=$2
-    
-    echo "setting up ssh tunnel to ${ssh_address}:${ssh_port}" 1>&2
-
-    ssh -f -N -p ${ssh_port} -i /root/.ssh/NOMB0-a4Ev6F2c-id_rsa-COPY ${BACKUP_MODE_SSH_USER}@${ssh_address} -L ${RSYNCD_PORT}:127.0.0.1:${RSYNCD_PORT}
-    
-    echo "tunnel in place"
-    
-    local ssh_pid
-    ssh_pid=$(ps | grep "ssh.*id_rsa" | grep -v grep | awk '{print $1}')
-    
-    [ -z "${ssh_pid}" ] && { echo "[error]: no ssh PID identified" 1>&2; exit 1; }
-    
-    echo "${ssh_pid}"
-}
-
-function tear-down-tunnel() {
-    
-    local ssh_pid=$1
-    
-    [ -z "${ssh_pid}" ] && return 0;
-    
-    kill ${ssh_pid} && echo "tunnel torn down"
 }
 
 main "$@"

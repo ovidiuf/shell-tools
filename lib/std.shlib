@@ -44,6 +44,15 @@ function warn {
     return 0
 }
 
+#
+# Send info at stderr (not to interfere with function returns)
+#
+function info {
+
+    echo "$@" 1>&2;
+    return 0
+}
+
 function debug-arguments {
 
     #${VERBOSE} && echo "${FUNCNAME[1]}($@)" 1>&2;
@@ -69,14 +78,6 @@ function debug-arguments {
     return 0
 }
 
-#
-# Send info at stderr (not to interfere with function returns)
-#
-function info {
-
-    echo "$@" 1>&2;
-    return 0
-}
 
 #
 # Send a TODO message at stderr (not to interfere with function returns)
@@ -86,7 +87,6 @@ function todo {
     echo "[TODO]: $@" 1>&2;
     return 0
 }
-
 
 #
 # displays the arguments at stderr as [dry-run]. Does NOT exit.
