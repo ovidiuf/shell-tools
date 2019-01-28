@@ -75,15 +75,25 @@ function ssh-tunnel() {
             # determine the pid and return it to stdout
             #
 
-            local pid
 
             #pid=$(ps -ef | grep "ssh.*ExitOnForwardFailure.*${remote_host_ssh_user}@${remote_host_ssh_host}.*L ${local_port}:${remote_hosts_interface_to_forward_to}:${port_on_remote_host_to_forward_to}" | grep -v grep | awk '{print $2}')
             #pid=$(ps | grep "ssh.*ExitOnForwardFailure.*${remote_host_ssh_user}@${remote_host_ssh_host}.*L ${local_port}:${remote_hosts_interface_to_forward_to}:${port_on_remote_host_to_forward_to}" | grep -v grep | awk '{print $1}')
 
-            sleep 1
+            #sleep 1
+            
+            local process_line
 
-            pid=$(ps -ef | grep "ssh.*ExitOnForwardFailure" | grep -v grep | awk '{print $2}')
+            process_line=$(ps | grep "ssh.*ExitOnForwardFailure.*${remote_host_ssh_user}@${remote_host_ssh_host}.*L ${local_port}:${remote_hosts_interface_to_forward_to}:${port_on_remote_host_to_forward_to}" | grep -v grep)
+            
+            debug "process_line: ${process_line}"
+            
+            [[ -z "${process_line}" ]] && warn "the ssh tunnel seems to have launched successfully but PID identification failed: no corresponding process line in ps output" 
 
+            local pid
+            
+            pid=${process_line# *}
+            pid=${pid%% *}
+            
             [[ -z "${pid}" ]] && warn "the ssh tunnel seems to have launched successfully but PID identification failed"
 
             debug "PID: ${pid}"
