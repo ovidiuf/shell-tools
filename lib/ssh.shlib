@@ -126,7 +126,16 @@ function ssh-tunnel() {
                 echo ${pid}
             fi
 
-            info "ssh tunnel successfully established"
+            #
+            # report tunnel
+            #
+
+            local msg="ssh tunnel successfully established to ${remote_host_ssh_user}@${remote_host_ssh_host}"
+            [[ -n "${remote_host_ssh_port}" ]] && msg="${msg}:${remote_host_ssh_port}"
+            [[ -n "${identity_file}" ]] && msg="${msg} using identity file ${identity_file}"
+            msg="${msg} forwarding local port ${local_port} remotely to ${remote_hosts_interface_to_forward_to}:${port_on_remote_host_to_forward_to}"
+
+            info "${msg}"
 
         else
 
@@ -143,7 +152,7 @@ function ssh-tunnel() {
 
         kill ${pid} || warn "failed to stop tunnel with PID ${pid}"
 
-        info "ssh tunnel successfully torn down"
+        info "ssh tunnel to ${remote_host_ssh_user}@${remote_host_ssh_host} successfully torn down"
 
     else
 
