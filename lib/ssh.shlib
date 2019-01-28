@@ -89,7 +89,7 @@ function ssh-tunnel() {
 
             local pid
 
-            if [ "${ps_command}" = "ps" ]; then
+            if [[ "${ps_command}" = "ps" ]]; then
 
                 pid=$(echo "${process_line}" | awk '{print $1}') || exit 1
 
@@ -136,6 +136,9 @@ function ssh-tunnel() {
 #
 function get-ps-command() {
 
+    #
+    # this is how we detect the ps available on Synology RackStation
+    #
     if $(ps --help 2>&1 | grep BusyBox > /dev/null); then
 
         echo "ps"
