@@ -91,7 +91,7 @@ function backup-filesystem() {
     local backup_node_ssh_port=$2
     local rackstation_filesystem=$3
 
-    debug "backing up ${rackstation_filesystem} ..."
+    info "backing up ${rackstation_filesystem} ..."
     
     local volume_name=${rackstation_filesystem/\//}
     volume_name=${volume_name%%/*}
