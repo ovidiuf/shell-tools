@@ -75,25 +75,30 @@ function ssh-tunnel() {
             # determine the pid and return it to stdout
             #
 
+            local ps_command
 
-            #pid=$(ps -ef | grep "ssh.*ExitOnForwardFailure.*${remote_host_ssh_user}@${remote_host_ssh_host}.*L ${local_port}:${remote_hosts_interface_to_forward_to}:${port_on_remote_host_to_forward_to}" | grep -v grep | awk '{print $2}')
-            #pid=$(ps | grep "ssh.*ExitOnForwardFailure.*${remote_host_ssh_user}@${remote_host_ssh_host}.*L ${local_port}:${remote_hosts_interface_to_forward_to}:${port_on_remote_host_to_forward_to}" | grep -v grep | awk '{print $1}')
+            ps_command=$(get-ps-command) || exit 1
 
-            #sleep 1
-            
             local process_line
 
-            process_line=$(ps | grep "ssh.*ExitOnForwardFailure.*${remote_host_ssh_user}@${remote_host_ssh_host}.*L ${local_port}:${remote_hosts_interface_to_forward_to}:${port_on_remote_host_to_forward_to}" | grep -v grep)
+            process_line=$(${ps_command} | grep "ssh.*ExitOnForwardFailure.*${remote_host_ssh_user}@${remote_host_ssh_host}.*L ${local_port}:${remote_hosts_interface_to_forward_to}:${port_on_remote_host_to_forward_to}" | grep -v grep)
             
             debug "process_line: ${process_line}"
             
             [[ -z "${process_line}" ]] && warn "the ssh tunnel seems to have launched successfully but PID identification failed: no corresponding process line in ps output" 
 
             local pid
-            
-            pid=${process_line# *}
-            pid=${pid%% *}
-            
+
+            if [ "${ps_command}" = "ps" ]; then
+
+                pid=$(echo "${process_line}" | awk '{print $1}') || exit 1
+
+            else
+
+                pid=$(echo "${process_line}" | awk '{print $2}') || exit 1
+
+            fi
+
             [[ -z "${pid}" ]] && warn "the ssh tunnel seems to have launched successfully but PID identification failed"
 
             debug "PID: ${pid}"
@@ -126,3 +131,16 @@ function ssh-tunnel() {
     fi
 }
 
+#
+# returns proper ps command for the system (including arguments) at stdout or fails if error occurs
+#
+function get-ps-command() {
+
+    if $(ps --help 2>&1 | grep BusyBox > /dev/null); then
+
+        echo "ps"
+
+    else
+        echo "ps -ef"
+    fi
+}
