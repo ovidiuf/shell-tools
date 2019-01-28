@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-
 #
 # Manages (creates and tears down) ssh tunnels.
 #
@@ -10,7 +9,7 @@
 #
 #       If the tunnel is established successfully, the method returns the PID of the process at stdout. However,
 #       if a file name is provided as the 8-th argument, the PID is not returned at stdout, but written in the
-#       specified file. This is to work around (yet) unexplained behavior that makes the function block when executed
+#       specified file. This is to work around (yet) unexplained behavior that makes the function get stuck when executed
 #       like this:
 #
 #         pid=$(ssh-tunnel start ...) || exit 1
@@ -20,6 +19,10 @@
 #   Example:
 #
 #       ssh_tunnel_pid=$(ssh-tunnel start "localhost" "ovidiu" "50022" "identity-file" "33333" "localhost" "33334") || exit 1
+#
+#       or
+#
+#       ssh-tunnel start "localhost" "ovidiu" "50022" "identity-file" "33333" "localhost" "33334" /var/run/my.pid || exit 1
 #
 #   stop: Tears down an existing ssh tunnel, using the PID returned when the tunnel was established.
 #
