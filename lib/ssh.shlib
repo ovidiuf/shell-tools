@@ -8,7 +8,12 @@
 #
 #   start: Establishes a ssh tunnel.
 #
-#       If the tunnel is established successfully, the method returns the pid of the process at stdout.
+#       If the tunnel is established successfully, the method returns the PID of the process at stdout. However,
+#       if a file name is provided as the 8-th argument, the PID is not returned at stdout, but written in the
+#       specified file. This is to work around (yet) unexplained behavior that makes the function block when executed
+#       like this:
+#
+#         pid=$(ssh-tunnel start ...) || exit 1
 #
 #       If the tunnel fails to establish, the method fails (invokes exit with a non-zero result code).
 #
@@ -41,6 +46,7 @@ function ssh-tunnel() {
         local local_port=$5
         local remote_hosts_interface_to_forward_to=$6
         local port_on_remote_host_to_forward_to=$7
+        local pid_file=$8
 
         debug "remote_host_ssh_host=${remote_host_ssh_host}"
         debug "remote_host_ssh_user=${remote_host_ssh_user}"
@@ -49,6 +55,7 @@ function ssh-tunnel() {
         debug "local_port=${local_port}"
         debug "remote_hosts_interface_to_forward_to=${remote_hosts_interface_to_forward_to}"
         debug "port_on_remote_host_to_forward_to=${port_on_remote_host_to_forward_to}"
+        debug "pid_file=${pid_file}"
 
         [[ -z "${remote_host_ssh_host}" ]] && fail "'remote_host_ssh_host' not specified"
         [[ -z "${remote_host_ssh_user}" ]] && fail "'remote_host_ssh_user' not specified"
@@ -103,7 +110,18 @@ function ssh-tunnel() {
 
             debug "PID: ${pid}"
 
-            echo ${pid}
+            if [[ -n "${pid_file}" ]]; then
+
+                debug "PID written into ${pid_file}"
+
+                echo ${pid} > ${pid_file}
+
+            else
+
+                debug "PID written at stdout"
+
+                echo ${pid}
+            fi
 
             info "ssh tunnel successfully established"
 
