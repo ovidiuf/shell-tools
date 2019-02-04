@@ -1,0 +1,115 @@
+#!/usr/bin/env bash
+
+[[ -z "${SHLIB_DIR}" ]] && { echo "[error]: SHLIB_DIR not defined" 1>&2; exit 1; }
+[[ -f ${SHLIB_DIR}/std.shlib ]] && . ${SHLIB_DIR}/std.shlib || { echo "[error]: ${SHLIB_DIR}/std.shlib not found" 1>&2; exit 1; }
+
+ENCRYPTED_BLOCK_DEVICE=/dev/sdb
+DM_CRYPT_VOLUME_NAME=rackstationb
+FILE_SYSTEM_MOUNT_POINT=/rackstationb
+
+function display-help() {
+
+cat <<EOF
+
+Utility to open|close an encrypted block device and mount it as a filesystem.
+
+    $(basename ${0}) up|down
+
+EOF
+}
+
+function main() {
+
+    local command
+
+    while [[ -n "$1" ]]; do
+
+        if [[ -z "${command}" ]]; then
+
+            command=$1
+        fi
+
+        shift;
+    done
+
+
+    if [[ "${command}" = "up" ]]; then
+
+        encryptfs-up ${ENCRYPTED_BLOCK_DEVICE} ${DM_CRYPT_VOLUME_NAME} ${FILE_SYSTEM_MOUNT_POINT};
+
+    elif  [[ "${command}" = "down" ]]; then
+
+        encryptfs-down;
+    else
+
+        error "unknown command: ${command}"
+        display-help;
+    fi
+}
+
+function encryptfs-up() {
+
+    local encrypted_block_device=$1
+    local dm_crypt_volume_name=$2
+    local file_system_mount_point=$3
+
+    info "opening encrypted block device ${encrypted_block_device} as /dev/mapper/${dm_crypt_volume_name} ..."
+
+    local command="cryptsetup open ${encrypted_block_device} ${dm_crypt_volume_name}"
+
+    if ${command}; then
+
+        info "${encrypted_block_device} successfully opened and made available as /dev/mapper/${dm_crypt_volume_name}"
+
+    else
+
+        exit 1;
+    fi
+
+    info "mounting /dev/mapper/${dm_crypt_volume_name} as ${file_system_mount_point}..."
+
+    command="mount -t xfs /dev/mapper/${dm_crypt_volume_name} ${file_system_mount_point}"
+
+    if ${command}; then
+
+        echo "${file_system_mount_point} successfully mounted"
+
+    else
+
+        exit 1;
+    fi
+}
+
+function encryptfs-down() {
+
+    local dm_crypt_volume_name=$1
+
+    info "umounting /dev/mapper/${dm_crypt_volume_name} ..."
+
+    command="umount /dev/mapper/${dm_crypt_volume_name}"
+
+    if ${command}; then
+
+        echo "/dev/mapper/${dm_crypt_volume_name} successfully unmounted"
+
+    else
+
+        exit 1;
+    fi
+
+
+    info "closing encrypted block device /dev/mapper/${dm_crypt_volume_name} ..."
+
+    local command="cryptsetup close /dev/mapper/${dm_crypt_volume_name}"
+
+    if ${command}; then
+
+        info "/dev/mapper/${dm_crypt_volume_name} successfully closed"
+
+    else
+
+        exit 1;
+    fi
+}
+
+main "$@"
