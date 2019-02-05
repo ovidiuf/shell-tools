@@ -172,6 +172,8 @@ function get-ssh-tunnel-client-pid() {
 
     ps_command=$(get-ps-command) || exit 1
 
+    debug "ps command: ${ps_command}"
+
     local process_line
 
     process_line=$(${ps_command} | grep "ssh.*ExitOnForwardFailure.* -L [0-9]+:.*:[0-9]+" | grep -v grep)
