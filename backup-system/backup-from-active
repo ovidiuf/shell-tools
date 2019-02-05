@@ -84,9 +84,9 @@ function main() {
         # restart the tunnel
         #
 
-        info "found a ssh tunnel, restarting it ..."
+        info "found a ssh tunnel client with PID ${ssh_tunnel_client_pid}, restarting the tunnel ..."
 
-        ssh-tunnel stop ${ssh_tunnel_client_pid}
+        ssh-tunnel stop ${ssh_tunnel_client_pid} ${backup_node_address} ${backup_node_ssh_user}
     fi
 
     # for some reason, pid=$(ssh-tunnel start ...) gets stuck

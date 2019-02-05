@@ -108,6 +108,8 @@ function ssh-tunnel() {
     elif [[ "${command}" = "stop" ]]; then
 
         local pid=$1
+        local remote_host_ssh_host=$2
+        local remote_host_ssh_user=$3
 
         [[ -z "${pid}" ]] && fail "'pid' not specified"
 
