@@ -39,7 +39,7 @@ function main() {
 
     elif  [[ "${command}" = "down" ]]; then
 
-        encryptfs-down;
+        encryptfs-down ${DM_CRYPT_VOLUME_NAME};
     else
 
         error "unknown command: ${command}"
