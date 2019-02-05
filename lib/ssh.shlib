@@ -81,56 +81,13 @@ function ssh-tunnel() {
 
             debug "ssh tunnel successfully launched"
 
-            #
-            # determine the pid and return it to stdout
-            #
-
-            #
-            # TODO replace the following code with get-ssh-tunnel-client-pid()
-            #
-
             sleep 1
 
-            local ps_command
+            #
+            # determine the pid and write it to file
+            #
 
-            ps_command=$(get-ps-command) || exit 1
-
-            local process_line
-
-            process_line=$(${ps_command} | grep "ssh.*ExitOnForwardFailure.*${remote_host_ssh_user}@${remote_host_ssh_host}.*L ${local_port}:${remote_hosts_interface_to_forward_to}:${port_on_remote_host_to_forward_to}" | grep -v grep)
-            
-            debug "process_line: ${process_line}"
-            
-            [[ -z "${process_line}" ]] && warn "the ssh tunnel seems to have launched successfully but PID identification failed: no corresponding process line in ps output" 
-
-            local pid
-
-            if [[ "${ps_command}" = "ps" ]]; then
-
-                pid=$(echo "${process_line}" | awk '{print $1}') || exit 1
-
-            else
-
-                pid=$(echo "${process_line}" | awk '{print $2}') || exit 1
-
-            fi
-
-            [[ -z "${pid}" ]] && warn "the ssh tunnel seems to have launched successfully but PID identification failed"
-
-            debug "PID: ${pid}"
-
-            if [[ -n "${pid_file}" ]]; then
-
-                debug "PID written into ${pid_file}"
-
-                echo ${pid} > ${pid_file}
-
-            else
-
-                debug "PID written at stdout"
-
-                echo ${pid}
-            fi
+            get-ssh-tunnel-client-pid ${remote_host_ssh_user} ${remote_host_ssh_host} ${local_port} ${remote_hosts_interface_to_forward_to} ${port_on_remote_host_to_forward_to} ${pid_file}
 
             #
             # report tunnel
@@ -168,9 +125,29 @@ function ssh-tunnel() {
 }
 
 #
-# return the ssh tunnel client PID at stdout or empty string if cannot be determined.
+# Determine the ssh tunnel client PID. If identified, send to stdout, unless the third argument is a file name,
+# in which case the PID is written to the file
 #
 function get-ssh-tunnel-client-pid() {
+
+    local remote_host_ssh_user=$1
+    local remote_host_ssh_host=$2
+    local local_port=$3
+    local remote_hosts_interface_to_forward_to=$4
+    local port_on_remote_host_to_forward_to=$5
+    local output_file=$6
+
+    [[ -z "${remote_host_ssh_user}" ]] && { error "'remote_host_ssh_user' not specified"; exit 1; }
+    [[ -z "${remote_host_ssh_host}" ]] && { error "'remote_host_ssh_host' not specified"; exit 1; }
+    [[ -z "${local_port}" ]] && { error "'local_port' not specified"; exit 1; }
+    [[ -z "${remote_hosts_interface_to_forward_to}" ]] && { error "'remote_hosts_interface_to_forward_to' not specified"; exit 1; }
+    [[ -z "${port_on_remote_host_to_forward_to}" ]] && { error "'port_on_remote_host_to_forward_to' not specified"; exit 1; }
+
+    debug "remote_host_ssh_user: ${remote_host_ssh_user}"
+    debug "remote_host_ssh_host: ${remote_host_ssh_host}"
+    debug "local_port: ${local_port}"
+    debug "remote_hosts_interface_to_forward_to: ${remote_hosts_interface_to_forward_to}"
+    debug "port_on_remote_host_to_forward_to: ${port_on_remote_host_to_forward_to}"
 
     local ps_command
 
@@ -180,7 +157,7 @@ function get-ssh-tunnel-client-pid() {
 
     local process_line
 
-    process_line=$(${ps_command} | grep "ssh.*ExitOnForwardFailure.* -L [0-9]*:.*:[0-9]*" | grep -v grep)
+    process_line=$(${ps_command} | grep "ssh.*ExitOnForwardFailure.*${remote_host_ssh_user}@${remote_host_ssh_host} -L ${local_port}:${remote_hosts_interface_to_forward_to}:${port_on_remote_host_to_forward_to}" | grep -v grep)
 
     debug "process_line: ${process_line}"
 
@@ -190,12 +167,27 @@ function get-ssh-tunnel-client-pid() {
 
     if [[ "${ps_command}" = "ps" ]]; then
 
-        echo "${process_line}" | awk '{print $1}'
+        pid=$(echo "${process_line}" | awk '{print $1}')
 
     else
 
-        echo "${process_line}" | awk '{print $2}'
+        pid=$(echo "${process_line}" | awk '{print $2}')
 
+    fi
+
+    debug "ssh tunnel client PID: ${pid}"
+
+    if [[ -z "${output_file}" ]]; then
+
+        debug "PID written at stdout"
+
+        echo ${pid}
+
+    else
+
+        debug "PID written into ${output_file}"
+
+        echo ${pid} > ${output_file}
     fi
 }
 

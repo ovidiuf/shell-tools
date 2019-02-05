@@ -17,6 +17,7 @@ FILESYSTEMS_TO_BACKUP="\
 
 BACKUP_NODE_MODULE_PREFIX="rackstation-"
 RSYNCD_PORT=873
+BACKUP_NODE_LOCAL_INTERFACE="127.0.0.1"
 TUNNEL_PID_FILE=/var/run/vpn.feodorov.com-tunnel.pid
 
 function display_help() {
@@ -75,7 +76,7 @@ function main() {
 
     local ssh_tunnel_client_pid
 
-    ssh_tunnel_client_pid=$(get-ssh-tunnel-client-pid)
+    ssh_tunnel_client_pid=$(get-ssh-tunnel-client-pid "${backup_node_ssh_user}" "${backup_node_address}" "${RSYNCD_PORT}" "${BACKUP_NODE_LOCAL_INTERFACE}" "${RSYNCD_PORT}")
 
     if [[ -n "${ssh_tunnel_client_pid}" ]]; then
 
@@ -83,11 +84,13 @@ function main() {
         # restart the tunnel
         #
 
+        info "found a ssh tunnel, restarting it ..."
+
         ssh-tunnel stop ${ssh_tunnel_client_pid}
     fi
 
     # for some reason, pid=$(ssh-tunnel start ...) gets stuck
-    ssh-tunnel start "${backup_node_address}" "${backup_node_ssh_user}" "${backup_node_ssh_port}" "${backup_node_identity_file}" "${RSYNCD_PORT}" "127.0.0.1" "${RSYNCD_PORT}" ${TUNNEL_PID_FILE} || exit 1
+    ssh-tunnel start "${backup_node_address}" "${backup_node_ssh_user}" "${backup_node_ssh_port}" "${backup_node_identity_file}" "${RSYNCD_PORT}" "${BACKUP_NODE_LOCAL_INTERFACE}" "${RSYNCD_PORT}" ${TUNNEL_PID_FILE} || exit 1
 
     for i in ${FILESYSTEMS_TO_BACKUP}; do
 
