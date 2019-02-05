@@ -85,6 +85,8 @@ function ssh-tunnel() {
             # determine the pid and return it to stdout
             #
 
+            sleep 1
+
             local ps_command
 
             ps_command=$(get-ps-command) || exit 1
@@ -157,6 +159,36 @@ function ssh-tunnel() {
     else
 
         fail "unknown ssh-tunnel command: ${command}"
+
+    fi
+}
+
+#
+# return the ssh tunnel client PID at stdout or empty string if cannot be determined.
+#
+function get-ssh-tunnel-client-pid() {
+
+    local ps_command
+
+    ps_command=$(get-ps-command) || exit 1
+
+    local process_line
+
+    process_line=$(${ps_command} | grep "ssh.*ExitOnForwardFailure.* -L [0-9]+:.*:[0-9]+" | grep -v grep)
+
+    debug "process_line: ${process_line}"
+
+    [[ -z "${process_line}" ]] && return 1
+
+    local pid
+
+    if [[ "${ps_command}" = "ps" ]]; then
+
+        echo "${process_line}" | awk '{print $1}'
+
+    else
+
+        echo "${process_line}" | awk '{print $2}'
 
     fi
 }
