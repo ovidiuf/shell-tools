@@ -39,12 +39,12 @@ function main() {
 
     while [[ -n "$1" ]]; do
 
-        if [ "$1" = "help" -o "$1" = "--help" ]; then
+        if [[ "$1" = "help" -o "$1" = "--help" ]]; then
 
             display_help
             exit 0
 
-        elif [ "$1" = "-v" -o "$1" = "--verbose" ]; then
+        elif [[ "$1" = "-v" -o "$1" = "--verbose" ]]; then
 
               export VERBOSE=true
 
