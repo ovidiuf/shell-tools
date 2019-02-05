@@ -73,12 +73,18 @@ function main() {
     [[ -z "${backup_node_ssh_user}" ]] && { echo "[error]: backup node SSH user not provided. Set it as value of BACKUP_NODE_SSH_USER environment variable or with --ssh-user=... command line parameter" 1>&2; exit 1; }
     [[ -z "${backup_node_identity_file}" ]] && { echo "[error]: backup node SSH user identity file not provided. Set it as value of BACKUP_NODE_IDENTITY_FILE environment variable or with --identity-file=... command line parameter" 1>&2; exit 1; }
 
-    local pid
+    local ssh_tunnel_client_pid
 
-    pid=$(get-ssh-tunnel-client-pid)
+    ssh_tunnel_client_pid=$(get-ssh-tunnel-client-pid)
 
-    echo "${pid}"
-    return 0;
+    if [[ -n "${ssh_tunnel_client_pid}" ]]; then
+
+        #
+        # restart the tunnel
+        #
+
+        ssh-tunnel stop ${ssh_tunnel_client_pid}
+    fi
 
     # for some reason, pid=$(ssh-tunnel start ...) gets stuck
     ssh-tunnel start "${backup_node_address}" "${backup_node_ssh_user}" "${backup_node_ssh_port}" "${backup_node_identity_file}" "${RSYNCD_PORT}" "127.0.0.1" "${RSYNCD_PORT}" ${TUNNEL_PID_FILE} || exit 1
