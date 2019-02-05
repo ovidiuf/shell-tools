@@ -85,6 +85,10 @@ function ssh-tunnel() {
             # determine the pid and return it to stdout
             #
 
+            #
+            # TODO replace the following code with get-ssh-tunnel-client-pid()
+            #
+
             sleep 1
 
             local ps_command
