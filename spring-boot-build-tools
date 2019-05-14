@@ -1,62 +1,44 @@
 #!/usr/bin/env bash
 
-[[ -f $(dirname $0)/std.shlib ]] && . $(dirname $0)/std.shlib || { echo "$(dirname $0)/std.shlib not found" 1>&2; exit 1; }
+[[ -f $(dirname $0)/lib/bash.shlib ]] && . $(dirname $0)/lib/bash.shlib || { echo "$(dirname $0)/lib/bash.shlib not found" 1>&2; exit 1; }
 
-function display-help-build() {
-
-cat <<EOF
-
-Builds a Spring Boot project. The command must be invoked from project root.
-
-Usage:
-
-    b [-c] [-r] [--no-tests]
-
-Options:
-
-    -c - clean
-
-    -r - refresh dependencies, equivalent to passing --refresh-dependencies to Gradle.
-
-    --no-tests - do not run tests.
-
-EOF
-}
-
-function display-help-run() {
+function display-help() {
 
 cat <<EOF
 
-Executes the current project. The project can be a Spring Boot project, a simple Gradle Java project that
-contains a main class, etc. In case of a Spring Boot project, we assume we're in the project home of the
-Spring Boot microservice and we run the "fat" JAR locally.
+Build, test, deployment and execution tools.
 
-The runner supports an optional configuration file .rconfig in the project home directory. The configuration
-file may contain:
+'b' builds a Spring Boot project. The command must be invoked from project root.
 
-* The active profile:
+    Usage:
 
-  active.profile=...
+        b [-c] [-r] [--no-tests]
 
-EOF
-}
+    Options:
 
-function display-help-test() {
+        -c - clean
 
-cat <<EOF
+        -r - refresh dependencies, equivalent to passing --refresh-dependencies
+           to Gradle.
 
-Not sure what this does.
+        --no-tests - do not run tests.
 
-EOF
-}
 
-function display-help-deploy() {
+'r' runs (executes) the current project. The project can be a Spring Boot project,
+a simple Gradle Java project that contains a main class, etc. In case of a Spring
+Boot project, we assume we're in the project home of the Spring Boot microservice
+and we run the "fat" JAR locally. The runner supports an optional configuration
+file .rconfig in the project home directory. The configuration file may contain:
 
-cat <<EOF
+    * The active profile:
 
-Deploys the application distribution, packaged as ZIP, as found under the ./build/distributions directory.
-The deployment consists in removing the old version, and unpacking the new version. The script should be
-run from the root of the project (or from the root of the root project).
+        active.profile=...
+
+
+'d' deploys the application distribution, packaged as ZIP, as found under the
+./build/distributions directory. The deployment consists in removing the old
+version, and unpacking the new version. The script should be run from the root of
+the project (or from the root of the root project).
 
 EOF
 }
@@ -88,38 +70,37 @@ function main()  {
         exit 1
     fi
 
-    while [[ -n $1 ]]; do
+    process-common-arguments "$@" && set -- "${ARGS[@]}" || { echo "failed to process common arguments" 1>&2; exit 1; }
 
-        if [[ "help" = $1 || "--help" = $1 ]]; then
+    ${HELP} && { display-help; exit 0; }
 
-            display-help-${command}
-            return 0
+    do-${command} "$@"
+}
+
+function do-build() {
+
+    debug "do-build() positional parameters: $@"
+
+    local clean
+    local no_tests
+    local refresh_dependencies
+
+    while [[ -n "$1" ]]; do
+
+        if [[ "$1" = "-c" ]]; then
+
+            clean="clean"
+
+        elif [[ "$1" = "-r" ]]; then
+
+            refresh_dependencies="--refresh-dependencies";
+
+        elif [[ "$1" = "--no-tests" ]]; then
+
+            no_tests="-x test"
         fi
-
         shift
     done
-
-
-  local clean;
-  local no_tests
-  local refresh_dependencies
-
-  while [[ -n "$1" ]]; do
-
-    if [[ "$1" = "-c" ]]; then
-
-        clean="clean"
-
-    elif [[ "$1" = "-r" ]]; then
-
-       refresh_dependencies="--refresh-dependencies";
-
-    elif [[ "$1" = "--no-tests" ]]; then
-
-        no_tests="-x test"
-    fi
-    shift
-  done
 
   local command="gradle ${clean} build ${no_tests} ${refresh_dependencies}"
   echo ${command}
@@ -128,57 +109,57 @@ function main()  {
 
 function do-test() {
 
-    debug "do-test($@)"
+    fail "NOT YET IMPLEMENTED: uncomment do-test() and make sure the commented code works"
 
-    local debug=false
-    local clean=false
-    local refresh_dependencies=false
-    local single_test
-
-    while [[ -n "$1" ]]; do
-
-        if [[ "$1" = "-d" ]]; then
-
-            debug=true;
-
-        elif [[ "$1" = "-c" ]]; then
-
-            clean=true;
-
-        elif [[ "$1" = "-r" ]]; then
-
-            refresh_dependencies=true;
-
-        elif [[ -z "${single_test}" ]]; then
-
-            single_test=$1
-        fi
-
-        shift
-    done
-
-    ${debug} && debug_opts="--debug-jvm"
-    [ -n "${single_test}" ] && single_test_spec="--tests ${single_test}"
-
-    ${clean} && clean_opt="clean"
-    ${refresh_dependencies} && refresh_dependencies_opt="--refresh-dependencies"
-
-    echo gradle ${clean_opt} test ${debug_opts} ${single_test_spec} ${refresh_dependencies_opt}
-    gradle ${clean_opt} test ${debug_opts} ${single_test_spec} ${refresh_dependencies_opt}
+#    debug "do-test($@)"
+#
+#    local debug=false
+#    local clean=false
+#    local refresh_dependencies=false
+#    local single_test
+#
+#    while [[ -n "$1" ]]; do
+#
+#        if [[ "$1" = "-d" ]]; then
+#
+#            debug=true;
+#
+#        elif [[ "$1" = "-c" ]]; then
+#
+#            clean=true;
+#
+#        elif [[ "$1" = "-r" ]]; then
+#
+#            refresh_dependencies=true;
+#
+#        elif [[ -z "${single_test}" ]]; then
+#
+#            single_test=$1
+#        fi
+#
+#        shift
+#    done
+#
+#    ${debug} && debug_opts="--debug-jvm"
+#    [ -n "${single_test}" ] && single_test_spec="--tests ${single_test}"
+#
+#    ${clean} && clean_opt="clean"
+#    ${refresh_dependencies} && refresh_dependencies_opt="--refresh-dependencies"
+#
+#    echo gradle ${clean_opt} test ${debug_opts} ${single_test_spec} ${refresh_dependencies_opt}
+#    gradle ${clean_opt} test ${debug_opts} ${single_test_spec} ${refresh_dependencies_opt}
 }
 
 #
-# run
-#
-#
-
 # Optional configuration file. May contain:
 #   Active Profile: active.profile=...
 #
-#RCONFIG_FILE=$(pwd)/.rconfig
-#
-#function main() {
-#
+RCONFIG_FILE=$(pwd)/.rconfig
+
+function do-run() {
+
+    fail "NOT YET IMPLEMENTED: uncomment do-run() and make sure the commented code works"
+
 #    local debug=false;
 #    local trace=false;
 #    local args
@@ -237,46 +218,42 @@ function do-test() {
 #    #else
 #    #    java ${debug_args} -cp ${jar} ${main_class} ${debug_flag} ${trace_flag} ${args}
 #    #fi
-#}
-#
-#function check-whether-we-are-in-project-home-or-fail() {
-#
-#    local lib_dir=$1
-#
-#    [ -z ${lib_dir} ] && { error "'lib_dir' not specified"; exit 1; }
-#
-#    [ -d ${lib_dir} ] || { error "$(pwd)/${lib_dir} directory not found. The script must be run from a project home ..."; exit 1; }
-#}
-#
-##
-## returns empty string if no JAR is found
-##
-#function get-spring-boot-jar() {
-#
-#    local lib_dir=$1
-#
-#    [ -z ${lib_dir} ] && { error "'lib_dir' not specified"; exit 1; }
-#
-#    find ${lib_dir} -name "*.jar"
-#}
-#
-## return empty string if .rconfig does not esist or it does not contain an active profile
-#function get-active-profile-from-rconfig() {
-#
-#    [ ! -f ${RCONFIG_FILE} ] && return 0;
-#
-#    cat ${RCONFIG_FILE} | grep "^active\.profile=" | sed -e 's/^.*=//'
-#}
+}
 
+function check-whether-we-are-in-project-home-or-fail() {
+
+    local lib_dir=$1
+
+    [[ -z ${lib_dir} ]] && fail "'lib_dir' not specified"
+    [[ -d ${lib_dir} ]] || fail "$(pwd)/${lib_dir} directory not found. The script must be run from a project home ..."
+}
 
 #
-# deploy
+# returns empty string if no JAR is found
 #
+function get-spring-boot-jar() {
 
-#RUNTIME_DIR=/Users/ovidiu/runtime
-#VERBOSE=false
-#
-#function main() {
+    local lib_dir=$1
+
+    [[ -z ${lib_dir} ]] && fail "'lib_dir' not specified"
+
+    find ${lib_dir} -name "*.jar"
+}
+
+# return empty string if .rconfig does not esist or it does not contain an active profile
+function get-active-profile-from-rconfig() {
+
+    [[ ! -f ${RCONFIG_FILE} ]] && return 0;
+
+    cat ${RCONFIG_FILE} | grep "^active\.profile=" | sed -e 's/^.*=//'
+}
+
+RUNTIME_DIR=/Users/ovidiu/runtime
+
+function do-deploy() {
+
+    fail "NOT YET IMPLEMENTED: uncomment do-deploy() and make sure the commented code works"
+
 #
 #    local dir
 #
@@ -314,49 +291,47 @@ function do-test() {
 #    unzip -q ${distribution} -d ${RUNTIME_DIR} && echo "${top_directory_name} deployed in ${RUNTIME_DIR}"
 #
 #    (cd ${RUNTIME_DIR}; ln -sf ./${top_directory_name} ${application_name}) && echo "${application_name} linked to ${top_directory_name}"
-#}
+}
+
+function find-build-distributions-dir() {
+
+    find $(pwd) -type d -name distributions
+}
+
+function find-zip-file () {
+
+    local dir=$1
+    local application_name=$2
+
+    find ${dir} -type f -name ${application_name}'*.zip'
+}
+
 #
-#function find-build-distributions-dir() {
+# return "" if version cannot be determined
 #
-#    local dir
+function get-version () {
+
+    local gradle_properties=$(pwd)/gradle.properties
+
+    [[ ! -f ${gradle_properties} ]] && { echo "gradle.properties not found, cannot read version" 1>&2; return 1; }
+
+    cat ${gradle_properties} | grep "^version" | sed -e 's/version=//'
+}
+
 #
-#    find $(pwd) -type d -name distributions
-#}
+# return "" if application name cannot be determined
 #
-#function find-zip-file () {
-#
-#    local dir=$1
-#    local application_name=$2
-#
-#    find ${dir} -type f -name ${application_name}'*.zip'
-#}
-#
-##
-## return "" if version cannot be determined
-##
-#function get-version () {
-#
-#    local gradle_properties=$(pwd)/gradle.properties
-#
-#    [[ ! -f ${gradle_properties} ]] && { echo "gradle.properties not found, cannot read version" 1>&2; return 1; }
-#
-#    cat ${gradle_properties} | grep "^version" | sed -e 's/version=//'
-#}
-#
-##
-## return "" if application name cannot be determined
-##
-#function get-application-name () {
-#
-#    local settings_gradle=$(pwd)/settings.gradle
-#
-#    [[ ! -f ${settings_gradle} ]] && { echo "settings.gradle not found, cannot read application name" 1>&2; return 1; }
-#
-#    local application_name=$(cat ${settings_gradle} | grep "^rootProject" | sed -e 's/^.*= *//')
-#    application_name=${application_name#\'}
-#    application_name=${application_name%\'}
-#
-#    echo ${application_name}
-#}
+function get-application-name () {
+
+    local settings_gradle=$(pwd)/settings.gradle
+
+    [[ ! -f ${settings_gradle} ]] && { echo "settings.gradle not found, cannot read application name" 1>&2; return 1; }
+
+    local application_name=$(cat ${settings_gradle} | grep "^rootProject" | sed -e 's/^.*= *//')
+    application_name=${application_name#\'}
+    application_name=${application_name%\'}
+
+    echo ${application_name}
+}
 
 main "$@"
