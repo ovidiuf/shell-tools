@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+#
+# Generic bash functionality
+#
+
+
+#
+# A function that extracts "common" arguments such as "--verbose", "-v", "help" or "--help" from the command line
+# arguments and sets the appropriate global variables, while setting the remaining command line arguments as elements
+# of a global array. The remaining positional arguments are restored, as shown below:
+#
+#
+#
+
+function process-common-arguments() {
+
+    return 0
+}
+
