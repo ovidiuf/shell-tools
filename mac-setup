@@ -1,42 +1,36 @@
 #!/usr/bin/env bash
 
-
-#
-# TODO installed by hand so far:
-#
-# * Thunderbird: brew cask install thunderbird + find a solution to apply configuration automatically.
-# * "Secure Pipes" + configuration
-# * James' https://github.com/jwtodd/miscellany/blob/develop/bootstrap.sh + https://kb.novaordis.com/index.php/Brew
-
-
-
 DEBUG=false
 
-DEFAULT_FORMULAE=("bash" "git")
+declare -A POST_INSTALLATION_STEPS
 
 function help() {
 
 cat <<EOF
 
 The authoritative source of logic to fully configure a new development Mac or to periodically
-update a previously configured Mac.  Executing the utility without any argument displays this
-help.
+update a previously configured Mac. Executing the utility with 'help' displays this.
+Theoretically is safe to repeatedly run the utility without any bad side effects, except
+updating components to their latest versions. Most of the utility are installed and updated with
+brew and we resort to custom only when brew cannot help.
 
 Usage:
 
-        mac-setup init|update|help
+        mac-setup [help]
 
-
-Commands:
-
-    init - assumes this machine is a new Mac and fully configures it, installing the entire set
-      of utilities and applying all initial expected configuration. The function is supposed to
-      be idempotent.
-
-    update - updates all utilities or select utilities if necessary. The function is supposed to
-      be idempotent.
 
 EOF
+}
+
+function setup-sequence() {
+
+    #install-or-update-brew;
+    #install-or-update-bash4;
+    #install-or-update-gnu-sed;
+    install-thunderbird;
+
+
+    post-configuration-report-and-next-steps;
 }
 
 function main() {
@@ -51,8 +45,11 @@ function main() {
     while [ -n "$1" ]; do
 
         if [ "$1" = "-d" ]; then
+
             DEBUG=true
+
         elif [ -z "${command}" ]; then
+
             command=$1
         fi
 
@@ -60,94 +57,117 @@ function main() {
 
     done
 
-    [ -z "${command}" ] && command="help"
+    if [ "${command}" = "help" ]; then
 
-    ${command} && return 0 || return 1
+        help;
+        exit 1
+
+    elif [ -n "${command}" ]; then
+
+        echo "unknown command \"${command}\"";
+        exit 1
+    fi
+
+    setup-sequence;
 }
-
-#
-# commands
-#
-function init() {
-
-    brew install;
-    bash update;
-}
-
-function update() {
-
-    brew update;
-    bash update;
-}
-
-#
-# internal
-#
 
 #
 # an error will stop the entire script execution and make it exit with a non-zero value
 #
 function error() {
 
-    echo "[error]: $@" 1>&2
+    echo "[mac-setup error]: $@" 1>&2
     exit 1
 }
 
 function debug() {
 
-    ${DEBUG} && echo "${FUNCNAME[1]}(): $@" 1<&2;
+    ${DEBUG} && echo "${FUNCNAME[1]}(): $@" 1>&2;
 }
 
-#
-# arg1: command (install|update|...). Invoked without any command does an "update"
-#
-function brew() {
+function info() {
 
-    #
-    # This code was written to be as portable as possible, so it can be executed by a really old
-    # version of bash - at this point we don't know if we have a new bash version
-    #
+    echo "[mac-setup]: $@" 1>&2;
+}
 
-    local command=${1:-update}
+function post-configuration-report-and-next-steps() {
 
-    debug "command=${command}"
+    if [ "${#POST_INSTALLATION_STEPS[@]}" = "0" ]; then
+        echo ""
+        echo "There are no post-installation steps."
+        echo ""
+        return 0;
+    fi
 
-    local exists=false
+    echo ""
+    echo "Post-installation steps:"
+    echo ""
 
-    /usr/local/bin/brew --version 1>/dev/null && exists=true
+    local cnt=1
 
-    debug "exists=${exists}"
+    for i in "${!POST_INSTALLATION_STEPS[@]}"; do
+        echo "$((cnt++)). ${POST_INSTALLATION_STEPS[${i}]}"
+        echo ""
+    done
+}
 
-    if [ "${command}" = "install" ]; then
+function install-or-update-brew() {
 
-        ${exists} && error "brew already installed"
+    if brew --version 1>/dev/null 2>&1; then
 
-        debug "installing brew"
+        info "upgrading brew ..."
 
-        /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" || error "fail to install brew"
+        brew update && info "brew updated" || exit 1
+        brew doctor && info "brew installation verified" || exit 1
 
-    elif [ "${command}" = "update" ]; then
-
-        ! ${exists} && error "brew was not installed yet, cannot update ..."
     else
 
-        error "unknown command ${command}"
+        info "installing brew ..."
+
+        /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" && \
+            info "brew installed" || \
+            { error "failed to install brew"; exit 1; }
+
+        info "installing cask ..."
+
+        brew tap caskroom/cask && info "cask installed" || exit 1
+
+        info "running homebrew doctor ..."
+        brew doctor info "doctor ok" || exit 1
     fi
 }
 
-#
-# Invoked without any command does an "update"
-#
-function bash() {
+function install-or-update-bash4() {
 
-    #
-    # This code was written to be as portable as possible, so it can be executed by a really old
-    # version of bash - at this point we don't know if we have a new bash version
-    #
+    info "installing/upgrading bash ..."
 
-    local command=${1:-update}
+    brew install bash && info "bash installed/upgraded ..." || { error "failed to install/upgrade bash"; exit 1; }
+}
 
-    debug "${FUNCNAME[O]} ${command}"
+function install-or-update-gnu-sed() {
+
+    local upgrade=false
+
+    sed --version 2>&1 | grep "GNU sed" > /dev/null 2>&1 && upgrade=true
+
+    local text
+
+    ${upgrade} && text="upgrad" || text="install"
+
+    info "${text}ing GNU sed ..."
+
+    brew install gnu-sed --with-default-names && info "GNU sed ${text}ed" || { error "failed to ${text} GNU sed"; exit 1; }
+}
+
+function install-thunderbird() {
+
+    [ -d /Applications/Thunderbird.app ] && { info "Thunderbird already installed"; return 0; }
+
+    info "installing Thunderbird ..."
+
+    brew cask install thunderbird && info "Thunderbird installed ..." || { error "failed to install Thunderbird"; exit 1; }
+
+    POST_INSTALLATION_STEPS["thunderbird"]="Start Thunderbird and configure accounts manually. See https://kb.novaordis.com/index.php/Thunderbird_Configuration#Overview."
 }
 
 main "$@"

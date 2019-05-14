@@ -119,21 +119,15 @@ function a() {
 
 
 
-
-
-
-
-
 #
 # TODO TO REFACTOR BELOW
 #
-
 
 #
 # Global variables
 #
 
-export verbose=false
+export VERBOSE=false
 export debug=false
 export dry_run=false
 export help=false
@@ -143,7 +137,7 @@ export help=false
 #
 function debug {
 
-    ${verbose} && echo "$@" 1>&2;
+    ${VERBOSE} && echo "$@" 1>&2;
     return 0
 }
 
@@ -155,13 +149,39 @@ function fail {
     echo "[error]: $@" 1>&2 && exit 255
 }
 
+#
+# Send error information at stderr (but not exit)
+#
+function error {
+
+    echo "[error]: $@" 1>&2;
+    return 0
+}
+
+#
+# Send a warning at stderr (not to interfere with function returns)
+#
+function warn {
+
+    echo "[warning]: $@" 1>&2;
+    return 0
+}
+
+#
+# Send info at stderr (not to interfere with function returns)
+#
+function info {
+
+    echo "$@" 1>&2;
+    return 0
+}
+
 function debug-arguments {
 
-
-    #${verbose} && echo "${FUNCNAME[1]}($@)" 1>&2;
+    #${VERBOSE} && echo "${FUNCNAME[1]}($@)" 1>&2;
     # we need a more elaborate debug function because we need to mask some arguments
     local line
-    if ${verbose}; then
+    if ${VERBOSE}; then
         while [ -n "$1" ]; do
             local arg=$1
             if [ "--aws-secret-key" = "${arg}" ]; then
@@ -226,10 +246,79 @@ function dry-run {
     return 0
 }
 
+#
+# Process common options setting and exporting global variables (so these values are passed to sub-shells). There is no
+# way (or I don't know of any way) to modify the caller's positional parameters as to remove the parameters processed
+# by this function, but it sets an "args" global variable that contains the remaining parameters, so you can use that.
+#
+# Note that if you need to convert exported global variables back into common command line arguments (to pass them
+# over ssh, for example), use 'serialize-common-arguments' function.
+#
+# The function will remove only the first occurence of --verbose, -v, --debug because lower layers may need the second
+# occurence - as a command parameter of its own, for example
+#
+#
+# Usage:
+#           process-common-options $@
+#
+#           for i in ${args}; do
+#               # process remaining parameters as ${i}
+#           done
+#
+# Option Handled       Global Variable Set      Notes
+#
+# --verbose            export verbose=true
+# -v                   export verbose=true
+#
+# --debug              export verbose=true      This should be used when we want to debug the process with a debugger
+#                      export debug=true
+#
+# --dry-run            export dry_run=true
+#
+# --help               export help=true
+# -h                   export help=true
+#
+function process-common-arguments {
+
+    debug-arguments $@
+
+    args=""
+
+    while [ $# -gt 0 ]; do
+
+        if ! ${VERBOSE} && [ "$1" = "--verbose" -o "$1" = "-v" ]; then
+
+            export VERBOSE=true
+            # the second --verbose|-v will go into arguments
+
+        elif ! ${VERBOSE} && [ "$1" = "--debug" ]; then
+
+            export VERBOSE=true
+            # we need to set this to pass it to sub-processes as argument
+            export debug=true
+            # the second --debug will go into arguments
+
+        elif [ "$1" = "--dry-run" ]; then
+
+            export dry_run=true
+
+        elif [ "$1" = "-h" -o "$1" = "--help" ]; then
+
+            export help=true
+
+        else
+
+            [ "${args}" = "" ] && args=$1 || args="${args} $1"
+
+        fi
+
+        shift
+    done
+}
+
 function serialize-common-arguments {
 
-
-    ${verbose} && echo "--verbose"
+    ${VERBOSE} && echo "--VERBOSE"
     ${debug} && echo "--debug"
     ${dry_run} && echo "--dry-run"
     ${help} && echo "--help"

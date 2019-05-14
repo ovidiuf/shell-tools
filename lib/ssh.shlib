@@ -1,0 +1,211 @@
+#!/usr/bin/env bash
+
+#
+# Manages (creates and tears down) ssh tunnels.
+#
+# Commands:
+#
+#   start: Establishes a ssh tunnel.
+#
+#       If the tunnel is established successfully, the method returns the PID of the process at stdout. However,
+#       if a file name is provided as the 8-th argument, the PID is not returned at stdout, but written in the
+#       specified file. This is to work around (yet) unexplained behavior that makes the function get stuck when executed
+#       like this:
+#
+#         pid=$(ssh-tunnel start ...) || exit 1
+#
+#       If the tunnel fails to establish, the method fails (invokes exit with a non-zero result code).
+#
+#   Example:
+#
+#       ssh_tunnel_pid=$(ssh-tunnel start "localhost" "ovidiu" "50022" "identity-file" "33333" "localhost" "33334") || exit 1
+#
+#       or
+#
+#       ssh-tunnel start "localhost" "ovidiu" "50022" "identity-file" "33333" "localhost" "33334" /var/run/my.pid || exit 1
+#
+#   stop: Tears down an existing ssh tunnel, using the PID returned when the tunnel was established.
+#
+#   Example:
+#
+#       ssh-tunnel stop <pid>
+#
+function ssh-tunnel() {
+
+    local command=$1
+
+    debug "ssh-tunnel command=${command}"
+
+    shift
+
+    if [[ "${command}" = "start" ]]; then
+
+        debug "starting ssh tunnel ..."
+
+        local remote_host_ssh_host=$1
+        local remote_host_ssh_user=$2
+        local remote_host_ssh_port=$3
+        local identity_file=$4
+        local local_port=$5
+        local remote_hosts_interface_to_forward_to=$6
+        local port_on_remote_host_to_forward_to=$7
+        local pid_file=$8
+
+        debug "remote_host_ssh_host=${remote_host_ssh_host}"
+        debug "remote_host_ssh_user=${remote_host_ssh_user}"
+        debug "remote_host_ssh_port=${remote_host_ssh_port}"
+        debug "identity_file=${identity_file}"
+        debug "local_port=${local_port}"
+        debug "remote_hosts_interface_to_forward_to=${remote_hosts_interface_to_forward_to}"
+        debug "port_on_remote_host_to_forward_to=${port_on_remote_host_to_forward_to}"
+        debug "pid_file=${pid_file}"
+
+        [[ -z "${remote_host_ssh_host}" ]] && fail "'remote_host_ssh_host' not specified"
+        [[ -z "${remote_host_ssh_user}" ]] && fail "'remote_host_ssh_user' not specified"
+        [[ -z "${local_port}" ]] && fail "'local_port' not specified"
+        [[ -z "${remote_hosts_interface_to_forward_to}" ]] && fail "'remote_hosts_interface_to_forward_to' not specified"
+        [[ -z "${port_on_remote_host_to_forward_to}" ]] && fail "'port_on_remote_host_to_forward_to' not specified"
+
+        local ssh_command="ssh -f -N -o ExitOnForwardFailure=yes"
+
+        [[ -n "${remote_host_ssh_port}" ]] && ssh_command="${ssh_command} -p ${remote_host_ssh_port}"
+        [[ -n "${identity_file}" ]] && ssh_command="${ssh_command} -i ${identity_file}"
+
+        ssh_command="${ssh_command} ${remote_host_ssh_user}@${remote_host_ssh_host} -L ${local_port}:${remote_hosts_interface_to_forward_to}:${port_on_remote_host_to_forward_to}"
+
+        debug "ssh command: ${ssh_command}"
+
+        debug "launching ssh tunnel ..."
+
+        if ${ssh_command}; then
+
+            debug "ssh tunnel successfully launched"
+
+            sleep 1
+
+            #
+            # determine the pid and write it to file
+            #
+
+            get-ssh-tunnel-client-pid ${remote_host_ssh_user} ${remote_host_ssh_host} ${local_port} ${remote_hosts_interface_to_forward_to} ${port_on_remote_host_to_forward_to} ${pid_file}
+
+            #
+            # report tunnel
+            #
+
+            local msg="ssh tunnel successfully established to ${remote_host_ssh_user}@${remote_host_ssh_host}"
+            [[ -n "${remote_host_ssh_port}" ]] && msg="${msg}:${remote_host_ssh_port}"
+            [[ -n "${identity_file}" ]] && msg="${msg} using identity file ${identity_file}"
+            msg="${msg} forwarding local port ${local_port} remotely to ${remote_hosts_interface_to_forward_to}:${port_on_remote_host_to_forward_to}"
+
+            info "${msg}"
+
+        else
+
+            fail "ssh tunnel failed to launch successfully"
+        fi
+
+    elif [[ "${command}" = "stop" ]]; then
+
+        local pid=$1
+        local remote_host_ssh_host=$2
+        local remote_host_ssh_user=$3
+
+        [[ -z "${pid}" ]] && fail "'pid' not specified"
+
+        debug "stopping ssh tunnel with PID ${pid} ..."
+
+        kill ${pid} || warn "failed to stop tunnel with PID ${pid}"
+
+        info "ssh tunnel to ${remote_host_ssh_user}@${remote_host_ssh_host} successfully torn down"
+
+    else
+
+        fail "unknown ssh-tunnel command: ${command}"
+
+    fi
+}
+
+#
+# Determine the ssh tunnel client PID. If identified, send to stdout, unless the third argument is a file name,
+# in which case the PID is written to the file
+#
+function get-ssh-tunnel-client-pid() {
+
+    local remote_host_ssh_user=$1
+    local remote_host_ssh_host=$2
+    local local_port=$3
+    local remote_hosts_interface_to_forward_to=$4
+    local port_on_remote_host_to_forward_to=$5
+    local output_file=$6
+
+    [[ -z "${remote_host_ssh_user}" ]] && { error "'remote_host_ssh_user' not specified"; exit 1; }
+    [[ -z "${remote_host_ssh_host}" ]] && { error "'remote_host_ssh_host' not specified"; exit 1; }
+    [[ -z "${local_port}" ]] && { error "'local_port' not specified"; exit 1; }
+    [[ -z "${remote_hosts_interface_to_forward_to}" ]] && { error "'remote_hosts_interface_to_forward_to' not specified"; exit 1; }
+    [[ -z "${port_on_remote_host_to_forward_to}" ]] && { error "'port_on_remote_host_to_forward_to' not specified"; exit 1; }
+
+    debug "remote_host_ssh_user: ${remote_host_ssh_user}"
+    debug "remote_host_ssh_host: ${remote_host_ssh_host}"
+    debug "local_port: ${local_port}"
+    debug "remote_hosts_interface_to_forward_to: ${remote_hosts_interface_to_forward_to}"
+    debug "port_on_remote_host_to_forward_to: ${port_on_remote_host_to_forward_to}"
+
+    local ps_command
+
+    ps_command=$(get-ps-command) || exit 1
+
+    debug "ps command: ${ps_command}"
+
+    local process_line
+
+    process_line=$(${ps_command} | grep "ssh.*ExitOnForwardFailure.*${remote_host_ssh_user}@${remote_host_ssh_host} -L ${local_port}:${remote_hosts_interface_to_forward_to}:${port_on_remote_host_to_forward_to}" | grep -v grep)
+
+    debug "process_line: ${process_line}"
+
+    [[ -z "${process_line}" ]] && return 1
+
+    local pid
+
+    if [[ "${ps_command}" = "ps" ]]; then
+
+        pid=$(echo "${process_line}" | awk '{print $1}')
+
+    else
+
+        pid=$(echo "${process_line}" | awk '{print $2}')
+
+    fi
+
+    debug "ssh tunnel client PID: ${pid}"
+
+    if [[ -z "${output_file}" ]]; then
+
+        debug "PID written at stdout"
+
+        echo ${pid}
+
+    else
+
+        debug "PID written into ${output_file}"
+
+        echo ${pid} > ${output_file}
+    fi
+}
+
+#
+# returns proper ps command for the system (including arguments) at stdout or fails if error occurs
+#
+function get-ps-command() {
+
+    #
+    # this is how we detect the ps available on Synology RackStation
+    #
+    if $(ps --help 2>&1 | grep BusyBox > /dev/null); then
+
+        echo "ps"
+
+    else
+        echo "ps -ef"
+    fi
+}

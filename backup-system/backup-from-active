@@ -1,0 +1,123 @@
+#!/bin/bash
+
+[[ -z "${SHLIB_DIR}" ]] && { echo "[error]: SHLIB_DIR not defined" 1>&2; exit 1; }
+[[ -f ${SHLIB_DIR}/std.shlib ]] && . ${SHLIB_DIR}/std.shlib || { echo "[error]: ${SHLIB_DIR}/std.shlib not found" 1>&2; exit 1; }
+[[ -f ${SHLIB_DIR}/ssh.shlib ]] && . ${SHLIB_DIR}/ssh.shlib || { echo "[error]: ${SHLIB_DIR}/ssh.shlib not found" 1>&2; exit 1; }
+
+FILESYSTEMS_TO_BACKUP="\
+/volume1/base \
+/volume1/dovecot \
+/volume1/jspwiki \
+/volume1/timesnap \
+/volume2/livingroom \
+/volume3/projects \
+/volume4/backups"
+
+#FILESYSTEMS_TO_BACKUP="/volume1/base"
+
+BACKUP_NODE_MODULE_PREFIX="rackstation-"
+RSYNCD_PORT=873
+BACKUP_NODE_LOCAL_INTERFACE="127.0.0.1"
+TUNNEL_PID_FILE=/var/run/vpn.feodorov.com-tunnel.pid
+
+function display_help() {
+
+cat <<EOF
+
+Utility to backup selected RackStation filesystem from Rackstation on a backup node, rsync/ssh.
+Needs BACKUP_NODE_ADDRESS, BACKUP_NODE_SSH_PORT to be setup in the environment, or passed on command line.
+
+EOF
+}
+
+function main() {
+
+    local backup_node_address="${BACKUP_NODE_ADDRESS}"
+    local backup_node_ssh_port="${BACKUP_NODE_SSH_PORT}"
+    local backup_node_ssh_user="${BACKUP_NODE_SSH_USER}"
+    local backup_node_identity_file="${BACKUP_NODE_IDENTITY_FILE}"
+
+    while [[ -n "$1" ]]; do
+
+        if [ "$1" = "help" -o "$1" = "--help" ]; then
+
+            display_help
+            exit 0
+
+        elif [ "$1" = "-v" -o "$1" = "--verbose" ]; then
+
+              export VERBOSE=true
+
+        elif [[ "${1:0:10}" = "--address=" ]]; then
+
+              backup_node_address=${1:10}
+
+        elif [[ "${1:0:7}" = "--port=" ]]; then
+
+              backup_node_ssh_port=${1:7}
+
+        elif [[ "${1:0:11}" = "--ssh-user=" ]]; then
+
+              backup_node_ssh_user=${1:11}
+
+        elif [[ "${1:0:16}" = "--identity-file=" ]]; then
+
+              backup_node_identity_file=${1:16}
+
+        fi
+
+        shift
+    done
+
+    [[ -z "${backup_node_address}" ]] && { echo "[error]: backup node address not provided. Set it as value of BACKUP_NODE_ADDRESS environment variable or with --address=... command line parameter" 1>&2; exit 1; }
+    [[ -z "${backup_node_ssh_port}" ]] && { echo "[error]: backup node port not provided. Set it as value of BACKUP_NODE_SSH_PORT environment variable or with --port=... command line parameter" 1>&2; exit 1; }
+    [[ -z "${backup_node_ssh_user}" ]] && { echo "[error]: backup node SSH user not provided. Set it as value of BACKUP_NODE_SSH_USER environment variable or with --ssh-user=... command line parameter" 1>&2; exit 1; }
+    [[ -z "${backup_node_identity_file}" ]] && { echo "[error]: backup node SSH user identity file not provided. Set it as value of BACKUP_NODE_IDENTITY_FILE environment variable or with --identity-file=... command line parameter" 1>&2; exit 1; }
+
+    local ssh_tunnel_client_pid
+
+    ssh_tunnel_client_pid=$(get-ssh-tunnel-client-pid "${backup_node_ssh_user}" "${backup_node_address}" "${RSYNCD_PORT}" "${BACKUP_NODE_LOCAL_INTERFACE}" "${RSYNCD_PORT}")
+
+    if [[ -n "${ssh_tunnel_client_pid}" ]]; then
+
+        #
+        # restart the tunnel
+        #
+
+        info "found a ssh tunnel client with PID ${ssh_tunnel_client_pid}, restarting the tunnel ..."
+
+        ssh-tunnel stop ${ssh_tunnel_client_pid} ${backup_node_address} ${backup_node_ssh_user}
+    fi
+
+    # for some reason, pid=$(ssh-tunnel start ...) gets stuck
+    ssh-tunnel start "${backup_node_address}" "${backup_node_ssh_user}" "${backup_node_ssh_port}" "${backup_node_identity_file}" "${RSYNCD_PORT}" "${BACKUP_NODE_LOCAL_INTERFACE}" "${RSYNCD_PORT}" ${TUNNEL_PID_FILE} || exit 1
+
+    for i in ${FILESYSTEMS_TO_BACKUP}; do
+
+        backup-filesystem ${backup_node_address} ${backup_node_ssh_port} ${i} || echo "failed to backup filesystem ${i}" 1>&2;
+
+    done
+
+    ssh-tunnel stop $(cat ${TUNNEL_PID_FILE})
+}
+
+function backup-filesystem() {
+
+    local backup_node_address=$1
+    local backup_node_ssh_port=$2
+    local rackstation_filesystem=$3
+
+    info "${rackstation_filesystem} is being backed up ..."
+    
+    local volume_name=${rackstation_filesystem/\//}
+    volume_name=${volume_name%%/*}
+
+    local rsync_command="rsync -avzh --delete ${rackstation_filesystem} localhost::${BACKUP_NODE_MODULE_PREFIX}${volume_name}"
+
+    debug "rsync command: ${rsync_command}"
+
+    ${rsync_command} && info "${rackstation_filesystem} backed up successfully" || error "${rackstation_filesystem} backup failed"
+}
+
+main "$@"
+

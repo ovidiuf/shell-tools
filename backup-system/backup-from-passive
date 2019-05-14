@@ -1,0 +1,58 @@
+#!/bin/bash
+
+FILESYSTEMS_TO_BACKUP="\
+/volume1/base \
+/volume1/dovecot \
+/volume1/jspwiki \
+/volume1/timesnap \
+/volume2/livingroom \
+/volume3/projects \
+/volume4/backups"
+
+LOCAL_RACKSTATIONB_MOUNT_POINT=/rackstationb
+
+function display_help() {
+
+cat <<EOF
+
+Utility to backup selected RackStation filesystem on a local disk, via rsync/ssh.
+The process is initiated from the backup host, and the script needs needs RACKSTATION_IP
+to be setup in the environment.
+
+EOF
+
+}
+
+function main() {
+
+    [ "$1" = "help" -o "$1" = "--help" ] && { display_help; exit 0; }
+
+    [ -z "${RACKSTATION_IP}" ] && { echo "RACKSTATION_IP environment variable not set" 1>&2; exit 1; }
+
+    for i in ${FILESYSTEMS_TO_BACKUP}; do
+        backup-filesystem ${i} || echo "failed to backup filesystem ${i}" 1>&2;
+    done
+}
+
+function backup-filesystem() {
+
+    local rackstation_filesystem=$1
+
+    echo "backing up ${rackstation_filesystem} ..."
+
+    local volume_dir=${rackstation_filesystem/\//}
+    volume_dir=${volume_dir%%/*}
+
+    local local_dir=${LOCAL_RACKSTATIONB_MOUNT_POINT}/${volume_dir}
+
+    if [ ! -d ${local_dir} ]; then
+
+        mkdir ${local_dir} || { echo "failed to create directory ${local_dir}" 1>&2; return 1; }
+
+    fi
+
+    rsync -avzhe ssh --rsync-path=/usr/syno/bin/rsync root@${RACKSTATION_IP}:${rackstation_filesystem} ${local_dir} && echo "${rackstation_filesystem} ok"
+}
+
+main "$@"
+
