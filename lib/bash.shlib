@@ -4,17 +4,96 @@
 # Generic bash functionality
 #
 
+export VERBOSE=false
+export HELP=false
+
+#
+# The global array that maintains the remaining "non-common" arguments, to be re-set as positional arguments.
+#
+declare -a ARGS
 
 #
 # A function that extracts "common" arguments such as "--verbose", "-v", "help" or "--help" from the command line
 # arguments and sets the appropriate global variables, while setting the remaining command line arguments as elements
-# of a global array. The remaining positional arguments are restored, as shown below:
+# of a global array.
 #
+# Option Handled       Global Variable Set
 #
+# -v, --verbose        export VERBOSE=true
+# -h, --help           export HELP=true
+#
+# To restore all arguments that have not been processed, as positional arguments, use as as shown below:
+#
+# process-common-arguments "$@" && set -- "${ARGS[@]}" || { echo "failed to process common arguments" 1>&2; exit 1; }
 #
 
 function process-common-arguments() {
 
+    local index=0
+
+    while [[ $# -gt 0 ]]; do
+
+        if [[ $1 = "--verbose" || $1 = "-v" ]]; then
+
+            export VERBOSE=true
+
+        elif [[ $1 = "--help" || $1 = "-h" ]]; then
+
+            export HELP=true
+
+        else
+
+            ARGS[${index}]=$1
+            ((index++))
+
+        fi
+
+        shift
+
+    done
+}
+
+#
+# Send the arguments to stderr and exits with a non-zero code (255)
+#
+function fail() {
+
+    echo [failure]: $@ 1>&2
+    exit 255
+}
+
+#
+# Send error information at stderr, but do not exit and return 0 instead
+#
+function error {
+
+    echo [error]: $@ 1>&2
     return 0
 }
 
+#
+# Send a warning at stderr (not to interfere with function returns)
+#
+function warn {
+
+    echo [warning]: $@ 1>&2
+    return 0
+}
+
+#
+# Send info at stderr (not to interfere with function returns)
+#
+function info {
+
+    echo $@ 1>&2
+    return 0
+}
+
+#
+# Send debug info at stderr (not to interfere with function returns)
+#
+function debug() {
+
+    ${VERBOSE} && echo $@ 1>&2
+    return 0
+}

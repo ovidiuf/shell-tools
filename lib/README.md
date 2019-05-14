@@ -6,3 +6,11 @@
 [[ -f ${SHLIB_DIR}/ssh.shlib ]] && . ${SHLIB_DIR}/ssh.shlib || { echo "[error]: ${SHLIB_DIR}/ssh.shlib not found" 1>&2; exit 1; }
 
 ````
+
+# How to Run Tests
+
+```
+./tests.sh
+```
+
+All tests must pass.
