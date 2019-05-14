@@ -146,6 +146,24 @@ function process-common-arguments-test-07() {
 }
 
 #
+# help
+#
+function process-common-arguments-test-07-1() {
+
+    echo -n "${FUNCNAME[0]} ... "
+
+    test-preconditions
+
+    process-common-arguments help || fail "process-common-arguments returned a non-zero code"
+
+    ${VERBOSE} && fail "VERBOSE should be false"
+    ${HELP} || fail "HELP should be true"
+    [[ ${#ARGS[@]} = 0 ]] || fail "ARGS should be empty"
+
+    echo "ok"
+}
+
+#
 # --help
 #
 function process-common-arguments-test-08() {
@@ -450,6 +468,7 @@ function main() {
     process-common-arguments-test-04 || exit 1
     process-common-arguments-test-05 || exit 1
     process-common-arguments-test-06 || exit 1
+    process-common-arguments-test-07-1 || exit 1
     process-common-arguments-test-07 || exit 1
     process-common-arguments-test-08 || exit 1
     process-common-arguments-test-09 || exit 1

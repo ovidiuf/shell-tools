@@ -37,7 +37,7 @@ function process-common-arguments() {
 
             export VERBOSE=true
 
-        elif [[ $1 = "--help" || $1 = "-h" ]]; then
+        elif [[ $1 = "help" || $1 = "--help" || $1 = "-h" ]]; then
 
             export HELP=true
 
