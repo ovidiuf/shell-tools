@@ -27,12 +27,20 @@ Build, test, deployment and execution tools.
 'r' runs (executes) the current project. The project can be a Spring Boot project,
 a simple Gradle Java project that contains a main class, etc. In case of a Spring
 Boot project, we assume we're in the project home of the Spring Boot microservice
-and we run the "fat" JAR locally. The runner supports an optional configuration
-file .rconfig in the project home directory. The configuration file may contain:
+and we run the "fat" JAR locally.
+
+    Usage:
+
+        r [common-options] -d|--debug --trace
+
+
+    The runner supports an optional configuration file .rconfig in the project home
+    directory. The configuration file may contain:
 
     * The active profile:
 
         active.profile=...
+
 
 
 'd' deploys the application distribution, packaged as ZIP, as found under the
@@ -107,6 +115,77 @@ function do-build() {
   exec ${command}
 }
 
+#
+# Optional configuration file. May contain:
+#   Active Profile: active.profile=...
+#
+RCONFIG_FILE=$(pwd)/.rconfig
+
+function do-run() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    local debug=false;
+    local trace=false;
+    local args
+
+    while [[ -n $1 ]]; do
+
+        if [[ $1 = "-d" || $1 = "--debug" ]]; then
+
+            debug=true;
+
+        elif [[ $1 = "--trace" ]]; then
+
+            trace=true;
+
+        else
+
+            args="${args} $1"
+        fi
+
+        shift
+
+    done
+
+    local lib_dir=./build/libs
+
+    check-whether-we-are-in-project-home-or-fail ${lib_dir}
+
+    local jar=$(get-spring-boot-jar ${lib_dir})
+
+    [[ -z "${jar}" ]] && fail "no Spring Boot JAR found in ${lib_dir}"
+
+    if ${debug}; then
+
+        debug_args="-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005";
+        debug_flag="--debug"
+    fi
+
+    if ${trace}; then
+
+        trace_flag="--trace"
+    fi
+
+    local active_profile=$(get-active-profile-from-rconfig)
+
+    [[ -n "${active_profile}" ]] && active_profile_command_line="-Dspring.profiles.active=${active_profile}"
+
+#    [ -z "${MAIN_CLASS}" ] && { echo "MAIN_CLASS variable not defined by the calling script" 1>&2; exit 1; }
+#    [ -z "${CLASSPATH}" ] && { echo "CLASSPATH variable not defined by the calling script" 1>&2; exit 1; }
+#    ${DEBUG} && debug_args="-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005";
+#    java ${debug_args} -cp ${CLASSPATH} ${MAIN_CLASS} "$@"
+
+    #if [ -z "${main_class}" ]; then
+        #java ${debug_args} -jar ${jar} --spring.profiles.active=local
+        #-Dspring.flyway.baselineOnMigrate=true
+        echo java ${debug_args} ${active_profile_command_line} -jar "${jar}" ${debug_flag} ${trace_flag} ${args}
+        java ${debug_args} ${active_profile_command_line} -jar "${jar}" ${debug_flag} ${trace_flag} ${args}
+    #else
+    #    java ${debug_args} -cp ${jar} ${main_class} ${debug_flag} ${trace_flag} ${args}
+    #fi
+}
+
 function do-test() {
 
     fail "NOT YET IMPLEMENTED: uncomment do-test() and make sure the commented code works"
@@ -150,77 +229,9 @@ function do-test() {
 #    gradle ${clean_opt} test ${debug_opts} ${single_test_spec} ${refresh_dependencies_opt}
 }
 
-#
-# Optional configuration file. May contain:
-#   Active Profile: active.profile=...
-#
-RCONFIG_FILE=$(pwd)/.rconfig
-
-function do-run() {
-
-    fail "NOT YET IMPLEMENTED: uncomment do-run() and make sure the commented code works"
-
-#    local debug=false;
-#    local trace=false;
-#    local args
-#
-#    while [ -n "$1" ]; do
-#
-#        if [ "--help" = "$1" ]; then
-#
-#            display_help;
-#            return 0;
-#
-#        elif [ "-d" = "$1" ]; then
-#
-#            debug=true;
-#
-#        elif [ "--trace" = "$1" ]; then
-#
-#            trace=true;
-#
-#        else
-#
-#            args="${args} $1"
-#        fi
-#
-#        shift
-#    done
-#
-#    local lib_dir=./build/libs
-#
-#    check-whether-we-are-in-project-home-or-fail ${lib_dir};
-#
-#    local jar=$(get-spring-boot-jar ${lib_dir})
-#
-#    [ -z "${jar}" ] && { error "no Spring Boot JAR found in ${lib_dir} "; exit 1; }
-#
-#    if ${debug}; then
-#
-#        debug_args="-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005";
-#        debug_flag="--debug"
-#    fi
-#
-#    if ${trace}; then
-#
-#        trace_flag="--trace"
-#    fi
-#
-#    local active_profile=$(get-active-profile-from-rconfig)
-#
-#    [ -n "${active_profile}" ] && active_profile_command_line="-Dspring.profiles.active=${active_profile}"
-#
-#    #if [ -z "${main_class}" ]; then
-#        #java ${debug_args} -jar ${jar} --spring.profiles.active=local
-#        #-Dspring.flyway.baselineOnMigrate=true
-#        echo java ${debug_args} ${active_profile_command_line} -jar "${jar}" ${debug_flag} ${trace_flag} ${args}
-#        java ${debug_args} ${active_profile_command_line} -jar "${jar}" ${debug_flag} ${trace_flag} ${args}
-#    #else
-#    #    java ${debug_args} -cp ${jar} ${main_class} ${debug_flag} ${trace_flag} ${args}
-#    #fi
-}
-
 function check-whether-we-are-in-project-home-or-fail() {
+
+    debug "${FUNCNAME[0]}($@)"
 
     local lib_dir=$1
 
@@ -232,6 +243,8 @@ function check-whether-we-are-in-project-home-or-fail() {
 # returns empty string if no JAR is found
 #
 function get-spring-boot-jar() {
+
+    debug "${FUNCNAME[0]}($@)"
 
     local lib_dir=$1
 

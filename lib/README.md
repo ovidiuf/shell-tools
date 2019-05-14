@@ -14,3 +14,7 @@
 ```
 
 All tests must pass.
+
+# TODO
+
+Bring templates/gradle.shlib and templates/maven.shlib into this repository.
