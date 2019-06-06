@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 [[ -f $(dirname $0)/lib/bash.shlib ]] && . $(dirname $0)/lib/bash.shlib || { echo "$(dirname $0)/lib/bash.shlib not found" 1>&2; exit 1; }
+[[ -f $(dirname $0)/lib/java.shlib ]] && . $(dirname $0)/lib/java.shlib || { echo "$(dirname $0)/lib/java.shlib not found" 1>&2; exit 1; }
 
 function display-help() {
 
@@ -160,11 +161,11 @@ function do-run() {
     # if this is an executable JAR, execute as is, otherwise apply heuristics to figure out the class to execute
     #
 
+    local main_class
+
     if ! is-executable-jar ${jar}; then
 
-        local main_class
-        main_class=$(get-main-class)
-
+        main_class=$(get-main-class ./src/main/java) || exit 1
         [[ -z ${main_class} ]] && fail "${jar} is not an executable JAR and we cannot infer the main class from the context"
     fi
 
@@ -183,16 +184,25 @@ function do-run() {
 
     [[ -n "${active_profile}" ]] && active_profile_command_line="-Dspring.profiles.active=${active_profile}"
 
+    local java_command
+
+    if [[ -n ${main_class} ]]; then
+
+        java ${debug_args} ${active_profile_command_line} -cp "${jar}" ${main_class} ${debug_flag} ${trace_flag} ${args}
+
+    else
+
+        java ${debug_args} ${active_profile_command_line} -jar "${jar}" ${debug_flag} ${trace_flag} ${args}
+    fi
+
 #    [ -z "${MAIN_CLASS}" ] && { echo "MAIN_CLASS variable not defined by the calling script" 1>&2; exit 1; }
 #    [ -z "${CLASSPATH}" ] && { echo "CLASSPATH variable not defined by the calling script" 1>&2; exit 1; }
 #    ${DEBUG} && debug_args="-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005";
 #    java ${debug_args} -cp ${CLASSPATH} ${MAIN_CLASS} "$@"
-
     #if [ -z "${main_class}" ]; then
         #java ${debug_args} -jar ${jar} --spring.profiles.active=local
         #-Dspring.flyway.baselineOnMigrate=true
-        echo java ${debug_args} ${active_profile_command_line} -jar "${jar}" ${debug_flag} ${trace_flag} ${args}
-        java ${debug_args} ${active_profile_command_line} -jar "${jar}" ${debug_flag} ${trace_flag} ${args}
+#        echo java ${debug_args} ${active_profile_command_line} -jar "${jar}" ${debug_flag} ${trace_flag} ${args}
     #else
     #    java ${debug_args} -cp ${jar} ${main_class} ${debug_flag} ${trace_flag} ${args}
     #fi
@@ -267,12 +277,41 @@ function get-jar-in-dir() {
 }
 
 #
-# Figures out the main class in the context, either from configuration or introspection of the source tree.
-# Returns the fully qualified main class name at stdout or empty string if not determined.
+# Figures out the main class in the context, either from configuration or introspection of the source tree. Returns the
+# fully qualified main class name at stdout or empty string if not determined.
+#
+# Arg 1: the root of the source tree, the directory where the recursive package structure resides. For a project
+#        it is usually ./src/main/java
 #
 function get-main-class() {
 
-    echo "";
+    debug "${FUNCNAME[0]}($@)"
+
+    local src_dir=$1
+
+    [[ -z ${src_dir} ]] && fail "'src_dir' not provided"
+    [[ -d ${src_dir} ]] || fail "src_dir ${src_dir} not a valid directory"
+
+    local candidate_count
+    candidate_count=$(cd ${src_dir}; grep -r "public *static *void *main" * | wc -l)
+    debug "candidate_count: ${candidate_count}"
+
+    if [[ ${candidate_count} -eq 0 ]]; then
+
+         debug "no main classes found in ${src_dir}"
+         echo ""
+
+    elif [[ ${candidate_count} -eq 1 ]]; then
+
+        local main_class
+        main_class=$(cd ${src_dir}; grep -r "public *static *void *main" * | sed -e 's/:.*$//')
+        main_class=${main_class//\//.}
+        main_class=${main_class/\.java/}
+        debug "main_class: ${main_class}"
+        echo ${main_class}
+    else
+         fail "more than one main classes found in ${src_dir}: $(cd ${src_dir}; grep -r "public *static *void *main" *), we don't handle this case yet"
+    fi
 }
 
 # return empty string if .rconfig does not esist or it does not contain an active profile
@@ -370,3 +409,6 @@ function get-application-name () {
 }
 
 main "$@"
+
+#export VERBOSE=true
+#get-main-class $1
