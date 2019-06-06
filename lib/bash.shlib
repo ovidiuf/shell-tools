@@ -97,3 +97,61 @@ function debug() {
     ${VERBOSE} && echo $@ 1>&2
     return 0
 }
+
+#
+# Creates a temporary directory with a random name (in a designated temporary area of the filesystem, usually /tmp) and
+# returns its name. The caller must insure the directory is removed if not useful anymore, otherwise they will
+# accumulate.
+#
+# Usage pattern:
+#
+#   local tmp_dir
+#   tmp_dir=$(get-tmp-dir) || exit 1
+#   ...
+#
+#   rm -r ${tmp_dir} && debug "deleted temporary directory ${tmp_dir}" || warn "failed to delete temporary directory ${tmp_dir}"
+#
+function get-tmp-dir() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    local name="/tmp/shell-tools-$(date +'%y%m%d%H%M%S')-${RANDOM}"
+
+    mkdir ${name} || fail "failed to create temporary directory ${name}"
+
+    debug "created temporary directory and returning ${name}"
+
+    echo ${name}
+}
+
+#
+# Turns a relative path to absolute path, returning the absolute path at stdout.
+# If the path is already absolute, the function is a noop. The function does not attempt to validate the path in any
+# way.
+#
+function to-absolute-path() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    local path=$1
+    local abs_path
+
+    [[ -z ${path} ]] && fail "'path' not provided"
+
+    if [[ ${path:0:1} = "/" ]]; then
+
+        abs_path=${path}
+
+    else
+
+        #
+        # relative
+        #
+
+        abs_path=$(pwd)/${path}
+    fi
+
+    debug "absolute path: ${abs_path}"
+    echo ${abs_path}
+
+}

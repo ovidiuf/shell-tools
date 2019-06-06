@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+
+#
+# Functionality related to building and running Java. This collection of function requires that bash.shlib was
+# sourced already. The library contains code (below) that insures that, by looking for the existence of the function
+# debug()
+#
+
+typeset -F | grep "declare -f debug" > /dev/null 2>&1 || { echo "[failure]: java.shlib: bash.shlib was not sourced and we need it to work correctly" 1>&2; exit 1; }
+
+#
+# Return 0 is the JAR exists, contains a valid MANIFEST.MF with a Main-Class: entry, and the corresponding Main-Class
+# exits in the JAR.
+#
+function is-executable-jar() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    local jar_file=$1
+
+    [[ -z ${jar_file} ]] && fail "'jar_file' not provided"
+
+    local jar_file_abs_path
+    jar_file_abs_path=$(to-absolute-path ${jar_file}) || exit 1
+
+    [[ -f ${jar_file_abs_path} ]] || { error "no such file: ${jar_file_abs_path}"; return 1; }
+
+    local tmp_dir
+    tmp_dir=$(get-tmp-dir) || exit 1
+
+    (cd ${tmp_dir}; jar xf ${jar_file_abs_path} META-INF/MANIFEST.MF) || fail "failed to extract META-INF/MANIFEST.MF from ${jar_file_abs_path}"
+
+    local manifest=${tmp_dir}/META-INF/MANIFEST.MF
+    local return_code=1
+
+    if [[ ! -f ${manifest} ]]; then
+
+        debug "no META-INF/MANIFEST.MF manifest file found"
+
+    else
+
+        debug " META-INF/MANIFEST.MF manifest file found"
+
+        local main_class
+        main_class=$(cat ${manifest} | grep "Main-Class:" | sed -e 's/^.*: //') || fail "failed to extract Main-Class from ${manifest}"
+
+        if [[ -z ${main_class} ]]; then
+            debug "no 'Main-Class:' found in ${manifest}"
+        else
+            debug "main_class: ${main_class}"
+            return_code=0
+        fi
+    fi
+
+    #
+    # cleanup
+    #
+
+    rm -r ${tmp_dir} && debug "deleted temporary directory ${tmp_dir}" || warn "failed to delete temporary directory ${tmp_dir}"
+
+    return ${return_code}
+}
+
+
+
+
+

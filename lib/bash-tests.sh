@@ -458,6 +458,100 @@ function debug-test-02() {
     echo "ok"
 }
 
+function get-tmp-dir-01() {
+
+    echo -n "${FUNCNAME[0]} ... "
+
+    local tmp_dir=$(get-tmp-dir) || fail "get-tmp-dir() failed"
+
+    [[ -d ${tmp_dir} ]] || fail "${tmp_dir} is not a directory, which means the creation failed"
+
+    rm -r ${tmp_dir}
+
+    echo "ok"
+}
+
+#
+# argument not provided, function should fail
+#
+function to-absolute-path-01() {
+
+    echo -n "${FUNCNAME[0]} ... "
+
+    local stderr
+    stderr=$(to-absolute-path 2>&1)
+
+    [[ $? = 255 ]] || fail "to-absolute-path() did not fail in absence of no argument"
+
+    echo "ok"
+}
+
+#
+# absolute path
+#
+function to-absolute-path-02() {
+
+    echo -n "${FUNCNAME[0]} ... "
+
+    local result
+    result=$(to-absolute-path /something)
+
+    [[ ${result} = "/something" ]] || fail "invalid conversion, expected /something and got ${result}"
+
+    echo "ok"
+}
+
+#
+# relative path
+#
+function to-absolute-path-03-1() {
+
+    echo -n "${FUNCNAME[0]} ... "
+
+    local crtdir=$(pwd)
+
+    local result
+    result=$(to-absolute-path something)
+
+    [[ ${result} = "${crtdir}/something" ]] || fail "invalid conversion, expected ${crtdir}/something and got ${result}"
+
+    echo "ok"
+}
+
+#
+# relative path
+#
+function to-absolute-path-03-2() {
+
+    echo -n "${FUNCNAME[0]} ... "
+
+    local crtdir=$(pwd)
+
+    local result
+    result=$(to-absolute-path ./something)
+
+    [[ ${result} = "${crtdir}/./something" ]] || fail "invalid conversion, expected ${crtdir}/./something and got ${result}"
+
+    echo "ok"
+}
+
+#
+# relative path
+#
+function to-absolute-path-03-3() {
+
+    echo -n "${FUNCNAME[0]} ... "
+
+    local crtdir=$(pwd)
+
+    local result
+    result=$(to-absolute-path ../something)
+
+    [[ ${result} = "${crtdir}/../something" ]] || fail "invalid conversion, expected ${crtdir}/../something and got ${result}"
+
+    echo "ok"
+}
+
 function main() {
 
     echo $0:
@@ -489,6 +583,14 @@ function main() {
 
     debug-test-01 || exit 1
     debug-test-02 || exit 1
+
+    get-tmp-dir-01 || exit 1
+
+    to-absolute-path-01 || exit 1
+    to-absolute-path-02 || exit 1
+    to-absolute-path-03-1 || exit 1
+    to-absolute-path-03-2 || exit 1
+    to-absolute-path-03-3 || exit 1
 }
 
 main "$@"

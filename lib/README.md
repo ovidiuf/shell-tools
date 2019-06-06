@@ -7,13 +7,26 @@
 
 ````
 
+# Overview
+
+Collection of generic bash functions. Grouped as follows:
+
+* **bash.sh**: processing of common arguments such as -v or -d, and the customary fail()/error()/warn()/info()/debug().
+* **java.sh**: utilities related to building and running Java.
+
+# How to Locally Test Functions
+
+```
+./local.sh
+```
+
 # How to Run Tests
 
 ```
 ./tests.sh
 ```
 
-All tests must pass.
+tests.sh executes all component tests (bash.shlib, java.shlib, etc.) All tests must pass.
 
 # TODO
 

@@ -152,9 +152,21 @@ function do-run() {
 
     check-whether-we-are-in-project-home-or-fail ${lib_dir}
 
-    local jar=$(get-spring-boot-jar ${lib_dir})
+    local jar=$(get-jar-in-dir ${lib_dir})
 
-    [[ -z "${jar}" ]] && fail "no Spring Boot JAR found in ${lib_dir}"
+    [[ -z "${jar}" ]] && fail "no JAR found in ${lib_dir}"
+
+    #
+    # if this is an executable JAR, execute as is, otherwise apply heuristics to figure out the class to execute
+    #
+
+    if ! is-executable-jar ${jar}; then
+
+        local main_class
+        main_class=$(get-main-class)
+
+        [[ -z ${main_class} ]] && fail "${jar} is not an executable JAR and we cannot infer the main class from the context"
+    fi
 
     if ${debug}; then
 
@@ -240,9 +252,10 @@ function check-whether-we-are-in-project-home-or-fail() {
 }
 
 #
-# returns empty string if no JAR is found
+# Look for - and return at stdout - a JAR in directory passed as argument. Return an empty string at stdout
+# if no JAR is found. There is no guarantee that the returned JAR is an "executable" JAR.
 #
-function get-spring-boot-jar() {
+function get-jar-in-dir() {
 
     debug "${FUNCNAME[0]}($@)"
 
@@ -251,6 +264,15 @@ function get-spring-boot-jar() {
     [[ -z ${lib_dir} ]] && fail "'lib_dir' not specified"
 
     find ${lib_dir} -name "*.jar"
+}
+
+#
+# Figures out the main class in the context, either from configuration or introspection of the source tree.
+# Returns the fully qualified main class name at stdout or empty string if not determined.
+#
+function get-main-class() {
+
+    echo "";
 }
 
 # return empty string if .rconfig does not esist or it does not contain an active profile
