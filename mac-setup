@@ -48,7 +48,7 @@ function setup-sequence() {
     #
 
     local brew=false
-    local bash4=false
+    local bash=false
     local gnu_sed=false
     local thunderbird=false
 
@@ -61,8 +61,8 @@ function setup-sequence() {
 
         if [ "$1" = "brew" ]; then
             brew=true
-        elif [ "$1" = "bash4" ]; then
-            bash4=true
+        elif [ "$1" = "bash" ]; then
+            bash=true
         elif [ "$1" = "gnu-sed" ]; then
             gnu_sed=true
         elif [ "$1" = "thunderbird" ]; then
@@ -73,12 +73,12 @@ function setup-sequence() {
     done
 
     debug "brew: ${brew}"
-    debug "bash4: ${bash4}"
+    debug "bash: ${bash}"
     debug "gnu_sed: ${gnu_sed}"
     debug "thunderbird: ${thunderbird}"
 
     (${all} || ${brew}) && install-or-update-brew
-    (${all} || ${bash4}) && install-or-update-bash4
+    (${all} || ${bash}) && install-or-update-bash
     (${all} || ${gnu_sed}) && install-or-update-gnu-sed
     (${all} || ${thunderbird}) && install-thunderbird
 
@@ -242,7 +242,7 @@ function install-or-update-brew() {
     fi
 }
 
-function install-or-update-bash4() {
+function install-or-update-bash() {
 
     info "installing/upgrading bash ..."
 
@@ -281,5 +281,4 @@ function install-thunderbird() {
     POST_INSTALLATION_STEPS["thunderbird"]="Start Thunderbird and configure accounts manually. See https://kb.novaordis.com/index.php/Thunderbird_Configuration#Overview."
 }
 
-#main "$@"
-generate-ssh-key
+main "$@"
