@@ -51,6 +51,7 @@ function setup-sequence() {
     local bash=false
     local gnu_sed=false
     local thunderbird=false
+    local iterm2=false
 
     while [ -n "$1" ]; do
 
@@ -67,6 +68,8 @@ function setup-sequence() {
             gnu_sed=true
         elif [ "$1" = "thunderbird" ]; then
             thunderbird=true
+        elif [ "$1" = "iterm2" ]; then
+            iterm2=true
         fi
 
         shift 
@@ -76,11 +79,13 @@ function setup-sequence() {
     debug "bash: ${bash}"
     debug "gnu_sed: ${gnu_sed}"
     debug "thunderbird: ${thunderbird}"
+    debug "iterm2: ${iterm2}"
 
     (${all} || ${brew}) && install-or-update-brew
     (${all} || ${bash}) && install-or-update-bash
     (${all} || ${gnu_sed}) && install-or-update-gnu-sed
     (${all} || ${thunderbird}) && install-thunderbird
+    (${all} || ${iterm2}) && install-or-upgrade-iterm2
 
     post-configuration-report-and-next-steps;
 }
@@ -211,7 +216,8 @@ function post-configuration-report-and-next-steps() {
     local cnt=1
 
     for i in "${!POST_INSTALLATION_STEPS[@]}"; do
-        echo "$((cnt++)). ${POST_INSTALLATION_STEPS[${i}]}"
+        printf "$((cnt++)). ${POST_INSTALLATION_STEPS[${i}]}"
+        echo ""
         echo ""
     done
 }
@@ -279,6 +285,14 @@ function install-thunderbird() {
     brew cask install thunderbird && info "Thunderbird installed ..." || { error "failed to install Thunderbird"; exit 1; }
 
     POST_INSTALLATION_STEPS["thunderbird"]="Start Thunderbird and configure accounts manually. See https://kb.novaordis.com/index.php/Thunderbird_Configuration#Overview."
+}
+
+function install-or-upgrade-iterm2() {
+
+    #brew cask install iterm2 
+
+    POST_INSTALLATION_STEPS["iterm2"]="Start iterm2, 'Keep in Dock' and move on the right position in Dock.\n   Then configure: Profiles -> Open Profiles -> Edit Profiles -> Default\n       Colors -> Color Presets -> Light Background\n       Text -> Font -> 12 pt Menlo Regular"
+
 }
 
 main "$@"
