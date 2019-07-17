@@ -10,25 +10,77 @@ cat <<EOF
 
 The authoritative source of logic to fully configure a new development Mac or to periodically
 update a previously configured Mac. Executing the utility with 'help' displays this.
+
+	mac-setup help
+
+Executing the utility with no arguments attempts to install/update all tracked packages.
 Theoretically is safe to repeatedly run the utility without any bad side effects, except
-updating components to their latest versions. Most of the utility are installed and updated with
-brew and we resort to custom only when brew cannot help.
+updating components to their latest versions. Most of the utility are installed and updated
+with brew and we resort to custom only when brew cannot help.
 
-Usage:
+	mac-setup
 
-        mac-setup [help]
+Individual packages can be installed/upgraded by specifying their name on command line, separated
+by spaces.
 
+
+	mac-setup gnu-sed
 
 EOF
 }
 
 function setup-sequence() {
 
-    #install-or-update-brew;
-    #install-or-update-bash4;
-    #install-or-update-gnu-sed;
-    install-thunderbird;
+    debug "args: $*"
 
+    setup-bash-startup-files
+
+    generate-ssh-key
+
+    #
+    # Package installation
+    #
+
+    local all=true
+
+    #
+    # TODO: this is awkward, we should replace with variable substitution or an associative array
+    #
+
+    local brew=false
+    local bash4=false
+    local gnu_sed=false
+    local thunderbird=false
+
+    while [ -n "$1" ]; do
+
+        #
+        # TODO: this is awkward, we should replace with variable substitution or an associative array
+        #
+        all=false
+
+        if [ "$1" = "brew" ]; then
+            brew=true
+        elif [ "$1" = "bash4" ]; then
+            bash4=true
+        elif [ "$1" = "gnu-sed" ]; then
+            gnu_sed=true
+        elif [ "$1" = "thunderbird" ]; then
+            thunderbird=true
+        fi
+
+        shift 
+    done
+
+    debug "brew: ${brew}"
+    debug "bash4: ${bash4}"
+    debug "gnu_sed: ${gnu_sed}"
+    debug "thunderbird: ${thunderbird}"
+
+    (${all} || ${brew}) && install-or-update-brew
+    (${all} || ${bash4}) && install-or-update-bash4
+    (${all} || ${gnu_sed}) && install-or-update-gnu-sed
+    (${all} || ${thunderbird}) && install-thunderbird
 
     post-configuration-report-and-next-steps;
 }
@@ -40,7 +92,7 @@ function main() {
     # version of bash - at this point we don't know if we have a new bash version
     #
 
-    local command
+    local args 
 
     while [ -n "$1" ]; do
 
@@ -48,27 +100,27 @@ function main() {
 
             DEBUG=true
 
-        elif [ -z "${command}" ]; then
+        elif [ -z "${args}" ]; then
 
-            command=$1
+            args=$1
+
+        else
+
+            args="${args} $1"
         fi
 
         shift;
 
     done
 
-    if [ "${command}" = "help" ]; then
+    if [ "${args}" = "help" ]; then
 
         help;
         exit 1
 
-    elif [ -n "${command}" ]; then
-
-        echo "unknown command \"${command}\"";
-        exit 1
     fi
 
-    setup-sequence;
+    setup-sequence ${args};
 }
 
 #
@@ -89,6 +141,59 @@ function info() {
 
     echo "[mac-setup]: $@" 1>&2;
 }
+
+#
+# Only if they don't exist
+#
+function setup-bash-startup-files() {
+
+    debug 
+
+    [ ! -f ~/.bash_profile ] && { echo 'if [ -f ~/.bashrc ]; then . ~/.bashrc; fi' > ~/.bash_profile; info "created .bash_profile"; }
+    [ ! -f ~/.bashrc ] && { echo "" > ~/.bashrc; info "created .bashrc"; }
+}
+
+#
+# Only if it does not exist
+#
+function generate-ssh-key() {
+
+    debug
+
+    [ -f ~/.ssh/id_rsa ] && return 0
+
+    ssh-keygen -q -b 2048 -P "" -f ~/.ssh/id_rsa -t rsa || error "failed to create SSH key"
+
+    chmod -R go-rwx ~/.ssh
+
+    info "created SSH key"
+}
+
+function add-to-head-of-user-path() {
+
+    debug $*
+
+    [ -z "$1" ] && return 0
+
+    #
+    # if it is already there, noop
+    #
+
+    local regex=${1//\//\\/}
+
+    debug "regex: ${regex}"
+
+    if grep ${regex} ~/.bashrc > /dev/null; then
+
+        info "$1 already in PATH"
+        return 0
+    fi
+
+    echo "PATH=$1:\${PATH}" >> ~/.bashrc
+
+    info "added $1 to the head of user PATH"
+    
+} 
 
 function post-configuration-report-and-next-steps() {
 
@@ -156,7 +261,13 @@ function install-or-update-gnu-sed() {
 
     info "${text}ing GNU sed ..."
 
-    brew install gnu-sed --with-default-names && info "GNU sed ${text}ed" || { error "failed to ${text} GNU sed"; exit 1; }
+    brew install gnu-sed && info "GNU sed ${text}ed" || { error "failed to ${text} GNU sed"; exit 1; }
+
+    #
+    # --with-default-names has been removed since Jan 2019, so we need to to this instead:
+    #
+
+    add-to-head-of-user-path /usr/local/opt/gnu-sed/libexec/gnubin
 }
 
 function install-thunderbird() {
@@ -170,4 +281,5 @@ function install-thunderbird() {
     POST_INSTALLATION_STEPS["thunderbird"]="Start Thunderbird and configure accounts manually. See https://kb.novaordis.com/index.php/Thunderbird_Configuration#Overview."
 }
 
-main "$@"
+#main "$@"
+generate-ssh-key
