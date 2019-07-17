@@ -52,6 +52,7 @@ function setup-sequence() {
     local gnu_sed=false
     local thunderbird=false
     local iterm2=false
+    local secure_pipes=false
 
     while [ -n "$1" ]; do
 
@@ -70,6 +71,8 @@ function setup-sequence() {
             thunderbird=true
         elif [ "$1" = "iterm2" ]; then
             iterm2=true
+        elif [ "$1" = "secure-pipes" ]; then
+            secure_pipes=true
         fi
 
         shift 
@@ -80,12 +83,14 @@ function setup-sequence() {
     debug "gnu_sed: ${gnu_sed}"
     debug "thunderbird: ${thunderbird}"
     debug "iterm2: ${iterm2}"
+    debug "secure_pipes: ${secure_pipes}"
 
     (${all} || ${brew}) && install-or-update-brew
     (${all} || ${bash}) && install-or-update-bash
     (${all} || ${gnu_sed}) && install-or-update-gnu-sed
     (${all} || ${thunderbird}) && install-thunderbird
     (${all} || ${iterm2}) && install-or-upgrade-iterm2
+    (${all} || ${secure_pipes}) && install-or-upgrade-secure-pipes
 
     post-configuration-report-and-next-steps;
 }
@@ -289,9 +294,17 @@ function install-thunderbird() {
 
 function install-or-upgrade-iterm2() {
 
-    #brew cask install iterm2 
+    brew cask install iterm2 
 
     POST_INSTALLATION_STEPS["iterm2"]="Start iterm2, 'Keep in Dock' and move on the right position in Dock.\n   Then configure: Profiles -> Open Profiles -> Edit Profiles -> Default\n       Colors -> Color Presets -> Light Background\n       Text -> Font -> 12 pt Menlo Regular"
+
+}
+
+function install-or-upgrade-secure-pipes() {
+
+    brew cask install secure-pipes
+
+    POST_INSTALLATION_STEPS["secure-pipes"]="Configure secure-pipes"
 
 }
 
