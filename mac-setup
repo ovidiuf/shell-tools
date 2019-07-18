@@ -253,7 +253,7 @@ function add-to-head-of-user-path() {
         return 0
     fi
 
-    echo "PATH=$1:\${PATH}" >> ~/.bashrc
+    echo "export PATH=$1:\${PATH}" >> ~/.bashrc
 
     info "added $1 to the head of user PATH"
     
