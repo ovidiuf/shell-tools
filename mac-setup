@@ -56,11 +56,13 @@ function setup-sequence() {
     local brew=false
     local bash=false
     local gnu_sed=false
+    local gnu_getopt=false
     local thunderbird=false
     local iterm2=false
     local secure_pipes=false
     local intellij=false
     local java=false
+    local maven=false
 
     while [ -n "$1" ]; do
 
@@ -75,6 +77,8 @@ function setup-sequence() {
             bash=true
         elif [ "$1" = "gnu-sed" ]; then
             gnu_sed=true
+        elif [ "$1" = "gnu-getopt" ]; then
+            gnu_getopt=true
         elif [ "$1" = "thunderbird" ]; then
             thunderbird=true
         elif [ "$1" = "iterm2" ]; then
@@ -85,6 +89,8 @@ function setup-sequence() {
             intellij=true
         elif [ "$1" = "java" ]; then
             java=true
+        elif [ "$1" = "maven" ]; then
+            maven=true
         fi
 
         shift 
@@ -93,20 +99,24 @@ function setup-sequence() {
     debug "brew: ${brew}"
     debug "bash: ${bash}"
     debug "gnu_sed: ${gnu_sed}"
+    debug "gnu_getopt: ${gnu_getopt}"
     debug "thunderbird: ${thunderbird}"
     debug "iterm2: ${iterm2}"
     debug "secure_pipes: ${secure_pipes}"
     debug "intellij: ${intellij}"
     debug "java: ${java}"
+    debug "maven: ${maven}"
 
     (${all} || ${brew}) && install-or-update-brew
     (${all} || ${bash}) && install-or-update-bash
     (${all} || ${gnu_sed}) && install-or-update-gnu-sed
+    (${all} || ${gnu_getopt}) && install-or-update-gnu-getopt
     (${all} || ${thunderbird}) && install-thunderbird
     (${all} || ${iterm2}) && install-or-upgrade-iterm2
     (${all} || ${secure_pipes}) && install-or-upgrade-secure-pipes
     (${all} || ${intellij}) && install-or-upgrade-intellij
     (${all} || ${java}) && install-or-upgrade-java
+    (${all} || ${maven}) && install-or-upgrade-maven
 
     post-configuration-report-and-next-steps
 }
@@ -335,6 +345,20 @@ function install-or-update-gnu-sed() {
     add-to-head-of-user-path /usr/local/opt/gnu-sed/libexec/gnubin
 }
 
+function install-or-update-gnu-getopt() {
+
+    info "installing/upgrading GNU getopt ..."
+
+    brew install gnu-getopt && info "GNU getopt installed/upgraded" || { error "failed to handle GNU getopt"; exit 1; }
+
+#    #
+#    # --with-default-names has been removed since Jan 2019, so we need to to this instead:
+#    #
+#
+#    add-to-head-of-user-path /usr/local/opt/gnu-sed/libexec/gnubin
+}
+
+
 function install-thunderbird() {
 
     [ -d /Applications/Thunderbird.app ] && { info "Thunderbird already installed"; return 0; }
@@ -348,35 +372,46 @@ function install-thunderbird() {
 
 function install-or-upgrade-iterm2() {
 
-    brew cask install iterm2 
+    info "installing iterm2 ..."
+
+    brew cask install iterm2 && info "iterm2 installed" || { error "failed to install iterm2"; exit 1; }
 
     POST_INSTALLATION_STEPS["iterm2"]="Start iterm2, 'Keep in Dock' and move on the right position in Dock.\n   Then configure: Profiles -> Open Profiles -> Edit Profiles -> Default\n       Colors -> Color Presets -> Light Background\n       Text -> Font -> 12 pt Menlo Regular"
-
 }
 
 function install-or-upgrade-secure-pipes() {
 
-    brew cask install secure-pipes
+    info "installing secure-pipes ..."
+
+    brew cask install secure-pipes && info "secure-pipes installed" || { error "failed to install secure-pipes"; exit 1; }
 
     POST_INSTALLATION_STEPS["secure-pipes"]="Configure secure-pipes"
-
 }
 
 function install-or-upgrade-intellij() {
 
-    brew cask install intellij-idea
+    info "installing IntelliJ IDEA ..."
+
+    brew cask install intellij-idea && info "IntelliJ IDEA installed" || { error "failed to install IntelliJ IDEA"; exit 1; }
 
     POST_INSTALLATION_STEPS["intellij"]="Configure IntelliJ\n    * Install license\n    * Install the bash plugin"
 }
 
 function install-or-upgrade-java() {
 
-    echo ""
-    echo ""
-    echo " As per July 2019, java8 not available as a brew install anymore - figure this out"
-    echo ""
-    echo ""
+    warn ""
+    warn ""
+    warn " As per July 2019, java8 not available as a brew install anymore - figure this out, maybe use openjdk?"
+    warn ""
+    warn ""
 
+}
+
+function install-or-upgrade-maven() {
+
+    info "installing maven ..."
+
+    brew install maven && info "maven installed" || { error "failed to install maven"; exit 1; }
 }
 
 main "$@"
