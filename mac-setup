@@ -53,6 +53,7 @@ function setup-sequence() {
     local thunderbird=false
     local iterm2=false
     local secure_pipes=false
+    local intellij=false
 
     while [ -n "$1" ]; do
 
@@ -73,6 +74,8 @@ function setup-sequence() {
             iterm2=true
         elif [ "$1" = "secure-pipes" ]; then
             secure_pipes=true
+        elif [ "$1" = "intellij" ]; then
+            intellij=true
         fi
 
         shift 
@@ -84,6 +87,7 @@ function setup-sequence() {
     debug "thunderbird: ${thunderbird}"
     debug "iterm2: ${iterm2}"
     debug "secure_pipes: ${secure_pipes}"
+    debug "intellij: ${intellij}"
 
     (${all} || ${brew}) && install-or-update-brew
     (${all} || ${bash}) && install-or-update-bash
@@ -91,8 +95,9 @@ function setup-sequence() {
     (${all} || ${thunderbird}) && install-thunderbird
     (${all} || ${iterm2}) && install-or-upgrade-iterm2
     (${all} || ${secure_pipes}) && install-or-upgrade-secure-pipes
+    (${all} || ${intellij}) && install-or-upgrade-intellij
 
-    post-configuration-report-and-next-steps;
+    post-configuration-report-and-next-steps
 }
 
 function main() {
@@ -306,6 +311,13 @@ function install-or-upgrade-secure-pipes() {
 
     POST_INSTALLATION_STEPS["secure-pipes"]="Configure secure-pipes"
 
+}
+
+function install-or-upgrade-intellij() {
+
+    brew cask install intellij-idea
+
+    POST_INSTALLATION_STEPS["intellij"]="Configure IntelliJ\n    * Install license\n    * Install the bash plugin"
 }
 
 main "$@"
