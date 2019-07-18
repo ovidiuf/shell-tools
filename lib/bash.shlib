@@ -152,6 +152,13 @@ function to-absolute-path() {
     fi
 
     debug "absolute path: ${abs_path}"
+
+
+    #
+    # remove trailing /.
+    #
+
+    abs_path=${abs_path%/.}
     echo ${abs_path}
 
 }

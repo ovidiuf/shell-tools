@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+[ -f $(dirname $0)/lib/bash.shlib ] && . $(dirname $0)/lib/bash.shlib || { echo "$(dirname $0)/lib/bash.shlib not found" 1>&2; exit 1; }
+
 DEBUG=false
 
 declare -A POST_INSTALLATION_STEPS
@@ -36,6 +38,10 @@ function setup-sequence() {
     setup-bash-startup-files
 
     generate-ssh-key
+
+    install-shell-tools
+
+    create-tmp
 
     #
     # Package installation
@@ -158,7 +164,7 @@ function info() {
 }
 
 #
-# Only if they don't exist
+# Indempotent
 #
 function setup-bash-startup-files() {
 
@@ -169,7 +175,7 @@ function setup-bash-startup-files() {
 }
 
 #
-# Only if it does not exist
+# Indempotent
 #
 function generate-ssh-key() {
 
@@ -184,6 +190,44 @@ function generate-ssh-key() {
     info "created SSH key"
 }
 
+#
+# Indempotent
+#
+function install-shell-tools() {
+
+    local dir=$(dirname $0)
+    dir=$(to-absolute-path ${dir})
+    add-to-head-of-user-path ${dir}
+
+    #
+    # "install" cdw
+    #
+
+    if grep "^alias cdw=" ~/.bashrc >/dev/null; then
+
+        info "cdw already installed"
+
+    else
+
+        info "installing cdw ..."
+        echo "alias cdw='. cdwi'" >> ~/.bashrc
+    fi
+}
+
+#
+# Indempotent
+#
+function create-tmp() {
+
+    if [ ! -d ~/tmp ]; then
+        mkdir ~/tmp
+        info "created ~/tmp"
+    fi
+}
+
+#
+# Idempotent, if the path exists, won't be added
+#
 function add-to-head-of-user-path() {
 
     debug $*
@@ -321,3 +365,4 @@ function install-or-upgrade-intellij() {
 }
 
 main "$@"
+
