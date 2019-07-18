@@ -60,6 +60,7 @@ function setup-sequence() {
     local iterm2=false
     local secure_pipes=false
     local intellij=false
+    local java=false
 
     while [ -n "$1" ]; do
 
@@ -82,6 +83,8 @@ function setup-sequence() {
             secure_pipes=true
         elif [ "$1" = "intellij" ]; then
             intellij=true
+        elif [ "$1" = "java" ]; then
+            java=true
         fi
 
         shift 
@@ -94,6 +97,7 @@ function setup-sequence() {
     debug "iterm2: ${iterm2}"
     debug "secure_pipes: ${secure_pipes}"
     debug "intellij: ${intellij}"
+    debug "java: ${java}"
 
     (${all} || ${brew}) && install-or-update-brew
     (${all} || ${bash}) && install-or-update-bash
@@ -102,6 +106,7 @@ function setup-sequence() {
     (${all} || ${iterm2}) && install-or-upgrade-iterm2
     (${all} || ${secure_pipes}) && install-or-upgrade-secure-pipes
     (${all} || ${intellij}) && install-or-upgrade-intellij
+    (${all} || ${java}) && install-or-upgrade-java
 
     post-configuration-report-and-next-steps
 }
@@ -205,7 +210,7 @@ function install-shell-tools() {
 
     if grep "^alias cdw=" ~/.bashrc >/dev/null; then
 
-        info "cdw already installed"
+        debug "cdw already installed"
 
     else
 
@@ -244,7 +249,7 @@ function add-to-head-of-user-path() {
 
     if grep ${regex} ~/.bashrc > /dev/null; then
 
-        info "$1 already in PATH"
+        debug "$1 already in PATH"
         return 0
     fi
 
@@ -362,6 +367,16 @@ function install-or-upgrade-intellij() {
     brew cask install intellij-idea
 
     POST_INSTALLATION_STEPS["intellij"]="Configure IntelliJ\n    * Install license\n    * Install the bash plugin"
+}
+
+function install-or-upgrade-java() {
+
+    echo ""
+    echo ""
+    echo " As per July 2019, java8 not available as a brew install anymore - figure this out"
+    echo ""
+    echo ""
+
 }
 
 main "$@"
