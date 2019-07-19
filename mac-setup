@@ -63,6 +63,7 @@ function setup-sequence() {
     local intellij=false
     local java=false
     local maven=false
+    local git=false
 
     while [ -n "$1" ]; do
 
@@ -91,6 +92,8 @@ function setup-sequence() {
             java=true
         elif [ "$1" = "maven" ]; then
             maven=true
+        elif [ "$1" = "git" ]; then
+            git=true
         fi
 
         shift 
@@ -106,6 +109,8 @@ function setup-sequence() {
     debug "intellij: ${intellij}"
     debug "java: ${java}"
     debug "maven: ${maven}"
+    debug "git: ${git}"
+
 
     (${all} || ${brew}) && install-or-update-brew
     (${all} || ${bash}) && install-or-update-bash
@@ -117,6 +122,7 @@ function setup-sequence() {
     (${all} || ${intellij}) && install-or-upgrade-intellij
     (${all} || ${java}) && install-or-upgrade-java
     (${all} || ${maven}) && install-or-upgrade-maven
+    (${all} || ${git}) && install-or-upgrade-git
 
     post-configuration-report-and-next-steps
 }
@@ -404,7 +410,6 @@ function install-or-upgrade-java() {
     warn " As per July 2019, java8 not available as a brew install anymore - figure this out, maybe use openjdk?"
     warn ""
     warn ""
-
 }
 
 function install-or-upgrade-maven() {
@@ -412,6 +417,14 @@ function install-or-upgrade-maven() {
     info "installing maven ..."
 
     brew install maven && info "maven installed" || { error "failed to install maven"; exit 1; }
+}
+
+function install-or-upgrade-git() {
+
+    info "installing git and git-lfs ..."
+
+    brew install git && info "git installed" || { error "failed to install git"; exit 1; }
+    brew install git-lfs && info "git-lfs installed" || { error "failed to install git-lfs"; exit 1; }
 }
 
 main "$@"
