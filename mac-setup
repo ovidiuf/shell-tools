@@ -64,6 +64,7 @@ function setup-sequence() {
     local java=false
     local maven=false
     local git=false
+    local openoffice=false
 
     while [ -n "$1" ]; do
 
@@ -94,6 +95,8 @@ function setup-sequence() {
             maven=true
         elif [ "$1" = "git" ]; then
             git=true
+        elif [ "$1" = "openoffice" ]; then
+            openoffice=true
         fi
 
         shift 
@@ -110,6 +113,7 @@ function setup-sequence() {
     debug "java: ${java}"
     debug "maven: ${maven}"
     debug "git: ${git}"
+    debug "openoffice: ${openoffice}"
 
 
     (${all} || ${brew}) && install-or-update-brew
@@ -123,6 +127,7 @@ function setup-sequence() {
     (${all} || ${java}) && install-or-upgrade-java
     (${all} || ${maven}) && install-or-upgrade-maven
     (${all} || ${git}) && install-or-upgrade-git
+    (${all} || ${openoffice}) && install-or-upgrade-openoffice
 
     post-configuration-report-and-next-steps
 }
@@ -316,7 +321,11 @@ function install-or-update-brew() {
         info "upgrading brew ..."
 
         brew update && info "brew updated" || exit 1
-        brew doctor && info "brew installation verified" || exit 1
+
+        #
+        # we don't want to exit, we just want to see the warnings
+        #
+        brew doctor && info "brew installation verified" || warn "brew doctor detected problems"
 
     else
 
@@ -438,6 +447,14 @@ function install-or-upgrade-git() {
     brew install git && info "git installed" || { error "failed to install git"; exit 1; }
     brew install git-lfs && info "git-lfs installed" || { error "failed to install git-lfs"; exit 1; }
 }
+
+function install-or-upgrade-openoffice() {
+
+    info "installing openoffice ..."
+
+    brew cask install openoffice && info "openoffice installed" || { error "failed to install openoffice"; exit 1; }
+}
+
 
 main "$@"
 
