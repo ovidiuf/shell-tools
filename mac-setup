@@ -192,7 +192,19 @@ function setup-bash-startup-files() {
     debug 
 
     [ ! -f ~/.bash_profile ] && { echo 'if [ -f ~/.bashrc ]; then . ~/.bashrc; fi' > ~/.bash_profile; info "created .bash_profile"; }
-    [ ! -f ~/.bashrc ] && { echo "" > ~/.bashrc; info "created .bashrc"; }
+
+    if [ ! -f ~/.bashrc ]; then
+
+        touch > ~/.bashrc
+
+        #
+        # convenience aliases
+        #
+
+        echo "alias h='history'" >> ~/.bashrc
+
+        info "created .bashrc"
+    fi
 }
 
 #
