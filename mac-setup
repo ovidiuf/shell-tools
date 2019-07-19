@@ -65,6 +65,7 @@ function setup-sequence() {
     local maven=false
     local git=false
     local openoffice=false
+    local chrome=false
 
     while [ -n "$1" ]; do
 
@@ -97,6 +98,8 @@ function setup-sequence() {
             git=true
         elif [ "$1" = "openoffice" ]; then
             openoffice=true
+        elif [ "$1" = "chrome" ]; then
+            chrome=true
         fi
 
         shift 
@@ -114,6 +117,7 @@ function setup-sequence() {
     debug "maven: ${maven}"
     debug "git: ${git}"
     debug "openoffice: ${openoffice}"
+    debug "chrome: ${chrome}"
 
 
     (${all} || ${brew}) && install-or-update-brew
@@ -128,6 +132,13 @@ function setup-sequence() {
     (${all} || ${maven}) && install-or-upgrade-maven
     (${all} || ${git}) && install-or-upgrade-git
     (${all} || ${openoffice}) && install-or-upgrade-openoffice
+    (${all} || ${chrome}) && install-or-upgrade-chrome
+
+    #
+    # optional
+    #
+
+    # brew cask install postman
 
     post-configuration-report-and-next-steps
 }
@@ -453,6 +464,13 @@ function install-or-upgrade-openoffice() {
     info "installing openoffice ..."
 
     brew cask install openoffice && info "openoffice installed" || { error "failed to install openoffice"; exit 1; }
+}
+
+function install-or-upgrade-chrome() {
+
+    info "installing chrome ..."
+
+    brew cask install google-chrome && info "chrome installed" || { error "failed to install chrome"; exit 1; }
 }
 
 
