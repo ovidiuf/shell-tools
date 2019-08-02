@@ -218,6 +218,7 @@ function setup-bash-startup-files() {
         #
 
         echo "alias h='history'" >> ~/.bashrc
+        echo "alias cdt='cd ~/tmp'" >> ~/.bashrc
 
         info "created .bashrc"
     fi
