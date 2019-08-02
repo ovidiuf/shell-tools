@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 [ -f $(dirname $0)/lib/bash.shlib ] && . $(dirname $0)/lib/bash.shlib || { echo "$(dirname $0)/lib/bash.shlib not found" 1>&2; exit 1; }
+[ -f $(dirname $0)/lib/brew.shlib ] && . $(dirname $0)/lib/brew.shlib || { echo "$(dirname $0)/lib/brew.shlib not found" 1>&2; exit 1; }
 
 DEBUG=false
 
@@ -66,6 +67,7 @@ function setup-sequence() {
     local git=false
     local openoffice=false
     local chrome=false
+    local docker=false
 
     while [ -n "$1" ]; do
 
@@ -100,6 +102,8 @@ function setup-sequence() {
             openoffice=true
         elif [ "$1" = "chrome" ]; then
             chrome=true
+        elif [ "$1" = "docker" ]; then
+            docker=true
         fi
 
         shift 
@@ -118,6 +122,7 @@ function setup-sequence() {
     debug "git: ${git}"
     debug "openoffice: ${openoffice}"
     debug "chrome: ${chrome}"
+    debug "docker: ${docker}"
 
 
     (${all} || ${brew}) && install-or-update-brew
@@ -133,6 +138,7 @@ function setup-sequence() {
     (${all} || ${git}) && install-or-upgrade-git
     (${all} || ${openoffice}) && install-or-upgrade-openoffice
     (${all} || ${chrome}) && install-or-upgrade-chrome
+    (${all} || ${docker}) && install-or-upgrade-docker
 
     #
     # optional
@@ -457,7 +463,18 @@ function install-or-upgrade-git() {
     info "installing git and git-lfs ..."
 
     brew install git && info "git installed" || { error "failed to install git"; exit 1; }
-    brew install git-lfs && info "git-lfs installed" || { error "failed to install git-lfs"; exit 1; }
+
+    #
+    # brew install git-lfs does not handle nicely an already installed git-lfs so we query it ourselves
+    #
+
+    if is-installed git-lfs; then
+
+        info "git-lfs already installed ..."
+    else
+
+        brew install git-lfs && info "git-lfs installed" || { error "failed to install git-lfs"; exit 1; }
+    fi
 }
 
 function install-or-upgrade-openoffice() {
@@ -472,6 +489,15 @@ function install-or-upgrade-chrome() {
     info "installing chrome ..."
 
     brew cask install google-chrome && info "chrome installed" || { error "failed to install chrome"; exit 1; }
+}
+
+function install-or-upgrade-docker() {
+
+    info "installing Docker Desktop ..."
+
+    brew cask install docker && info "Docker Desktop installed" || { error "failed to install Docker Desktop"; exit 1; }
+
+    POST_INSTALLATION_STEPS["docker"]="Finish Docker Desktop installation\nGo to Applications folder and click on Docker, follow instructions.\nWhen you get access to Docker Desktop, go to Preferences → Kubernetes → Enable Kubernetes"
 }
 
 
