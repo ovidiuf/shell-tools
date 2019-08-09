@@ -68,6 +68,7 @@ function setup-sequence() {
     local openoffice=false
     local chrome=false
     local docker=false
+    local jq=false
 
     while [ -n "$1" ]; do
 
@@ -104,6 +105,8 @@ function setup-sequence() {
             chrome=true
         elif [ "$1" = "docker" ]; then
             docker=true
+        elif [ "$1" = "jq" ]; then
+            jq=true
         fi
 
         shift 
@@ -123,6 +126,7 @@ function setup-sequence() {
     debug "openoffice: ${openoffice}"
     debug "chrome: ${chrome}"
     debug "docker: ${docker}"
+    debug "jq: ${jq}"
 
 
     (${all} || ${brew}) && install-or-update-brew
@@ -139,6 +143,7 @@ function setup-sequence() {
     (${all} || ${openoffice}) && install-or-upgrade-openoffice
     (${all} || ${chrome}) && install-or-upgrade-chrome
     (${all} || ${docker}) && install-or-upgrade-docker
+    (${all} || ${jq}) && install-or-upgrade-jq
 
     #
     # optional
@@ -498,6 +503,13 @@ function install-or-upgrade-docker() {
     brew cask install docker && info "Docker Desktop installed" || { error "failed to install Docker Desktop"; exit 1; }
 
     POST_INSTALLATION_STEPS["docker"]="Finish Docker Desktop installation\nGo to Applications folder and click on Docker, follow instructions.\nWhen you get access to Docker Desktop, go to Preferences → Kubernetes → Enable Kubernetes"
+}
+
+function install-or-upgrade-jq() {
+
+    info "installing jq ..."
+
+    brew install jq && info "jq installed" || { error "failed to install jq"; exit 1; }
 }
 
 
