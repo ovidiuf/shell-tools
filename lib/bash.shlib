@@ -162,3 +162,24 @@ function to-absolute-path() {
     echo ${abs_path}
 
 }
+
+#
+# returns at stdout the major version of the bash running this code
+#
+
+# bash 3:
+# GNU bash, version 3.2.57(1)-release (x86_64-apple-darwin18)
+# Copyright (C) 2007 Free Software Foundation, Inc.
+#
+function bash-major-version() {
+
+    bash --version | head -n 1 | sed -e 's/^.*version \(.\).*$/\1/'
+}
+
+function check-bash-version() {
+
+    local bash_major_version
+    bash_major_version=$(bash-major-version)
+    debug "bash major version: ${bash_major_version}"
+    if [ ${bash_major_version} -lt 4 ]; then echo "[error]: bash 4 or higher is required, please upgrade" 1>&2; exit 1; fi
+}
