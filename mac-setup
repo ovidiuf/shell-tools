@@ -230,6 +230,9 @@ function setup-bash-startup-files() {
 
         echo "alias h='history'" >> ~/.bashrc
         echo "alias cdt='cd ~/tmp'" >> ~/.bashrc
+        echo "# Docker | clean dangling images" >> ~/.bashrc
+        echo "alias dcd='docker rmi \$(docker images --filter \"dangling=true\" -q --no-trunc)'"  >> ~/.bashrc
+        
 
         info "created .bashrc"
     fi
