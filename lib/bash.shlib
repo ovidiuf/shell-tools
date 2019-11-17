@@ -93,6 +93,10 @@ function info {
 #
 # Send debug info at stderr (not to interfere with function returns)
 #
+# Recommended pattern to debug function calls:
+#
+#   debug "${FUNCNAME[0]}($@)"
+#
 function debug() {
 
     ${VERBOSE} && echo $@ 1>&2
