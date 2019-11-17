@@ -167,7 +167,6 @@ function to-absolute-path() {
 #
 # returns at stdout the major version of the bash running this code
 #
-
 # bash 3:
 # GNU bash, version 3.2.57(1)-release (x86_64-apple-darwin18)
 # Copyright (C) 2007 Free Software Foundation, Inc.

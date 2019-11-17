@@ -1,6 +1,21 @@
 #!/usr/bin/env bash
 
+source=$(dirname $0)/bash.shlib
 target=~/bash_shlib_copy/bash.shlib
+
+if [[ ${target} -nt ${source} ]]; then
+
+    if ! diff ${target} ${source} >/dev/null; then
+        echo "the target file ${target} seems to be newer than the source file ${source}, and difference exist, check differences and reconcile manually"
+        exit 1
+    fi
+
+    #
+    # no differences exist, even if the target file is newer, silently exit
+    #
+
+    exit 0
+fi
 
 cp ./bash.shlib ${target} && echo "overwrote ${target}"
 
