@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+#
+# Overwrites target bash.shlib with the reference copy, only if necessary.
+#
 
 source=$(dirname $0)/bash.shlib
 target=~/bash_shlib_copy/bash.shlib
@@ -14,8 +17,10 @@ if [[ ${target} -nt ${source} ]]; then
     # no differences exist, even if the target file is newer, silently exit
     #
 
+    echo "nothing changed"
+
     exit 0
 fi
 
-cp ./bash.shlib ${target} && echo "overwrote ${target}"
+cp ./bash.shlib ${target} && echo "overwrote ${target}" || echo "failed to copy" 1>&2;
 
