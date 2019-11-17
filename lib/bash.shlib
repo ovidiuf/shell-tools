@@ -176,6 +176,9 @@ function bash-major-version() {
     bash --version | head -n 1 | sed -e 's/^.*version \(.\).*$/\1/'
 }
 
+#
+# exit with a non-zero exit code if the local bash version is smaller than 4
+#
 function check-bash-version() {
 
     local bash_major_version
