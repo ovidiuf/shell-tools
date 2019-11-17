@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+bash_shlib_version=1.0.0
+
 #
 # Generic bash functionality
 #
