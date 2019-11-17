@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+
+target=~/bash_shlib_copy/bash.shlib
+
+cp ./bash.shlib ${target} && echo "overwrote ${target}"
+

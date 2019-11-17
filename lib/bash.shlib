@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-bash_shlib_version=1.0.0
+bash_shlib_version=1.0.2
 
 #
 # Generic bash functionality
@@ -28,7 +28,6 @@ declare -a ARGS
 #
 # process-common-arguments "$@" && set -- "${ARGS[@]}" || { echo "failed to process common arguments" 1>&2; exit 1; }
 #
-
 function process-common-arguments() {
 
     local index=0
