@@ -1,0 +1,1 @@
+source ${BATS_TEST_DIRNAME}/../../bash.shlib

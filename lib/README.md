@@ -23,11 +23,12 @@ Collection of generic bash functions. Grouped as follows:
 # How to Run Tests
 
 ```
-./tests.sh
+./tests/all-tests.sh
 ```
 
 tests.sh executes all component tests (bash.shlib, java.shlib, etc.) All tests must pass.
 
 # TODO
 
-Bring templates/gradle.shlib and templates/maven.shlib into this repository.
+* Convert old style of testing java-tests.sh to BATS
+* Bring templates/gradle.shlib and templates/maven.shlib into this repository.

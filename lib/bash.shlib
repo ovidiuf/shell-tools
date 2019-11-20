@@ -141,7 +141,7 @@ function to-absolute-path() {
     local path=$1
     local abs_path
 
-    [[ -z ${path} ]] && fail "'path' not provided"
+    [[ -z ${path} ]] && fail "${FUNCNAME[0]}($@) 'path' not provided"
 
     if [[ ${path:0:1} = "/" ]]; then
 
@@ -153,6 +153,7 @@ function to-absolute-path() {
         # relative
         #
 
+        path=${path#./}
         abs_path=$(pwd)/${path}
     fi
 
