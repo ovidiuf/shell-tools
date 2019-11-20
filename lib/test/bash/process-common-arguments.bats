@@ -12,6 +12,7 @@ function setup() {
     declare -a ARGS
     export VERBOSE=false
     export HELP=false
+    export VERSION=
 }
 
 function test-expected-global-environment-state() {
@@ -170,6 +171,60 @@ function test-expected-global-environment-state() {
     [[ ${ARGS[0]} = "blah" ]]
 }
 
+@test "version" {
+
+    #
+    # we don't use "run" because we need to execute the function in the same shell
+    #
+
+    test-expected-global-environment-state
+
+    export VERSION=1.2.3
+
+    run process-common-arguments version
+
+    [[ ${status} -eq 0 ]]
+    [[ ${output} = "1.2.3" ]]
+}
+
+@test "version, VERSION variable not set up" {
+
+    #
+    # we don't use "run" because we need to execute the function in the same shell
+    #
+
+    test-expected-global-environment-state
+
+    [[ -z ${VERSION} ]]
+
+    run process-common-arguments version
+
+    [[ ${status} -eq 0 ]]
+    [[ ${output} = "N/A" ]]
+}
+
+
+#@test "version and other arguments" {
+#
+#    #
+#    # we don't use "run" because we need to execute the function in the same shell
+#    #
+#    test-expected-global-environment-state
+#
+#    process-common-arguments a "b c" -v d && set -- "${ARGS[@]}" || exit 1
+#
+#    [[ ${VERBOSE} = "true" ]]
+#    [[ ${HELP} = "false" ]]
+#
+#    [[ $1 = "a" ]]
+#    [[ $2 = "b c" ]]
+#    [[ $3 = "d" ]]
+#}
+
+#
+# "integration" tests
+#
+
 @test "process-common-arguments-() usage" {
 
     #
@@ -186,5 +241,9 @@ function test-expected-global-environment-state() {
     [[ $2 = "b c" ]]
     [[ $3 = "d" ]]
 }
+
+
+
+
 
 

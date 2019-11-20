@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-bash_shlib_version=1.0.2
+bash_shlib_version=1.0.3
 
 #
 # Generic bash functionality
@@ -15,14 +15,19 @@ export HELP=false
 declare -a ARGS
 
 #
-# A function that extracts "common" arguments such as "--verbose", "-v", "help" or "--help" from the command line
-# arguments and sets the appropriate global variables, while setting the remaining command line arguments as elements
-# of a global array.
+# A function that extracts common arguments such as "--verbose", "-v", "help" or "--help" or "version" from the command
+# line arguments and sets the appropriate global variables, while setting the remaining command line arguments as
+# elements of a global array.
 #
-# Option Handled       Global Variable Set
+# In some cases, process-common-arguments() executes an internal command and exists, as it is the case for "version":
+# the content of the VERSION variable is displayed at stdout and the function invokes exit 0.
 #
-# -v, --verbose        export VERBOSE=true
-# -h, --help           export HELP=true
+#
+# Option Handled       Global Variable Set     Action
+#
+# -v, --verbose        export VERBOSE=true     none
+# -h, --help, help     export HELP=true        node
+# version              N/A                     Display ${VERSION} and exit 0
 #
 # To restore all arguments that have not been processed, as positional arguments, use as as shown below:
 #
@@ -41,6 +46,13 @@ function process-common-arguments() {
         elif [[ $1 = "help" || $1 = "--help" || $1 = "-h" ]]; then
 
             export HELP=true
+
+        elif [[ $1 = "version" ]]; then
+
+            local version=${VERSION}
+            [[ -z ${version} ]] && version="N/A"
+            echo ${version}
+            exit 0
 
         else
 
