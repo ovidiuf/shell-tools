@@ -32,11 +32,11 @@ function sync-file() {
         # no differences exist, even if the target file is newer, exit
         #
 
-        echo "nothing changed for ${file_name}"
+        echo "${file_name}: nothing changed"
         return 0
     fi
 
-    cp ${source_file} ${target_file} && echo "overwrote ${file_name}" || echo "failed to copy" 1>&2;
+    cp ${source_file} ${target_file} && echo "${file_name}: overwritten" || echo "failed to copy" 1>&2;
 }
 
 main "$@"
