@@ -14,6 +14,11 @@ function space-separated-list-to-json-list() {
 
     local space_separated_list=$1
 
-    [[ -z ${space_separated_list} ]] && { echo "[]"; return 0; }
-
+    local output="["
+    for i in ${space_separated_list}; do
+        [[ ${output} = "[" ]] && output="${output}\"${i}\"" || output="${output}, \"${i}\""
+    done
+    output="${output}]"
+    echo ${output}
+    return 0
 }
