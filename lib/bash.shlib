@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-bash_shlib_version=1.0.3
+BASH_SHLIB_VERSION=1.0.4
 
 #
 # Generic bash functionality
@@ -15,7 +15,7 @@ export HELP=false
 declare -a ARGS
 
 #
-# A function that extracts common arguments such as "--verbose", "-v", "help" or "--help" or "version" from the command
+# A function that extracts common arguments such as "--verbose", "-v", "help", "--help" or "version" from the command
 # line arguments and sets the appropriate global variables, while setting the remaining command line arguments as
 # elements of a global array.
 #
