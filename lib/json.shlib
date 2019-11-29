@@ -6,19 +6,19 @@
 JSON_SHLIB_VERSION=1.0.0
 
 #
-# Convert a space separated list "a b c" to a JSON list ["a", "b", "c"], which is returned to stdout
+# Convert the argument list ("a" "b" "c) to a JSON list to a JSON list ["a", "b", "c"], which is returned to stdout.
+# If an argument is quoted and includes spaces, it will present as a single JSON list element: "a b" "c" is converted
+# to ["a b", "c"]
 #
-function space-separated-list-to-json-list() {
+function to-json-list() {
 
     debug "${FUNCNAME[0]}($@)"
 
-    local space_separated_list=$1
-
     local output="["
-    for i in ${space_separated_list}; do
-        [[ ${output} = "[" ]] && output="${output}\"${i}\"" || output="${output}, \"${i}\""
+    while [[ -n $1 ]]; do
+        [[ ${output} = "[" ]] && output="${output}\"$1\"" || output="${output}, \"$1\""
+        shift
     done
     output="${output}]"
     echo ${output}
-    return 0
 }
