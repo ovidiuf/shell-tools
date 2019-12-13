@@ -1,18 +1,20 @@
-# How to Use SHLIB Functions
-
-````
-[[ -z "${SHLIB_DIR}" ]] && { echo "[error]: SHLIB_DIR not defined" 1>&2; exit 1; }
-[[ -f ${SHLIB_DIR}/std.shlib ]] && . ${SHLIB_DIR}/std.shlib || { echo "[error]: ${SHLIB_DIR}/std.shlib not found" 1>&2; exit 1; }
-[[ -f ${SHLIB_DIR}/ssh.shlib ]] && . ${SHLIB_DIR}/ssh.shlib || { echo "[error]: ${SHLIB_DIR}/ssh.shlib not found" 1>&2; exit 1; }
-
-````
-
 # Overview
 
 Collection of generic bash functions. Grouped as follows:
 
-* **bash.sh**: processing of common arguments such as -v or -d, and the customary fail()/error()/warn()/info()/debug().
-* **java.sh**: utilities related to building and running Java.
+* **bash.shlib**: processing of common arguments such as -v or -d, and often-used functionality `fail()`/`error()`/`warn()`/`info()`/`debug()`.
+* **java.shlib**: utilities related to building and running Java.
+* **json.shlib**: JSON utilities
+
+# How to Use SHLIB Libraries
+
+````
+[ -f $(dirname $0)/lib/bash.shlib ] && source $(dirname $0)/lib/bash.shlib || { echo "[error]: $(dirname $0)/lib/bash.shlib not found" 1>&2; exit 1; }
+````
+
+No library recursively includes other libraries. If functions from multiple libraries are required, they all need to be
+loaded from the calling script.
+
 
 # How to Locally Test Functions
 
@@ -20,13 +22,20 @@ Collection of generic bash functions. Grouped as follows:
 ./local.sh
 ```
 
-# How to Run Tests
+# How to Run Per-Function Tests
+
+```
+bats ./test/bash/info.bats
+```
+
+# How to Run All Tests
 
 ```
 ./tests/all-tests.sh
 ```
 
-tests.sh executes all component tests (bash.shlib, java.shlib, etc.) All tests must pass.
+`all-tests.sh` executes all component tests (bash.shlib, java.shlib, etc.). All tests must pass.
+
 
 # TODO
 
