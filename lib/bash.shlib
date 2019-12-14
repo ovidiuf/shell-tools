@@ -135,7 +135,7 @@ function process-options() {
     declare -A results
     while [[ -n $1 ]]; do
         arg=$1
-        debug "arg: ${arg}"
+        #debug "arg: ${arg}"
         match=false
 
         for opt in "${!OPTIONS[@]}"; do
