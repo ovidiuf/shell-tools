@@ -11,6 +11,9 @@ export HELP=false
 export SEPARATOR=$'\x1f' # US - unit separator
 export DEBUG_OUTPUT
 export DRY_RUN=false
+export ERROR_HEADER="[error]:"
+export FAIL_HEADER="[error]:"
+export WARNING_HEADER="[warning]:"
 
 #
 # The global array that maintains the remaining "non-common" arguments, to be re-set as positional arguments.
@@ -229,35 +232,35 @@ function fail-on-unknown-arguments() {
     exit 1
 }
 #
-# Send the arguments to stderr and exits with a non-zero code (255)
+# Send the arguments to stderr, prepended with the value of ${FAIL_HEADER} and exits with a non-zero code (255).
 # If DEBUG_OUTPUT is set, also send output there.
 #
 function fail() {
 
-    echo [error]: $@ 1>&2
-    [[ -n ${DEBUG_OUTPUT} ]] && echo [error]: $@ >> ${DEBUG_OUTPUT}
+    echo ${FAIL_HEADER} $@ 1>&2
+    [[ -n ${DEBUG_OUTPUT} ]] && echo ${FAIL_HEADER} $@ >> ${DEBUG_OUTPUT}
     exit 255
 }
 
 #
-# Send error information at stderr, but do not exit and return 0 instead
-# If DEBUG_OUTPUT is set, also send output there.
+# Send the argument information at stderr, prepended with the value of ${ERROR_HEADER}, but do not exit and return 0
+# instead. If DEBUG_OUTPUT is set, also send output there.
 #
 function error {
 
-    echo [error]: $@ 1>&2
-    [[ -n ${DEBUG_OUTPUT} ]] && echo [error]: $@ >> ${DEBUG_OUTPUT}
+    echo ${ERROR_HEADER} $@ 1>&2
+    [[ -n ${DEBUG_OUTPUT} ]] && echo ${ERROR_HEADER} $@ >> ${DEBUG_OUTPUT}
     return 0
 }
 
 #
-# Send a warning at stderr (not to interfere with function returns)
+# Send a warning at stderr (not to interfere with function returns) prepended with the value of ${WARNING_HEADER}
 # If DEBUG_OUTPUT is set, also send output there.
 #
 function warn {
 
-    echo [warning]: $@ 1>&2
-    [[ -n ${DEBUG_OUTPUT} ]] && echo [warning]: $@ >> ${DEBUG_OUTPUT}
+    echo ${WARNING_HEADER} $@ 1>&2
+    [[ -n ${DEBUG_OUTPUT} ]] && echo ${WARNING_HEADER} $@ >> ${DEBUG_OUTPUT}
     return 0
 }
 
