@@ -146,9 +146,9 @@ function process-options() {
             read -r -a aliases <<< "${opt_spec}"
             aliases[${#aliases[@]}]=${opt}
 
-            debug "opt: ${opt}"
-            debug "type: ${type}"
-            debug "aliases size: ${#aliases[@]}, aliases: ${aliases[@]}"
+            #debug "opt: ${opt}"
+            #debug "type: ${type}"
+            #debug "aliases size: ${#aliases[@]}, aliases: ${aliases[@]}"
 
             for opt_alias in ${aliases[@]}; do
 
