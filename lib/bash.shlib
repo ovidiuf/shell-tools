@@ -161,12 +161,11 @@ function process-options() {
                         debug "${arg} matched boolean option and is being assigned to true"
                         results[${opt}]="true"
                     elif [[ ${type} = "string" ]]; then
-                        debug "${arg} ${type} option match"
                         shift
                         [[ -z $1 || ${1:0:1} = "-" ]] && { error "missing ${opt_alias} string value"; exit 1; }
                         results[${opt}]="$1"
+                        debug "{arg} ${type} value set to ${results[${opt}]}"
                     elif [[ ${type} = "integer" ]]; then
-                        debug "${arg} ${type} option match"
                         shift
                         [[ -z $1 || ${1:0:1} = "-" ]] && { error "missing ${opt_alias} integer value"; exit 1; }
                         #
@@ -177,6 +176,7 @@ function process-options() {
                             exit 1
                         fi
                         results[${opt}]=$1
+                        debug "{arg} ${type} value set to ${results[${opt}]}"
                     else
                         error "${FUNCNAME[0]}(): invalid option type '${type}' for option ${opt_alias}"
                         exit 1;
