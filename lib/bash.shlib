@@ -234,8 +234,8 @@ function fail-on-unknown-arguments() {
 #
 function fail() {
 
-    echo [failure]: $@ 1>&2
-    [[ -n ${DEBUG_OUTPUT} ]] && echo [failure]: $@ >> ${DEBUG_OUTPUT}
+    echo [error]: $@ 1>&2
+    [[ -n ${DEBUG_OUTPUT} ]] && echo [error]: $@ >> ${DEBUG_OUTPUT}
     exit 255
 }
 

@@ -14,14 +14,14 @@ function teardown() {
     run fail "blah"
 
     [[ ${status} -eq 255 ]]
-    [[ "${output}" = "[failure]: blah" ]]
+    [[ "${output}" = "[error]: blah" ]]
 }
 
 @test "stderr" {
 
     run $(fail "blah" 1>${BATS_TEST_DIRNAME}/data/fail/stdout 2>${BATS_TEST_DIRNAME}/data/fail/stderr )
     [[ -z $(cat ${BATS_TEST_DIRNAME}/data/fail/stdout) ]]
-    [[ $(cat ${BATS_TEST_DIRNAME}/data/fail/stderr) = "[failure]: blah" ]]
+    [[ $(cat ${BATS_TEST_DIRNAME}/data/fail/stderr) = "[error]: blah" ]]
 }
 
 @test "DEBUG_OUTPUT" {
@@ -30,6 +30,6 @@ function teardown() {
 
     run $(fail "blah" 1>${BATS_TEST_DIRNAME}/data/fail/stdout 2>${BATS_TEST_DIRNAME}/data/fail/stderr )
     [[ -z $(cat ${BATS_TEST_DIRNAME}/data/fail/stdout) ]]
-    [[ $(cat ${BATS_TEST_DIRNAME}/data/fail/stderr) = "[failure]: blah" ]]
-    [[ $(cat ${DEBUG_OUTPUT}) = "[failure]: blah" ]]
+    [[ $(cat ${BATS_TEST_DIRNAME}/data/fail/stderr) = "[error]: blah" ]]
+    [[ $(cat ${DEBUG_OUTPUT}) = "[error]: blah" ]]
 }

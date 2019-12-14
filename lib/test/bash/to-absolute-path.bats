@@ -9,7 +9,7 @@ load bash-library
     run to-absolute-path
 
     [[ ${status} -eq 255 ]]
-    [[ ${output} = "[failure]: to-absolute-path() 'path' not provided" ]]
+    [[ ${output} = "[error]: to-absolute-path() 'path' not provided" ]]
 }
 
 @test "absolute path" {
