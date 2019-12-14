@@ -6,7 +6,7 @@ load bash-library
 
 function teardown() {
 
-    rm -rf ${BATS_TEST_DIRNAME}/data/warn/*
+    rm -rf ${BATS_TEST_DIRNAME}/data/tmp/*
 }
 
 @test "exit code" {
@@ -19,17 +19,17 @@ function teardown() {
 
 @test "stderr" {
 
-    run $(warn "blah" 1>${BATS_TEST_DIRNAME}/data/warn/stdout 2>${BATS_TEST_DIRNAME}/data/warn/stderr )
-    [[ -z $(cat ${BATS_TEST_DIRNAME}/data/warn/stdout) ]]
-    [[ $(cat ${BATS_TEST_DIRNAME}/data/warn/stderr) = "[warning]: blah" ]]
+    run $(warn "blah" 1>${BATS_TEST_DIRNAME}/data/tmp/stdout 2>${BATS_TEST_DIRNAME}/data/tmp/stderr )
+    [[ -z $(cat ${BATS_TEST_DIRNAME}/data/tmp/stdout) ]]
+    [[ $(cat ${BATS_TEST_DIRNAME}/data/tmp/stderr) = "[warning]: blah" ]]
 }
 
 @test "DEBUG_OUTPUT" {
 
-    DEBUG_OUTPUT=${BATS_TEST_DIRNAME}/data/warn/DEBUG_OUTPUT
+    DEBUG_OUTPUT=${BATS_TEST_DIRNAME}/data/tmp/DEBUG_OUTPUT
 
-    run $(warn "blah" 1>${BATS_TEST_DIRNAME}/data/warn/stdout 2>${BATS_TEST_DIRNAME}/data/warn/stderr )
-    [[ -z $(cat ${BATS_TEST_DIRNAME}/data/warn/stdout) ]]
-    [[ $(cat ${BATS_TEST_DIRNAME}/data/warn/stderr) = "[warning]: blah" ]]
+    run $(warn "blah" 1>${BATS_TEST_DIRNAME}/data/tmp/stdout 2>${BATS_TEST_DIRNAME}/data/tmp/stderr )
+    [[ -z $(cat ${BATS_TEST_DIRNAME}/data/tmp/stdout) ]]
+    [[ $(cat ${BATS_TEST_DIRNAME}/data/tmp/stderr) = "[warning]: blah" ]]
     [[ $(cat ${DEBUG_OUTPUT}) = "[warning]: blah" ]]
 }

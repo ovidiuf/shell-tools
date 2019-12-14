@@ -18,7 +18,7 @@ function setup() {
 
 function teardown() {
 
-    rm -rf ${BATS_TEST_DIRNAME}/data/debug/*
+    rm -rf ${BATS_TEST_DIRNAME}/data/tmp/*
 }
 
 function test-expected-global-environment-state() {
@@ -52,34 +52,34 @@ function test-expected-global-environment-state() {
 
     test-expected-global-environment-state
 
-    run $(debug "blah" 1>${BATS_TEST_DIRNAME}/data/debug/stdout 2>${BATS_TEST_DIRNAME}/data/debug/stderr)
+    run $(debug "blah" 1>${BATS_TEST_DIRNAME}/data/tmp/stdout 2>${BATS_TEST_DIRNAME}/data/tmp/stderr)
 
-    [[ -z $(cat ${BATS_TEST_DIRNAME}/data/debug/stdout) ]]
-    [[ -z $(cat ${BATS_TEST_DIRNAME}/data/debug/stderr) ]]
+    [[ -z $(cat ${BATS_TEST_DIRNAME}/data/tmp/stdout) ]]
+    [[ -z $(cat ${BATS_TEST_DIRNAME}/data/tmp/stderr) ]]
 
     export VERBOSE=true
 
-    run $(debug "blah" 1>${BATS_TEST_DIRNAME}/data/debug/stdout 2>${BATS_TEST_DIRNAME}/data/debug/stderr)
+    run $(debug "blah" 1>${BATS_TEST_DIRNAME}/data/tmp/stdout 2>${BATS_TEST_DIRNAME}/data/tmp/stderr)
 
-    [[ -z $(cat ${BATS_TEST_DIRNAME}/data/debug/stdout) ]]
-    [[ $(cat ${BATS_TEST_DIRNAME}/data/debug/stderr) = "blah" ]]
+    [[ -z $(cat ${BATS_TEST_DIRNAME}/data/tmp/stdout) ]]
+    [[ $(cat ${BATS_TEST_DIRNAME}/data/tmp/stderr) = "blah" ]]
 }
 
 @test "DEBUG_OUTPUT " {
 
     test-expected-global-environment-state
 
-    run $(debug "blah" 1>${BATS_TEST_DIRNAME}/data/debug/stdout 2>${BATS_TEST_DIRNAME}/data/debug/stderr)
+    run $(debug "blah" 1>${BATS_TEST_DIRNAME}/data/tmp/stdout 2>${BATS_TEST_DIRNAME}/data/tmp/stderr)
 
-    [[ -z $(cat ${BATS_TEST_DIRNAME}/data/debug/stdout) ]]
-    [[ -z $(cat ${BATS_TEST_DIRNAME}/data/debug/stderr) ]]
+    [[ -z $(cat ${BATS_TEST_DIRNAME}/data/tmp/stdout) ]]
+    [[ -z $(cat ${BATS_TEST_DIRNAME}/data/tmp/stderr) ]]
 
     export VERBOSE=true
-    export DEBUG_OUTPUT=${BATS_TEST_DIRNAME}/data/debug/DEBUG_OUTPUT
+    export DEBUG_OUTPUT=${BATS_TEST_DIRNAME}/data/tmp/DEBUG_OUTPUT
 
-    run $(debug "blah" 1>${BATS_TEST_DIRNAME}/data/debug/stdout 2>${BATS_TEST_DIRNAME}/data/debug/stderr)
+    run $(debug "blah" 1>${BATS_TEST_DIRNAME}/data/tmp/stdout 2>${BATS_TEST_DIRNAME}/data/tmp/stderr)
 
-    [[ -z $(cat ${BATS_TEST_DIRNAME}/data/debug/stdout) ]]
-    [[ -z $(cat ${BATS_TEST_DIRNAME}/data/debug/stderr) ]]
-    [[ $(cat ${BATS_TEST_DIRNAME}/data/debug/DEBUG_OUTPUT) = "blah" ]]
+    [[ -z $(cat ${BATS_TEST_DIRNAME}/data/tmp/stdout) ]]
+    [[ -z $(cat ${BATS_TEST_DIRNAME}/data/tmp/stderr) ]]
+    [[ $(cat ${BATS_TEST_DIRNAME}/data/tmp/DEBUG_OUTPUT) = "blah" ]]
 }

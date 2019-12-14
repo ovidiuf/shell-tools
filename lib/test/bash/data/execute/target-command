@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+while [[ -n $1 ]]; do
+    if [[ "--target-command-dry-run" = $1 ]]; then
+        echo $(basename $0) executed in dry-run mode
+        return 0
+    fi
+    shift
+done
+
+target_file=$(dirname $0)/../tmp/TARGET-COMMAND-EXECUTED
+touch ${target_file}
+echo $(basename $0) executed in active mode
+

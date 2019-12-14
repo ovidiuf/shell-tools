@@ -10,6 +10,7 @@ export VERBOSE=false
 export HELP=false
 export SEPARATOR=$'\x1f' # US - unit separator
 export DEBUG_OUTPUT
+export DRY_RUN=false
 
 #
 # The global array that maintains the remaining "non-common" arguments, to be re-set as positional arguments.
@@ -40,7 +41,6 @@ declare -a ARGS
 # process-common-arguments() sets HELP=true if it sees help|--help|-h among its arguments, and removes the argument from
 # the list. This approach allows commands to display help regardless of the relative order of the command and the help
 # argument on the command line.
-#
 #
 function process-common-arguments() {
 
@@ -384,4 +384,56 @@ function pull() {
     debug "${FUNCNAME[0]}($@)"
 
     local url=$1
+}
+
+#
+# executes a command while being aware of the "DRY_RUN" and "VERBOSE" contexts.
+# arg0: the command, as a single argument. IMPORTANT: Enclose it between double quotes when passing it to the function
+# arg1: optional - false if we want the function to NOT report "failed to execute command ..." on failure. By
+#       default, in absence of any second argument, the function reports failure
+# arg3: optional - the target command "dry run" option, if available. If specified, the invocation of the target
+#       command will be modified to include it
+#
+function execute {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    local command="$1"
+    [[ -z ${command} ]] && fail "'command' not provided"
+    local report_failure=true
+    [[ $2 = "false" ]] && report_failure=false
+    local target_command_dry_run_option=$3
+
+    if ${DRY_RUN}; then
+
+        if [[ -n ${target_command_dry_run_option} ]]; then
+
+            #
+            # we inject the target command dry run option as the first argument
+            #
+
+            if [[ ${command/ /} = ${command} ]]; then
+                #
+                # no spaces
+                #
+                command="${command} ${target_command_dry_run_option}"
+            else
+                #
+                # insert the native dry run argument after the first space
+                #
+                command="$(echo ${command} | sed -e 's/ / '${target_command_dry_run_option}' /')"
+            fi
+        else
+
+            #
+            # just display the command
+            #
+            info "[dry-run]: ${command}"
+            return 0
+        fi
+    fi
+
+    info "${command}"
+
+    ${command} || { ${report_failure} && fail "failed to execute ${command}"; }
 }
