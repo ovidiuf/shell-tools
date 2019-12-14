@@ -9,7 +9,7 @@ BASH_SHLIB_VERSION=1.0.5
 export VERBOSE=false
 export HELP=false
 export SEPARATOR=$'\x1f' # US - unit separator
-
+export DEBUG_OUTPUT
 
 #
 # The global array that maintains the remaining "non-common" arguments, to be re-set as positional arguments.
@@ -265,7 +265,7 @@ function info {
 }
 
 #
-# Send debug info at stderr (not to interfere with function returns)
+# If VERBOSE is set, send debug info at stderr (not to interfere with function returns) or to DEBUG_OUTPUT, if set.
 #
 # Recommended pattern to debug function calls:
 #
@@ -273,7 +273,8 @@ function info {
 #
 function debug() {
 
-    ${VERBOSE} && echo $@ 1>&2
+    ! ${VERBOSE} && return 0
+    [[ -z ${DEBUG_OUTPUT} ]] && echo $@ 1>&2 || echo $@ >> ${DEBUG_OUTPUT}
     return 0
 }
 

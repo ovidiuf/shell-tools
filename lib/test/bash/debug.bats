@@ -18,8 +18,7 @@ function setup() {
 
 function teardown() {
 
-    rm -f ${BATS_TEST_DIRNAME}/tmp/stdout
-    rm -f ${BATS_TEST_DIRNAME}/tmp/stderr
+    rm -rf ${BATS_TEST_DIRNAME}/data/debug/*
 }
 
 function test-expected-global-environment-state() {
@@ -53,15 +52,34 @@ function test-expected-global-environment-state() {
 
     test-expected-global-environment-state
 
-    run $(debug "blah" 1>${BATS_TEST_DIRNAME}/tmp/stdout 2>${BATS_TEST_DIRNAME}/tmp/stderr)
+    run $(debug "blah" 1>${BATS_TEST_DIRNAME}/data/debug/stdout 2>${BATS_TEST_DIRNAME}/data/debug/stderr)
 
-    [[ -z $(cat ${BATS_TEST_DIRNAME}/tmp/stdout) ]]
-    [[ -z $(cat ${BATS_TEST_DIRNAME}/tmp/stderr) ]]
+    [[ -z $(cat ${BATS_TEST_DIRNAME}/data/debug/stdout) ]]
+    [[ -z $(cat ${BATS_TEST_DIRNAME}/data/debug/stderr) ]]
 
     export VERBOSE=true
 
-    run $(debug "blah" 1>${BATS_TEST_DIRNAME}/tmp/stdout 2>${BATS_TEST_DIRNAME}/tmp/stderr)
+    run $(debug "blah" 1>${BATS_TEST_DIRNAME}/data/debug/stdout 2>${BATS_TEST_DIRNAME}/data/debug/stderr)
 
-    [[ -z $(cat ${BATS_TEST_DIRNAME}/tmp/stdout) ]]
-    [[ $(cat ${BATS_TEST_DIRNAME}/tmp/stderr) = "blah" ]]
+    [[ -z $(cat ${BATS_TEST_DIRNAME}/data/debug/stdout) ]]
+    [[ $(cat ${BATS_TEST_DIRNAME}/data/debug/stderr) = "blah" ]]
+}
+
+@test "DEBUG_OUTPUT " {
+
+    test-expected-global-environment-state
+
+    run $(debug "blah" 1>${BATS_TEST_DIRNAME}/data/debug/stdout 2>${BATS_TEST_DIRNAME}/data/debug/stderr)
+
+    [[ -z $(cat ${BATS_TEST_DIRNAME}/data/debug/stdout) ]]
+    [[ -z $(cat ${BATS_TEST_DIRNAME}/data/debug/stderr) ]]
+
+    export VERBOSE=true
+    export DEBUG_OUTPUT=${BATS_TEST_DIRNAME}/data/debug/DEBUG_OUTPUT
+
+    run $(debug "blah" 1>${BATS_TEST_DIRNAME}/data/debug/stdout 2>${BATS_TEST_DIRNAME}/data/debug/stderr)
+
+    [[ -z $(cat ${BATS_TEST_DIRNAME}/data/debug/stdout) ]]
+    [[ -z $(cat ${BATS_TEST_DIRNAME}/data/debug/stderr) ]]
+    [[ $(cat ${BATS_TEST_DIRNAME}/data/debug/DEBUG_OUTPUT) = "blah" ]]
 }

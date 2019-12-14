@@ -6,8 +6,8 @@ load bash-library
 
 function teardown() {
 
-    rm -f ${BATS_TEST_DIRNAME}/tmp/stdout
-    rm -f ${BATS_TEST_DIRNAME}/tmp/stderr
+    rm -f ${BATS_TEST_DIRNAME}/data/error/stdout
+    rm -f ${BATS_TEST_DIRNAME}/data/error/stderr
 }
 
 @test "exit code" {
@@ -20,8 +20,8 @@ function teardown() {
 
 @test "stderr" {
 
-    run $(error "blah" 1>${BATS_TEST_DIRNAME}/tmp/stdout 2>${BATS_TEST_DIRNAME}/tmp/stderr )
-    [[ -z $(cat ${BATS_TEST_DIRNAME}/tmp/stdout) ]]
-    [[ $(cat ${BATS_TEST_DIRNAME}/tmp/stderr) = "[error]: blah" ]]
+    run $(error "blah" 1>${BATS_TEST_DIRNAME}/data/error/stdout 2>${BATS_TEST_DIRNAME}/data/error/stderr )
+    [[ -z $(cat ${BATS_TEST_DIRNAME}/data/error/stdout) ]]
+    [[ $(cat ${BATS_TEST_DIRNAME}/data/error/stderr) = "[error]: blah" ]]
 }
 
