@@ -101,13 +101,13 @@ function process-common-arguments() {
 #
 # Usage:
 #
-# declare -a ARGS
-# declare -A OPTIONS
-# OPTIONS["--path"]="string -p"
-# OPTIONS["--count"]="integer -c --COUNT"
-# OPTIONS["--debug"]="boolean"
-#
-# process-options "$@"
+#           declare -a ARGS
+#           declare -A OPTIONS
+#           OPTIONS["--path"]="string -p"
+#           OPTIONS["--count"]="integer -c --COUNT"
+#           OPTIONS["--debug"]="boolean"
+#           process-options "$@"
+#           fail-on-unknown-arguments
 #
 # If, for example, the arguments are "--debug --path something", 'OPTIONS' content will be:
 #
@@ -205,6 +205,28 @@ function process-options() {
         OPTIONS[${opt}]=${results[${opt}]}
     done
     unset results
+}
+
+#
+# The function assumes that everything found in the ARGS indexed array are unknown arguments and exits the
+# current shell with an error message and a non-zero exit code
+#
+function fail-on-unknown-arguments() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    [[ ${#ARGS[@]} -eq 0 ]] && return
+
+    local header="unknown argument(s): "
+
+    local message=${header}
+
+    for a in "${ARGS[@]}"; do
+        [[ ${message} = ${header} ]] && message="${message} ${a}" || message="${message}, ${a}"
+    done
+
+    error "${message}"
+    exit 1
 }
 #
 # Send the arguments to stderr and exits with a non-zero code (255)
