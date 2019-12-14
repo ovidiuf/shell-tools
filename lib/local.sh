@@ -4,6 +4,10 @@
 #. ./$(dirname $0)/java.shlib
 
 export VERBOSE=true
+#check-bash-version
 
+declare -A OPTIONS
+OPTIONS["--size"]="integer -s --SIZE"
+process-options "$@"
 
-check-bash-version
+echo "options: ${OPTIONS[@]}"

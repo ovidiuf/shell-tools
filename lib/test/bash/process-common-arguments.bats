@@ -25,7 +25,19 @@ function test-expected-global-environment-state() {
     [[ ${#ARGS[@]} = 0 ]]
 }
 
+@test "missing ARGS" {
+
+    unset ARGS
+
+    run process-common-arguments
+
+    [[ ${status} -eq 1 ]]
+    [[ ${output} =~ "'ARGS' indexed array not declared" ]]
+}
+
 @test "three normal arguments" {
+
+    declare -a ARGS
 
     test-expected-global-environment-state
 
@@ -44,6 +56,8 @@ function test-expected-global-environment-state() {
 
 @test "-v handling" {
 
+    declare -a ARGS
+
     test-expected-global-environment-state
 
     #
@@ -58,6 +72,8 @@ function test-expected-global-environment-state() {
 
 @test "--verbose handling" {
 
+    declare -a ARGS
+
     test-expected-global-environment-state
 
     #
@@ -71,6 +87,8 @@ function test-expected-global-environment-state() {
 }
 
 @test "-v and a normal argument, in this order" {
+
+    declare -a ARGS
 
     test-expected-global-environment-state
 
@@ -87,6 +105,8 @@ function test-expected-global-environment-state() {
 
 @test "a normal argument and -v, in this order" {
 
+    declare -a ARGS
+
     test-expected-global-environment-state
 
     #
@@ -100,6 +120,8 @@ function test-expected-global-environment-state() {
 }
 
 @test "a normal argument and duplicate -v" {
+
+    declare -a ARGS
 
     test-expected-global-environment-state
 
@@ -115,6 +137,8 @@ function test-expected-global-environment-state() {
 
 @test "-h handling" {
 
+    declare -a ARGS
+
     test-expected-global-environment-state
 
     #
@@ -128,6 +152,8 @@ function test-expected-global-environment-state() {
 }
 
 @test "help handling" {
+
+    declare -a ARGS
 
     test-expected-global-environment-state
 
@@ -143,11 +169,13 @@ function test-expected-global-environment-state() {
 
 @test "--help handling" {
 
+    declare -a ARGS
+
+    test-expected-global-environment-state
+
     #
     # we don't use "run" because we need to execute the function in the same shell
     #
-    test-expected-global-environment-state
-
     process-common-arguments --help || exit 1
 
     [[ ${VERBOSE} = "false" ]]
@@ -158,11 +186,13 @@ function test-expected-global-environment-state() {
 
 @test "-h and a normal argument, in this order" {
 
+    declare -a ARGS
+
+    test-expected-global-environment-state
+
     #
     # we don't use "run" because we need to execute the function in the same shell
     #
-    test-expected-global-environment-state
-
     process-common-arguments -h blah || exit 1
 
     [[ ${VERBOSE} = "false" ]]
@@ -173,9 +203,7 @@ function test-expected-global-environment-state() {
 
 @test "version" {
 
-    #
-    # we don't use "run" because we need to execute the function in the same shell
-    #
+    declare -a ARGS
 
     test-expected-global-environment-state
 
@@ -189,9 +217,7 @@ function test-expected-global-environment-state() {
 
 @test "version, VERSION variable not set up" {
 
-    #
-    # we don't use "run" because we need to execute the function in the same shell
-    #
+    declare -a ARGS
 
     test-expected-global-environment-state
 
@@ -204,22 +230,24 @@ function test-expected-global-environment-state() {
 }
 
 
-#@test "version and other arguments" {
-#
-#    #
-#    # we don't use "run" because we need to execute the function in the same shell
-#    #
-#    test-expected-global-environment-state
-#
-#    process-common-arguments a "b c" -v d && set -- "${ARGS[@]}" || exit 1
-#
-#    [[ ${VERBOSE} = "true" ]]
-#    [[ ${HELP} = "false" ]]
-#
-#    [[ $1 = "a" ]]
-#    [[ $2 = "b c" ]]
-#    [[ $3 = "d" ]]
-#}
+@test "version and other arguments" {
+
+    test-expected-global-environment-state
+
+    declare -a ARGS
+
+    #
+    # we don't use "run" because we need to execute the function in the same shell
+    #
+    process-common-arguments a "b c" -v d && set -- "${ARGS[@]}" || exit 1
+
+    [[ ${VERBOSE} = "true" ]]
+    [[ ${HELP} = "false" ]]
+
+    [[ $1 = "a" ]]
+    [[ $2 = "b c" ]]
+    [[ $3 = "d" ]]
+}
 
 #
 # "integration" tests
@@ -227,11 +255,13 @@ function test-expected-global-environment-state() {
 
 @test "process-common-arguments-() usage" {
 
+    declare -a ARGS
+
+    test-expected-global-environment-state
+
     #
     # we don't use "run" because we need to execute the function in the same shell
     #
-    test-expected-global-environment-state
-
     process-common-arguments a "b c" -v d && set -- "${ARGS[@]}" || exit 1
 
     [[ ${VERBOSE} = "true" ]]
