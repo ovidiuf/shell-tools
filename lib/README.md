@@ -19,19 +19,22 @@ loaded from the calling script.
 # How to Locally Test Functions
 
 ```
-./local.sh
+cd shell-tools/lib
+./test/local.sh
 ```
 
 # How to Run Per-Function Tests
 
 ```
+cd shell-tools/lib
 bats ./test/bash/info.bats
 ```
 
 # How to Run All Tests
 
 ```
-./tests/all-tests.sh
+cd shell-tools/lib
+./test/all-tests.sh
 ```
 
 `all-tests.sh` executes all component tests (bash.shlib, java.shlib, etc.). All tests must pass.
@@ -41,3 +44,5 @@ bats ./test/bash/info.bats
 
 * Convert old style of testing java-tests.sh to BATS
 * Bring templates/gradle.shlib and templates/maven.shlib into this repository.
+* Develop an "all-test.sh" mode in which the first test failure fails the script. Currently all
+  tests are run, and failures are reported, but the script does not fail on test failure.
