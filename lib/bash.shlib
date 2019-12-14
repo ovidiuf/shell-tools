@@ -188,7 +188,7 @@ function process-options() {
             done
         done
         if ! ${match}; then
-            debug "${arg} matches no option"
+            debug "${arg} matches no option, will be added to ARGS"
             ARGS[${args_index}]=${arg}
             ((args_index++))
         fi
