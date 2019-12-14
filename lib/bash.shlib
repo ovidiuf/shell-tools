@@ -230,37 +230,45 @@ function fail-on-unknown-arguments() {
 }
 #
 # Send the arguments to stderr and exits with a non-zero code (255)
+# If DEBUG_OUTPUT is set, also send output there.
 #
 function fail() {
 
     echo [failure]: $@ 1>&2
+    [[ -n ${DEBUG_OUTPUT} ]] && echo [failure]: $@ >> ${DEBUG_OUTPUT}
     exit 255
 }
 
 #
 # Send error information at stderr, but do not exit and return 0 instead
+# If DEBUG_OUTPUT is set, also send output there.
 #
 function error {
 
     echo [error]: $@ 1>&2
+    [[ -n ${DEBUG_OUTPUT} ]] && echo [error]: $@ >> ${DEBUG_OUTPUT}
     return 0
 }
 
 #
 # Send a warning at stderr (not to interfere with function returns)
+# If DEBUG_OUTPUT is set, also send output there.
 #
 function warn {
 
     echo [warning]: $@ 1>&2
+    [[ -n ${DEBUG_OUTPUT} ]] && echo [warning]: $@ >> ${DEBUG_OUTPUT}
     return 0
 }
 
 #
 # Send info at stderr (not to interfere with function returns)
+# If DEBUG_OUTPUT is set, also send output there.
 #
 function info {
 
     echo $@ 1>&2
+    [[ -n ${DEBUG_OUTPUT} ]] && echo $@ >> ${DEBUG_OUTPUT}
     return 0
 }
 
