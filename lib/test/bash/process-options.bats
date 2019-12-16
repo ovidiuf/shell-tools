@@ -426,6 +426,36 @@ function setup() {
     [[ ${ARGS[3]} = "d" ]]
 }
 
+@test "extra arguments (2)" {
+
+    declare -a ARGS
+    declare -A OPTIONS
+    OPTIONS["--repository-url"]="string"
+    OPTIONS["--chart-version"]="string"
+    OPTIONS["--server-version"]="string"
+    OPTIONS["--chart-name"]="string"
+    OPTIONS["--state-directory"]="string"
+    OPTIONS["--output-file"]="string"
+
+    #
+    # we don't use "run" because we need to execute the function in the same shell, so we share the associative array
+    #
+    process-options a --repository-url http://localhost --b --chart-version 1.0.0 c --server-version 2.0.0 d --output-file ./tmp.txt e || exit 1
+
+    [[ ${#OPTIONS[@]} -eq 4 ]]
+    [[ ${OPTIONS["--repository-url"]} = "http://localhost" ]]
+    [[ ${OPTIONS["--chart-version"]} = "1.0.0" ]]
+    [[ ${OPTIONS["--server-version"]} = "2.0.0" ]]
+    [[ ${OPTIONS["--output-file"]} = "./tmp.txt" ]]
+    [[ ${#ARGS[@]} -eq 5 ]]
+    [[ ${ARGS[0]} = "a" ]]
+    [[ ${ARGS[1]} = "--b" ]]
+    [[ ${ARGS[2]} = "c" ]]
+    [[ ${ARGS[3]} = "d" ]]
+    [[ ${ARGS[4]} = "e" ]]
+}
+
+
 @test "string option with aliases" {
 
     declare -a ARGS
