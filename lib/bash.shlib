@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-BASH_SHLIB_VERSION=1.0.5
+BASH_SHLIB_VERSION=1.0.6
 
 #
 # Generic bash functionality
@@ -439,4 +439,40 @@ function execute {
     info "${command}"
 
     ${command} || { ${report_failure} && fail "failed to execute ${command}"; }
+}
+
+#
+# Return 0 if the URL is a local filesystem URL, non-zero value otherwise. The URL does not need to resolve.
+# If valid file URL, return the URL value (without the protocol specification) at stdout
+#
+function is-file-url() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    local url=$1
+    [[ -z ${url} ]] && fail "${FUNCNAME[0]}(): 'url' not provided"
+
+    local file=${url#file://}
+
+    if echo ${file} | grep -q ":"; then
+        return 1
+    fi
+
+    echo ${file}
+    return 0
+}
+
+#
+# Return 0 if the URL is a http/https URL, 1 otherwise. The URL does not need to resolve.
+# If valid http/https URL, return the URL value at stdout
+#
+function is-http-url() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    local url=$1
+    [[ -z ${url} ]] && fail "${FUNCNAME[0]}(): 'url' not provided"
+
+    [[ ${url} != ${url#http://} || ${url} != ${url#https://} ]] && { echo "${url}"; return 0; }
+    return 1
 }
