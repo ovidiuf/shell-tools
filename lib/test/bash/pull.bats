@@ -8,19 +8,22 @@ function setup() {
     #
     function curl() {
 
-        #echo "$@" > ~/tmp/curl.out
+        [[ -n ${DEBUG_OUTPUT} ]] && { echo "curl($@)" >> ${DEBUG_OUTPUT}; }
+        [[ -n ${DEBUG_OUTPUT} ]] && { echo "curl(): current directory $(pwd)" >> ${DEBUG_OUTPUT}; }
         local url=$2
         local filename=${url##*/}
+        [[ -n ${DEBUG_OUTPUT} ]] && { echo "curl(): filename ${filename}" >> ${DEBUG_OUTPUT}; }
         cp ${BATS_TEST_DIRNAME}/data/pull/${filename} . || exit 1
+        local f=$(to-absolute-path ./${filename})
+        [[ -f ${f} ]]
+        [[ -n ${DEBUG_OUTPUT} ]] && { echo "curl(): filename ${f} exists" >> ${DEBUG_OUTPUT}; }
+        return 0
     }
 }
 
 function teardown() {
-
     rm -rf ${BATS_TEST_DIRNAME}/data/tmp/*
 }
-
-
 
 @test "no URL" {
 
@@ -49,12 +52,14 @@ function teardown() {
 @test "target is a directory" {
 
     target=${BATS_TEST_DIRNAME}/data/tmp
+
+    #VERBOSE=true; DEBUG_OUTPUT=~/tmp/bats.out
     run pull http://localhost/index.html ${target}
 
     [[ ${status} -eq 0 ]]
     [[ -z ${output} ]]
 
-    diff ${target}/index.html ~/runtime/httpd-root/index.html || exit 1
+    diff ${target}/index.html ${BATS_TEST_DIRNAME}/data/pull/index.html || exit 1
 }
 
 @test "target is a file, no directory needs to be created" {
@@ -67,7 +72,7 @@ function teardown() {
     [[ ${status} -eq 0 ]]
     [[ -z ${output} ]]
 
-    diff ${target} ~/runtime/httpd-root/index.html || exit 1
+    diff ${target} ${BATS_TEST_DIRNAME}/data/pull/index.html || exit 1
 }
 
 @test "target is a file, directories need to be created" {
@@ -80,6 +85,6 @@ function teardown() {
     [[ ${status} -eq 0 ]]
     [[ -z ${output} ]]
 
-    diff ${target} ~/runtime/httpd-root/index.html || exit 1
+    diff ${target} ${BATS_TEST_DIRNAME}/data/pull/index.html || exit 1
 }
 

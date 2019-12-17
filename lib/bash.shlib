@@ -392,7 +392,8 @@ function check-bash-version() {
 # file://./test.zip).
 # The first argument is the file URL.
 # The second argument is the target. If the target is a directory, the file is placed in that directory under its
-# original name. If the target does not exist, or it is a file, the downloaded file will get that name.
+# original name. If the target does not exist, or it is a file, the downloaded file will get that name, and the
+# specified file, if exists, will be overwritten.
 #
 function pull() {
 
@@ -407,8 +408,10 @@ function pull() {
     ! is-http-url ${url} >/dev/null && fail "NOT YET IMPLEMENTED: ${url} not supported yet"
 
     if [[ -d ${target} ]]; then
+        debug "target ${target} is a directory"
         (cd ${target}; curl -s ${url} -O) || fail "failed to download ${url}"
     else
+        debug "target ${target} is a file"
         #
         # ${target} is a file, create all required directories and use the file name to download content into
         #
