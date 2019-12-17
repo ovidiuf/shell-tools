@@ -388,14 +388,39 @@ function check-bash-version() {
 }
 
 #
-# Pull an artifact from an URL. The URL can be remote (https://example.com/test.zip) or local (file:///tmp/test.zip,
-# file://./test.zip)
+# Pull a file from an URL. The URL can be remote (https://example.com/test.zip) or local (file:///tmp/test.zip,
+# file://./test.zip).
+# The first argument is the file URL.
+# The second argument is the target. If the target is a directory, the file is placed in that directory under its
+# original name. If the target does not exist, or it is a file, the downloaded file will get that name.
 #
 function pull() {
 
     debug "${FUNCNAME[0]}($@)"
 
     local url=$1
+    local target=$2
+
+    [[ -z ${url} ]] && fail "${FUNCNAME[0]}(): 'url' not provided"
+    [[ -z ${target} ]] && fail "${FUNCNAME[0]}(): 'target' not provided"
+    
+    ! is-http-url ${url} >/dev/null && fail "NOT YET IMPLEMENTED: ${url} not supported yet"
+
+    if [[ -d ${target} ]]; then
+        (cd ${target}; curl -s ${url} -O) || fail "failed to download ${url}"
+    else
+        #
+        # ${target} is a file, create all required directories and use the file name to download content into
+        #
+        local dir=$(dirname ${target})
+        local target_filename=$(basename ${target})
+        local source_filename=${url##*/}
+        debug "source_filename: ${source_filename}"
+        [[ ! -d ${dir} ]] && { mkdir -p ${dir} && debug "created ${dir}" || fail "failed to create ${dir}"; }
+        (cd ${dir}; curl -s ${url} -O) || fail "failed to download ${url}"
+        mv ${dir}/${source_filename} ${dir}/${target_filename} && debug "created file ${dir}/${target_filename}" || \
+            fail "failed to mv ${dir}/${source_filename} ${dir}/${target_filename}"
+     fi
 }
 
 #
