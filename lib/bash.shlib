@@ -14,6 +14,7 @@ export DRY_RUN=false
 export ERROR_HEADER="[error]:"
 export FAIL_HEADER="[error]:"
 export WARNING_HEADER="[warning]:"
+export TMP_FILE_NAME_PREFIX="shell-tools"
 
 #
 # The global array that maintains the remaining "non-common" arguments, to be re-set as positional arguments.
@@ -306,13 +307,21 @@ function get-tmp-dir() {
 
     debug "${FUNCNAME[0]}($@)"
 
-    local name="/tmp/shell-tools-$(date +'%y%m%d%H%M%S')-${RANDOM}"
+    local dir="/tmp/$(get-tmp-file-name)"
+    mkdir ${dir} || fail "failed to create temporary directory ${dir}"
+    debug "created temporary directory and returning ${dir}"
 
-    mkdir ${name} || fail "failed to create temporary directory ${name}"
+    echo ${dir}
+}
 
-    debug "created temporary directory and returning ${name}"
+#
+# A temporary file name. It does not create the file and it is responsible for deleting it.
+#
+function get-tmp-file-name() {
 
-    echo ${name}
+    debug "${FUNCNAME[0]}($@)"
+
+    echo "${TMP_FILE_NAME_PREFIX}-$(date +'%y%m%d%H%M%S')-${RANDOM}"
 }
 
 #
