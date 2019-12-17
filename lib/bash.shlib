@@ -476,3 +476,25 @@ function is-http-url() {
     [[ ${url} != ${url#http://} || ${url} != ${url#https://} ]] && { echo "${url}"; return 0; }
     return 1
 }
+
+#
+# Return 0 if the URL is a NFS URL, 1 otherwise. The URL does not need to resolve.
+# If valid NFS URL, return a space separated list ast stdout: the first element is the NFS host and the second is the
+# path
+#
+function is-nfs-url() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    local url=$1
+    [[ -z ${url} ]] && fail "${FUNCNAME[0]}(): 'url' not provided"
+
+    [[ ${url} = ${url#nfs://} ]] && return 1
+
+    local url2=${url#nfs://}
+    local host=${url2%%/*}
+    [[ ${host} = ${url2} ]] && fail "invalid NFS URL, not in host/path format: ${url}"
+    local path=${url2#${host}}
+    echo "${host} ${path}"
+    return 0
+}
