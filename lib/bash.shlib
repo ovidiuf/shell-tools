@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-BASH_SHLIB_VERSION=1.0.6
+BASH_SHLIB_VERSION=1.1.0
 
 #
 # Generic bash functionality
@@ -212,24 +212,32 @@ function process-options() {
 }
 
 #
-# The function assumes that everything found in the ARGS indexed array are unknown arguments and exits the
-# current shell with an error message and a non-zero exit code
+# By default, the function assumes that everything found in the ARGS indexed array are unknown arguments and exits the
+# current shell with an error message and a non-zero exit code. If an optional argument is provided, is interpreted
+# as the index in the ARGS array from which unknown arguments are present. If there are such arguments, exit the current
+# shell with an error code.
 #
 function fail-on-unknown-arguments() {
 
     debug "${FUNCNAME[0]}($@)"
 
-    [[ ${#ARGS[@]} -eq 0 ]] && return
+    [[ ${#ARGS[@]} -eq 0 ]] && return 0
 
-    local header="unknown argument(s): "
+    local i=$1
+    [[ -z ${i} ]] && i=0 # we assume all arguments are unknown
 
-    local message=${header}
+    expr ${i} + 1 >/dev/null || fail "invalid array index: ${i}"
 
-    for a in "${ARGS[@]}"; do
-        [[ ${message} = ${header} ]] && message="${message} ${a}" || message="${message}, ${a}"
+    local unknown_args
+
+    while [[ ${i} -lt ${#ARGS[@]} ]]; do
+        [[ -z ${unknown_args} ]] && unknown_args=${ARGS[${i}]} || unknown_args="${unknown_args}, ${ARGS[${i}]}"
+        ((i++))
     done
 
-    error "${message}"
+    [[ -z ${unknown_args} ]] && return 0
+
+    error "unknown argument(s): ${unknown_args}"
     exit 1
 }
 #
