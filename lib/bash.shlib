@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-BASH_SHLIB_VERSION=1.1.0
+BASH_SHLIB_VERSION=1.1.1
 
 #
 # Generic bash functionality
@@ -441,6 +441,12 @@ function pull() {
 #       default, in absence of any second argument, the function reports failure
 # arg3: optional - the target command "dry run" option, if available. If specified, the invocation of the target
 #       command will be modified to include it
+#
+# Usage:
+#
+# local command="...."
+# execute "${command}" false --native-command-dry-run
+#
 #
 function execute {
 
