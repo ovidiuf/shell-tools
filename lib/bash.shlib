@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-BASH_SHLIB_VERSION=1.1.1
+BASH_SHLIB_VERSION=1.2.0
 
 #
 # Generic bash functionality
@@ -323,13 +323,19 @@ function get-tmp-dir() {
 }
 
 #
-# A temporary file name. It does not create the file and it is responsible for deleting it.
+# A temporary file name. It does not create the file and it is responsible for deleting it. Relies on the value of
+# the TMP_FILE_NAME_PREFIX variable to
 #
 function get-tmp-file-name() {
 
     debug "${FUNCNAME[0]}($@)"
 
-    echo "${TMP_FILE_NAME_PREFIX}-$(date +'%y%m%d%H%M%S')-${RANDOM}"
+    local prefix=$1 # optional
+
+    [[ -z ${prefix} ]] && prefix=${TMP_FILE_NAME_PREFIX}
+    [[ -z ${prefix} ]] && prefix=".tmp"
+
+    echo "${prefix}-$(date +'%y%m%d%H%M%S')-${RANDOM}"
 }
 
 #
