@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-BASH_SHLIB_VERSION=1.2.0
+BASH_SHLIB_VERSION=1.2.1
 
 #
 # Generic bash functionality
@@ -33,7 +33,7 @@ declare -a ARGS
 # Option Handled       Global Variable Set     Action
 #
 # -v, --verbose        export VERBOSE=true     none
-# -h, --help, help     export HELP=true        node
+# -h, --help, help     export HELP=true        none
 # version              N/A                     Display ${VERSION} and exit 0
 #
 # To restore all arguments that have not been processed, as positional arguments, use as as shown below:
