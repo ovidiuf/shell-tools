@@ -1,9 +1,5 @@
 load bash-library
 
-#
-# debug() tests
-#
-
 function setup() {
 
     #

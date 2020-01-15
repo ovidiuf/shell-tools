@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-BASH_SHLIB_VERSION=1.2.1
+BASH_SHLIB_VERSION=1.3.0
 
 #
 # Generic bash functionality
@@ -295,6 +295,22 @@ function debug() {
 
     ! ${VERBOSE} && return 0
     [[ -z ${DEBUG_OUTPUT} ]] && echo $@ 1>&2 || echo $@ >> ${DEBUG_OUTPUT}
+    return 0
+}
+
+#
+# If VERBOSE is set, dump the content of the file given as argument at stderr (not to interfere with function returns)
+# or to DEBUG_OUTPUT, if set. If the file does not exist or cannot be read, report accordingly
+#
+function debug-file() {
+
+    ! ${VERBOSE} && return 0
+
+    local file=$1
+    [[ -z ${file} ]] && { debug "no file provided"; return 0; }
+    [[ -f ${file} ]] || { debug "no such file: ${file}"; return 0; }
+    [[ -r ${file} ]] || { debug "file is not readable: ${file}"; return 0; }
+    [[ -z ${DEBUG_OUTPUT} ]] && cat ${file} 1>&2 || cat ${file} >> ${DEBUG_OUTPUT}
     return 0
 }
 
