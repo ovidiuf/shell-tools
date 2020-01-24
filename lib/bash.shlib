@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-BASH_SHLIB_VERSION=1.3.0
+BASH_SHLIB_VERSION=1.4.0
 
 #
 # Generic bash functionality
@@ -82,23 +82,28 @@ function process-common-arguments() {
 }
 
 #
-# Gets the command line options and extracts the values of "interesting" options. The options to look for are passed
-# as keys of an 'OPTIONS' associative array. The 'OPTIONS' associative array must be declared, allocated and have at
-# least a value, otherwise process-options() will exit the shell with an error code.
+# Gets an 'OPTIONS' associative array whose keys are the literal of the options to look for (e.g. "--something") and
+# extracts the values of the specified options from the positional parameters presented to the function. The 'OPTIONS'
+# associative array must be declared, allocated and have at least a value, otherwise process-options() will exit the
+# shell with an error code.
 #
 # The keys of the 'OPTIONS' associative array are the option literals: if the option is --something, the key must be
 # "--something" - must include the double dashes. If the option is -a, then the key is "-a" - must include the single
-# dash, and so on.
+# dash.
 #
-# The values of the 'OPTIONS' associative array contain the option "specifications". A specification is a space
+# The values of the 'OPTIONS' associative array must contain the option "specifications". A specification is a space
 # separated list, passed as string. The specification contains, in order, the option type (as "string", "integer",
 # "boolean") and then zero or more aliases, all space-separated.
 #
-# Boolean options: Only the option must be present to count as "true".
-# Integer options: the values are checked to make sure they're numerals.
-#
 # The identified option values are returned within the same associative array. If more than one identical options
 # are present on the command line, the last one wins.
+#
+# Boolean options: Only the option literal must be present in the positional parameter list to count as "true". There
+#    is no need to specify --do-something true or --do-something false, though if they are present, they will be
+#    processed. If the boolean option is not present on the command line, the corresponding associative array result
+#    value is "false"
+#
+# Integer options: the values are checked to make sure they're numerals.
 #
 # The function arguments that do not match any option are returned as content of the global ARGS array, in a pattern
 # that is similar to the one used by the process-common-arguments() function.
@@ -129,17 +134,19 @@ function process-options() {
     declare -a | grep -q "declare -a ARGS" || { error "${FUNCNAME[0]}(): 'ARGS' indexed array not declared"; exit 1; }
 
     local opt
-    local arg
     local opt_spec
     local match
     local type
     local -a aliases
     local args_index=0
+    local option
+    local option_argument
+    local do_not_shift=false
 
     declare -A results
     while [[ -n $1 ]]; do
-        arg=$1
-        #debug "arg: ${arg}"
+        option=$1
+        option_argument=""
         match=false
 
         for opt in "${!OPTIONS[@]}"; do
@@ -150,37 +157,52 @@ function process-options() {
             read -r -a aliases <<< "${opt_spec}"
             aliases[${#aliases[@]}]=${opt}
 
-            #debug "opt: ${opt}"
-            #debug "type: ${type}"
-            #debug "aliases size: ${#aliases[@]}, aliases: ${aliases[@]}"
-
             for opt_alias in ${aliases[@]}; do
 
-                if [[ ${arg} = ${opt_alias} ]]; then
+                if [[ ${option} = ${opt_alias} ]]; then
                     #
                     # option match - either the main option or an alias
                     #
                     match=true
                     if [[ ${type} = "boolean" ]]; then
-                        debug "${arg} matched boolean option and is being assigned to true"
-                        results[${opt}]="true"
+
+                        #
+                        # look ahead - if the next argument is "true" or "false", assign it to the option, otherwise
+                        # set the option to "true"
+                        #
+                        [[ -z ${option_argument} ]] && { shift; option_argument=$1; }
+                        if [[ ${option_argument} = "true" ]]; then
+                            results[${opt}]="true"
+                        elif [[ ${option_argument} = "false" ]]; then
+                            results[${opt}]="false"
+                        else
+                            #
+                            # unrelated argument, default is true, but we also must avoid shifting again at the end of
+                            # the big loop, because at this moment $1 contains the next option and we do not want to
+                            # lose it
+                            #
+                            results[${opt}]="true"
+                            do_not_shift=true
+                        fi
+                        debug "${option} matched boolean option and it was assigned to ${results[${opt}]}"
+
                     elif [[ ${type} = "string" ]]; then
-                        shift
-                        [[ -z $1 || ${1:0:1} = "-" ]] && { error "missing ${opt_alias} string value"; exit 1; }
-                        results[${opt}]="$1"
-                        debug "${arg} ${type} value set to ${results[${opt}]}"
+                        [[ -z ${option_argument} ]] && { shift; option_argument=$1; }
+                        [[ -z ${option_argument} || ${option_argument:0:1} = "-" ]] && { error "missing ${opt_alias} string value"; exit 1; }
+                        results[${opt}]="${option_argument}"
+                        debug "${option} ${type} value set to ${results[${opt}]}"
                     elif [[ ${type} = "integer" ]]; then
-                        shift
-                        [[ -z $1 || ${1:0:1} = "-" ]] && { error "missing ${opt_alias} integer value"; exit 1; }
+                        [[ -z ${option_argument} ]] && { shift; option_argument=$1; }
+                        [[ -z ${option_argument} || ${option_argument:0:1} = "-" ]] && { error "missing ${opt_alias} integer value"; exit 1; }
                         #
                         # check it's integer
                         #
-                        if ! expr $1 + 1 >/dev/null 2>&1; then
-                            error "${opt_alias} requires an integer value but got '$1'"
+                        if ! expr ${option_argument} + 1 >/dev/null 2>&1; then
+                            error "${opt_alias} requires an integer value but got '${option_argument}'"
                             exit 1
                         fi
-                        results[${opt}]=$1
-                        debug "${arg} ${type} value set to ${results[${opt}]}"
+                        results[${opt}]=${option_argument}
+                        debug "${option} ${type} value set to ${results[${opt}]}"
                     else
                         error "${FUNCNAME[0]}(): invalid option type '${type}' for option ${opt_alias}"
                         exit 1;
@@ -191,19 +213,28 @@ function process-options() {
                 fi
             done
         done
+
         if ! ${match}; then
-            debug "${arg} matches no option, will be added to ARGS"
-            ARGS[${args_index}]=${arg}
+            debug "${option} matches no option, will be added to ARGS"
+            ARGS[${args_index}]=${option}
             ((args_index++))
         fi
-        shift
+
+        ! ${do_not_shift} && shift;
+        do_not_shift=false
     done
 
     #
-    # clear the 'OPTIONS' map and transfer the results
+    # clear the 'OPTIONS' map and transfer the results - default boolean to explicit "false"
     #
     for opt in "${!OPTIONS[@]}"; do
-        unset OPTIONS[${opt}]
+        opt_spec=${OPTIONS[${opt}]}
+        type=${opt_spec%% *}
+        if [[ ${type} = "boolean" ]]; then
+            OPTIONS[${opt}]="false"
+        else
+            unset OPTIONS[${opt}]
+        fi
     done
     for opt in "${!results[@]}"; do
         OPTIONS[${opt}]=${results[${opt}]}

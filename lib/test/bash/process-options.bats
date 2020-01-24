@@ -68,7 +68,7 @@ function setup() {
 }
 
 
-@test "boolean option, no option value" {
+@test "boolean option: no option value" {
 
     declare -a ARGS
     declare -A OPTIONS
@@ -79,7 +79,8 @@ function setup() {
     #
     process-options || exit 1
 
-    [[ ${#OPTIONS[@]} -eq 0 ]]
+    [[ ${#OPTIONS[@]} -eq 1 ]]
+    [[ ${OPTIONS["--something"]} = "false" ]]
     [[ ${#ARGS[@]} -eq 0 ]]
 }
 
@@ -98,7 +99,7 @@ function setup() {
     [[ ${OPTIONS["--something"]} = "true" ]]
 }
 
-@test "redundant boolean option" {
+@test "boolean option: redundant option" {
 
     declare -a ARGS
     declare -A OPTIONS
@@ -113,7 +114,37 @@ function setup() {
     [[ ${OPTIONS["--something"]} = "true" ]]
 }
 
-@test "string option, missing value" {
+@test "boolean option: explicit true value" {
+
+    declare -a ARGS
+    declare -A OPTIONS
+    OPTIONS["--something"]="boolean"
+
+    #
+    # we don't use "run" because we need to execute the function in the same shell, so we share the associative array
+    #
+    process-options --something true || exit 1
+
+    [[ ${#OPTIONS[@]} -eq 1 ]]
+    [[ ${OPTIONS["--something"]} = "true" ]]
+}
+
+@test "boolean option: explicit false" {
+
+    declare -a ARGS
+    declare -A OPTIONS
+    OPTIONS["--something"]="boolean"
+
+    #
+    # we don't use "run" because we need to execute the function in the same shell, so we share the associative array
+    #
+    process-options --something false || exit 1
+
+    [[ ${#OPTIONS[@]} -eq 1 ]]
+    [[ ${OPTIONS["--something"]} = "false" ]]
+}
+
+@test "string option: missing value" {
 
     declare -a ARGS
     declare -A OPTIONS
@@ -125,7 +156,7 @@ function setup() {
     [[ ${output} =~ "missing --something string value" ]]
 }
 
-@test "string option, missing value (2)" {
+@test "string option: missing value (2)" {
 
     declare -a ARGS
     declare -A OPTIONS
@@ -152,7 +183,7 @@ function setup() {
     [[ ${OPTIONS["--something"]} = "blah" ]]
 }
 
-@test "string option, quoted space-containing string" {
+@test "string option: quoted space-containing string" {
 
     declare -a ARGS
     declare -A OPTIONS
@@ -167,7 +198,7 @@ function setup() {
     [[ ${OPTIONS["--something"]} = "one two three" ]]
 }
 
-@test "identical string options, last wins" {
+@test "string option: identical string options, last wins" {
 
     declare -a ARGS
     declare -A OPTIONS
@@ -182,7 +213,7 @@ function setup() {
     [[ ${OPTIONS["--color"]} = "blue" ]]
 }
 
-@test "multiple string options, of which some are identical, last wins" {
+@test "string option: multiple string options, of which some are identical, last wins" {
 
     declare -a ARGS
     declare -A OPTIONS
@@ -199,7 +230,7 @@ function setup() {
     [[ ${OPTIONS["--shape"]} = "square" ]]
 }
 
-@test "string option, missing value" {
+@test "string option: missing value" {
 
     declare -a ARGS
     declare -A OPTIONS
@@ -211,7 +242,7 @@ function setup() {
     [[ ${output} =~ "missing --something string value" ]]
 }
 
-@test "string option, missing value (2)" {
+@test "string option: missing value (2)" {
 
     declare -a ARGS
     declare -A OPTIONS
@@ -223,69 +254,7 @@ function setup() {
     [[ ${output} =~ "missing --something string value" ]]
 }
 
-@test "string option" {
-
-    declare -a ARGS
-    declare -A OPTIONS
-    OPTIONS["--something"]="string"
-
-    #
-    # we don't use "run" because we need to execute the function in the same shell, so we share the associative array
-    #
-    process-options --something blah || exit 1
-
-    [[ ${#OPTIONS[@]} -eq 1 ]]
-    [[ ${OPTIONS["--something"]} = "blah" ]]
-}
-
-@test "string option, quoted space-containing string" {
-
-    declare -a ARGS
-    declare -A OPTIONS
-    OPTIONS["--something"]="string"
-
-    #
-    # we don't use "run" because we need to execute the function in the same shell, so we share the associative array
-    #
-    process-options --something "one two three" || exit 1
-
-    [[ ${#OPTIONS[@]} -eq 1 ]]
-    [[ ${OPTIONS["--something"]} = "one two three" ]]
-}
-
-@test "identical string options, last wins" {
-
-    declare -a ARGS
-    declare -A OPTIONS
-    OPTIONS["--color"]="string"
-
-    #
-    # we don't use "run" because we need to execute the function in the same shell, so we share the associative array
-    #
-    process-options --color red --color blue || exit 1
-
-    [[ ${#OPTIONS[@]} -eq 1 ]]
-    [[ ${OPTIONS["--color"]} = "blue" ]]
-}
-
-@test "multiple string options, of which some are identical, last wins" {
-
-    declare -a ARGS
-    declare -A OPTIONS
-    OPTIONS["--color"]="string"
-    OPTIONS["--shape"]="string"
-
-    #
-    # we don't use "run" because we need to execute the function in the same shell, so we share the associative array
-    #
-    process-options --color red --shape square --color blue || exit 1
-
-    [[ ${#OPTIONS[@]} -eq 2 ]]
-    [[ ${OPTIONS["--color"]} = "blue" ]]
-    [[ ${OPTIONS["--shape"]} = "square" ]]
-}
-
-@test "integer option, missing value" {
+@test "integer option: missing value" {
 
     declare -a ARGS
     declare -A OPTIONS
@@ -297,7 +266,7 @@ function setup() {
     [[ ${output} =~ "missing --something integer value" ]]
 }
 
-@test "integer option, missing value (2)" {
+@test "integer option: missing value (2)" {
 
     declare -a ARGS
     declare -A OPTIONS
@@ -324,7 +293,7 @@ function setup() {
     [[ ${OPTIONS["--something"]} -eq 15 ]]
 }
 
-@test "integer option, value not an integer" {
+@test "integer option: value not an integer" {
 
     declare -a ARGS
     declare -A OPTIONS
@@ -336,7 +305,7 @@ function setup() {
     [[ ${output} =~ "--something requires an integer value but got 'blah'" ]]
 }
 
-@test "integer option, quoted value" {
+@test "integer option: quoted value" {
 
     declare -a ARGS
     declare -A OPTIONS
@@ -351,7 +320,7 @@ function setup() {
     [[ ${OPTIONS["--something"]} -eq 12 ]]
 }
 
-@test "identical integer options, last wins" {
+@test "integer option: identical integer options, last wins" {
 
     declare -a ARGS
     declare -A OPTIONS
@@ -366,7 +335,7 @@ function setup() {
     [[ ${OPTIONS["--size"]} = 8 ]]
 }
 
-@test "multiple integer options, of which some are identical, last wins" {
+@test "integer option: multiple integer options, of which some are identical, last wins" {
 
     declare -a ARGS
     declare -A OPTIONS
@@ -396,6 +365,7 @@ function setup() {
     #
     # we don't use "run" because we need to execute the function in the same shell, so we share the associative array
     #
+    #export VERBOSE=true; export DEBUG_OUTPUT=~/tmp/bats.out
     process-options --color blue --shape circle --size 3 --price 9 --discount --color red --size 5 || exit 1
 
     [[ ${#OPTIONS[@]} -eq 5 ]]
