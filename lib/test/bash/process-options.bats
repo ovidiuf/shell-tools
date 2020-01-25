@@ -425,7 +425,6 @@ function setup() {
     [[ ${ARGS[4]} = "e" ]]
 }
 
-
 @test "string option with aliases" {
 
     declare -a ARGS
