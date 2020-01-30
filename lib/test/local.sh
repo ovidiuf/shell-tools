@@ -4,6 +4,20 @@
 
 VERBOSE=true
 DRY_RUN=true
-execute $(dirname $0)/bash/data/execute/target-command false --target-command-dry-run
+
+
+if s=$(input string "please provide a color"); then
+    #
+    # success
+    #
+    echo "s: ${s}"
+else
+    #
+    # input failure, an error message was already sent to stderr
+    #
+    echo "bummer, s: ${s}"
+fi
+
+
 
 

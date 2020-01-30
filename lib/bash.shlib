@@ -346,6 +346,40 @@ function debug-file() {
 }
 
 #
+# Read a line interactively from stdin and convert it according to the specified type.
+#
+# Type:
+# * string
+# * secret (a string that does not get echoed out at stdin, and for which a confirmation is required)
+# * integer
+# * boolean
+#
+# The function returns the validated value to stdout and a zero return code.
+# If validation fails, or some other error the function returns an empty string at stdout, an error string at stderr
+# and a non-zero error code.
+#
+# Example:
+#
+# local color
+# if color=$(input string "please provide a color"); then
+#     #
+#     # success
+#     #
+#     echo "color: ${color}"
+# else
+#     #
+#     # input failure, an error message was already sent to stderr
+#     #
+#     ...
+# fi
+#
+function input() {
+
+    debug "${FUNCNAME[0]}($@)"
+    return 1
+}
+
+#
 # Creates a temporary directory with a random name (in a designated temporary area of the filesystem, usually /tmp) and
 # returns its name. The caller must insure the directory is removed if not useful anymore, otherwise they will
 # accumulate.
