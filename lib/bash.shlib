@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-BASH_SHLIB_VERSION=1.4.0
+BASH_SHLIB_VERSION=1.5.0
 
 #
 # Generic bash functionality
