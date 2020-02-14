@@ -354,9 +354,14 @@ function debug-file() {
 # * integer
 # * boolean
 #
+# The function renders the prompt followed by a ": ", which does not need to be added to the prompt argument.
+#
 # The function returns the validated value to stdout and a zero return code.
+#
 # If validation fails, or some other error the function returns an empty string at stdout, an error string at stderr
 # and a non-zero error code.
+#
+# If the function receives Ctrl-C while it is waiting for input, the whole shell exits.
 #
 # Example:
 #
@@ -368,15 +373,61 @@ function debug-file() {
 #     echo "color: ${color}"
 # else
 #     #
-#     # input failure, an error message was already sent to stderr
+#     # input failure, an error message was already sent to stderr; for Ctrl-C, the whole shell exits.
 #     #
 #     ...
 # fi
 #
+
+
+#
+# TODO: incomplete implementation
+#
 function input() {
 
     debug "${FUNCNAME[0]}($@)"
-    return 1
+
+    local type=$1
+    shift
+    local prompt="$@"
+
+    [[ -z ${type} ]] && fail "${FUNCNAME[0]}(): a type (string, secret, integer, boolean) is required"
+    [[ ${type} != "string" && ${type} != "secret" ]] && fail "invalid type ${type}. Only string, secret, integer and boolean are supported."
+
+    local input
+
+#    if [[ ${type} = "secret" ]]; then
+#        if read -s -p "${prompt}: " input; then
+#            debug "successful secret first input: ***"
+#            local input2
+#            if read -s -p "enter the same value one more time for validation: " input2; then
+#                debug "successful secret second input: ***"
+#                if [[ ${input} != ${input2} ]]; then
+#                    fail "secret values do not match"
+#                fi
+#            else
+#                fail "read exit with a non-zero error code (Ctrl-C, etc.)"
+#            fi
+#        else
+#            fail "read exit with a non-zero error code (Ctrl-C, etc.)"
+#        fi
+#    fi
+
+    if read -p "${prompt}: " input; then
+        if [[ ${type} = "string" ]]; then
+            debug "successful string input: ${input}"
+        elif [[ ${type} = "integer" ]]; then
+            debug "successful input: ${input}"
+        elif [[ ${type} = "boolean" ]]; then
+            debug "successful input: ${input}"
+        else
+            fail "invalid type ${type}. Only string, secret, integer and boolean are supported."
+        fi
+    else
+        fail "read exit with a non-zero error code (Ctrl-C, etc.)"
+    fi
+    echo "${input}"
+    return 0
 }
 
 #

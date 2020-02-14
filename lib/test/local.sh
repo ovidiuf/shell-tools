@@ -3,19 +3,19 @@
 [[ -f $(dirname $0)/../bash.shlib ]] && source $(dirname $0)/../bash.shlib || { echo "$(dirname $0)/../bash.shlib not found" 1>&2; exit 1; }
 
 VERBOSE=true
-DRY_RUN=true
+#DRY_RUN=true
 
 
-if s=$(input string "please provide a color"); then
+if s=$(input string "please provide a secret"); then
     #
     # success
     #
-    echo "s: ${s}"
+    echo "success: ${s}"
 else
     #
     # input failure, an error message was already sent to stderr
     #
-    echo "bummer, s: ${s}"
+    echo "failure: ${s}"
 fi
 
 
