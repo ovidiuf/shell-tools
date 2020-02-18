@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+GRADLE_SHLIB_VERSION=0.1.0
+
 #
 # return classpath at stdout. Gradle needs to be configured with a printClasspath task:
 #
@@ -15,4 +17,9 @@
 function get-gradle-runtime-classpath() {
 
     (cd $(dirname $0)/..; gradle -q printClasspath)
+}
+
+function main() {
+
+    java -cp ${CLASSPATH} ${MAIN_CLASS} "$@"
 }
