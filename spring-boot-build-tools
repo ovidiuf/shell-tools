@@ -2,6 +2,7 @@
 
 [[ -f $(dirname $0)/lib/bash.shlib ]] && . $(dirname $0)/lib/bash.shlib || { echo "$(dirname $0)/lib/bash.shlib not found" 1>&2; exit 1; }
 [[ -f $(dirname $0)/lib/java.shlib ]] && . $(dirname $0)/lib/java.shlib || { echo "$(dirname $0)/lib/java.shlib not found" 1>&2; exit 1; }
+[[ -f $(dirname $0)/lib/gradle/gradle.shlib ]] && . $(dirname $0)/lib/gradle/gradle.shlib || { echo "$(dirname $0)/lib/gradle/gradle.shlib" 1>&2; exit 1; }
 
 function display-help() {
 
@@ -153,20 +154,28 @@ function do-run() {
 
     check-whether-we-are-in-project-home-or-fail ${lib_dir}
 
-    local jar=$(get-jar-in-dir ${lib_dir})
+    local classpath
 
-    [[ -z "${jar}" ]] && fail "no JAR found in ${lib_dir}"
+    classpath=$(get-classpath ${lib_dir}) || exit 1
 
     #
-    # if this is an executable JAR, execute as is, otherwise apply heuristics to figure out the class to execute
+    # if the classpath is a single executable JAR, execute as is, otherwise apply heuristics to figure out the class
+    # to execute
     #
 
     local main_class
+    local classpath_arg
 
-    if ! is-executable-jar ${jar}; then
+    if is-executable-jar ${classpath}; then
+
+        classpath_arg="-jar ${classpath}"
+
+    else
 
         main_class=$(get-main-class ./src/main/java) || exit 1
-        [[ -z ${main_class} ]] && fail "${jar} is not an executable JAR and we cannot infer the main class from the context"
+        [[ -z ${main_class} ]] && fail "${classpath} is not an executable JAR and we cannot infer the main class from the context"
+        classpath_arg="-cp ${classpath}"
+
     fi
 
     if ${debug}; then
@@ -182,18 +191,23 @@ function do-run() {
 
     local active_profile=$(get-active-profile-from-rconfig)
 
+    debug "active profile: ${active_profile}"
+
     [[ -n "${active_profile}" ]] && active_profile_command_line="-Dspring.profiles.active=${active_profile}"
 
     local java_command
 
     if [[ -n ${main_class} ]]; then
 
-        java ${debug_args} ${active_profile_command_line} -cp "${jar}" ${main_class} ${debug_flag} ${trace_flag} ${args}
+        java_command="java ${debug_args} ${active_profile_command_line} ${classpath_arg} ${main_class} ${debug_flag} ${trace_flag} ${args}"
 
     else
 
-        java ${debug_args} ${active_profile_command_line} -jar "${jar}" ${debug_flag} ${trace_flag} ${args}
+        java_command="java ${debug_args} ${active_profile_command_line} ${classpath_arg} ${debug_flag} ${trace_flag} ${args}"
     fi
+
+    debug ${java_command}
+    ${java_command}
 
 #    [ -z "${MAIN_CLASS}" ] && { echo "MAIN_CLASS variable not defined by the calling script" 1>&2; exit 1; }
 #    [ -z "${CLASSPATH}" ] && { echo "CLASSPATH variable not defined by the calling script" 1>&2; exit 1; }
@@ -262,6 +276,31 @@ function check-whether-we-are-in-project-home-or-fail() {
 }
 
 #
+# Sends to stdout the classpath, ready to be used in java's -cp option. The classpath may consist in just one single
+# executable JAR, or multiple semicolon-separated JARs.
+#
+function get-classpath() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    local classpath
+
+    if is-gradle-project $(pwd); then
+
+        classpath=$(get-gradle-runtime-classpath $(pwd)) || fail "failed to get Gradle runtime classpath"
+
+    fi
+
+    local lib_dir=$1
+    local jar=$(get-jar-in-dir ${lib_dir})
+    [[ -z "${jar}" ]] && fail "no JAR found in ${lib_dir}"
+
+    [[ -z ${classpath} ]] && classpath=${jar} || classpath="${classpath}:${jar}"
+
+    echo ${classpath}
+}
+
+#
 # Look for - and return at stdout - a JAR in directory passed as argument. Return an empty string at stdout
 # if no JAR is found. There is no guarantee that the returned JAR is an "executable" JAR.
 #
@@ -314,8 +353,10 @@ function get-main-class() {
     fi
 }
 
-# return empty string if .rconfig does not esist or it does not contain an active profile
+# return empty string if .rconfig does not exist or it does not contain an active profile
 function get-active-profile-from-rconfig() {
+
+    debug "${FUNCNAME[0]}($@)"
 
     [[ ! -f ${RCONFIG_FILE} ]] && return 0;
 
