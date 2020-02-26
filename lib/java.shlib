@@ -10,7 +10,7 @@ typeset -F | grep "declare -f debug" > /dev/null 2>&1 || { echo "[failure]: java
 
 #
 # Return 0 is the JAR exists, contains a valid MANIFEST.MF with a Main-Class: entry, and the corresponding Main-Class
-# exits in the JAR.
+# exits in the JAR. Note that the argument may be an entire classpath.
 #
 function is-executable-jar() {
 
@@ -19,6 +19,11 @@ function is-executable-jar() {
     local jar_file=$1
 
     [[ -z ${jar_file} ]] && fail "'jar_file' not provided"
+
+    if echo ${jar_file} | grep -q ":"; then
+        debug "classpath provided"
+        return 1
+    fi 
 
     local jar_file_abs_path
     jar_file_abs_path=$(to-absolute-path ${jar_file}) || exit 1
