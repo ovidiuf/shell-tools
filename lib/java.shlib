@@ -23,7 +23,7 @@ function is-executable-jar() {
     if echo ${jar_file} | grep -q ":"; then
         debug "classpath provided"
         return 1
-    fi 
+    fi
 
     local jar_file_abs_path
     jar_file_abs_path=$(to-absolute-path ${jar_file}) || exit 1
