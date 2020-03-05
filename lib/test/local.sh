@@ -6,18 +6,10 @@ VERBOSE=true
 #DRY_RUN=true
 
 
-if s=$(input string "please provide a secret"); then
-    #
-    # success
-    #
-    echo "success: ${s}"
-else
-    #
-    # input failure, an error message was already sent to stderr
-    #
-    echo "failure: ${s}"
-fi
+declare -a VALUES
+VALUES=("A" "B" "C")
 
-
+index=$(index-of VALUES "B")
+echo ${index}
 
 

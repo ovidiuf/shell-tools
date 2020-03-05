@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-BASH_SHLIB_VERSION=1.5.0
+BASH_SHLIB_VERSION=1.6.0
 
 #
 # Generic bash functionality
@@ -120,10 +120,12 @@ function process-common-arguments() {
 #
 # If, for example, the arguments are "--debug --path something", 'OPTIONS' content will be:
 #
-# OPTIONS["--path"]="something"
-# OPTIONS["--debug"]="true"
+#   ${OPTIONS["--path"]} = "something"
+#   ${OPTIONS["--debug"]} = "true"
 #
-# TODO: Introduce equivalent --something=<value>, which should behave similarly to --something <value>
+# Optionally the arrays can be unsed with
+# unset ARGS
+# unset OPTIONS
 #
 function process-options() {
 
@@ -137,86 +139,114 @@ function process-options() {
     local opt_spec
     local match
     local type
-    local -a aliases
+    local -a ALIASES
     local args_index=0
-    local option
-    local option_argument
+    local arg
+    local value
     local do_not_shift=false
 
     declare -A results
     while [[ -n $1 ]]; do
-        option=$1
-        option_argument=""
+        arg=$1
         match=false
+        value=${arg#*=}
+
+        if [[ ${arg} != ${value} ]]; then
+            #
+            # equal sign used, the value is already obvious
+            #
+            arg=${arg%=*}
+        else
+            #
+            # no equal sign, the value will be determined below
+            #
+            value=""
+        fi
 
         for opt in "${!OPTIONS[@]}"; do
 
             opt_spec=${OPTIONS[${opt}]}
             type=${opt_spec%% *}
             opt_spec=${opt_spec#${type}}
-            read -r -a aliases <<< "${opt_spec}"
-            aliases[${#aliases[@]}]=${opt}
+            read -r -a ALIASES <<< "${opt_spec}"
+            ALIASES[${#ALIASES[@]}]=${opt}
 
-            for opt_alias in ${aliases[@]}; do
+            for opt_alias in ${ALIASES[@]}; do
 
-                if [[ ${option} = ${opt_alias} ]]; then
+                if [[ ${arg#${opt_alias}} != ${arg} ]]; then
                     #
-                    # option match - either the main option or an alias
+                    # ${arg} starts with ${opt_alias}, tentative match ...
                     #
-                    match=true
-                    if [[ ${type} = "boolean" ]]; then
-
+                    if [[ ${arg} != ${opt_alias} ]]; then
                         #
-                        # look ahead - if the next argument is "true" or "false", assign it to the option, otherwise
-                        # set the option to "true"
+                        # arg starts with the alias, but contains extra characters; if it is not an exact match of a
+                        # longer alias, then it is most likely misspelling
                         #
-                        [[ -z ${option_argument} ]] && { shift; option_argument=$1; }
-                        if [[ ${option_argument} = "true" ]]; then
-                            results[${opt}]="true"
-                        elif [[ ${option_argument} = "false" ]]; then
-                            results[${opt}]="false"
-                        else
-                            #
-                            # unrelated argument, default is true, but we also must avoid shifting again at the end of
-                            # the big loop, because at this moment $1 contains the next option and we do not want to
-                            # lose it
-                            #
-                            results[${opt}]="true"
-                            do_not_shift=true
-                        fi
-                        debug "${option} matched boolean option and it was assigned to ${results[${opt}]}"
-
-                    elif [[ ${type} = "string" ]]; then
-                        [[ -z ${option_argument} ]] && { shift; option_argument=$1; }
-                        [[ -z ${option_argument} || ${option_argument:0:1} = "-" ]] && { error "missing ${opt_alias} string value"; exit 1; }
-                        results[${opt}]="${option_argument}"
-                        debug "${option} ${type} value set to ${results[${opt}]}"
-                    elif [[ ${type} = "integer" ]]; then
-                        [[ -z ${option_argument} ]] && { shift; option_argument=$1; }
-                        [[ -z ${option_argument} || ${option_argument:0:1} = "-" ]] && { error "missing ${opt_alias} integer value"; exit 1; }
+                        local i=$(index-of ALIASES ${arg})
                         #
-                        # check it's integer
+                        # arg does not match a longer alias
                         #
-                        if ! expr ${option_argument} + 1 >/dev/null 2>&1; then
-                            error "${opt_alias} requires an integer value but got '${option_argument}'"
-                            exit 1
-                        fi
-                        results[${opt}]=${option_argument}
-                        debug "${option} ${type} value set to ${results[${opt}]}"
+                        [[ -z ${i} ]] && fail "${arg}: invalid syntax, use ${opt_alias}=<${type}> or ${opt_alias} <${type}>"
                     else
-                        error "${FUNCNAME[0]}(): invalid option type '${type}' for option ${opt_alias}"
-                        exit 1;
+                        #
+                        # option match - either the main option or an alias
+                        #
+                        match=true
+
+                        if [[ ${type} = "boolean" ]]; then
+
+                            #
+                            # look ahead - if the next argument is "true" or "false", assign it to the value, otherwise
+                            # set the value to "true"
+                            #
+                            [[ -z ${value} ]] && { shift; value=$1; }
+                            if [[ ${value} = "true" ]]; then
+                                results[${opt}]="true"
+                            elif [[ ${value} = "false" ]]; then
+                                results[${opt}]="false"
+                            else
+                                #
+                                # unrelated argument, default is true, but we also must avoid shifting again at the end
+                                # of the big loop, because at this moment $1 contains the next arg and we do not want to
+                                # lose it
+                                #
+                                results[${opt}]="true"
+                                do_not_shift=true
+                            fi
+                            debug "${arg} matched boolean option and it was assigned to ${results[${opt}]}"
+
+                        elif [[ ${type} = "string" ]]; then
+                            [[ -z ${value} ]] && { shift; value=$1; }
+                            [[ -z ${value} || ${value:0:1} = "-" ]] && { error "missing ${opt_alias} string value"; exit 1; }
+                            results[${opt}]="${value}"
+                            debug "${arg} ${type} value set to ${results[${opt}]}"
+                        elif [[ ${type} = "integer" ]]; then
+                            [[ -z ${value} ]] && { shift; value=$1; }
+                            [[ -z ${value} || ${value:0:1} = "-" ]] && { error "missing ${opt_alias} integer value"; exit 1; }
+                            #
+                            # check it's integer
+                            #
+                            if ! expr ${value} + 1 >/dev/null 2>&1; then
+                                error "${opt_alias} requires an integer value but got '${value}'"
+                                exit 1
+                            fi
+                            results[${opt}]=${value}
+                            debug "${arg} ${type} value set to ${results[${opt}]}"
+                        else
+                            error "${FUNCNAME[0]}(): invalid option type '${type}' for option ${opt_alias}"
+                            exit 1;
+                        fi
+                        #
+                        # do not break, continue processing, the last match wins
+                        #
                     fi
-                    #
-                    # do not break, continue processing, the last match wins
-                    #
                 fi
             done
         done
 
         if ! ${match}; then
-            debug "${option} matches no option, will be added to ARGS"
-            ARGS[${args_index}]=${option}
+            debug "$1 matches no option, will be added to ARGS"
+            ARGS[${args_index}]=$1
             ((args_index++))
         fi
 
@@ -244,9 +274,17 @@ function process-options() {
 
 #
 # By default, the function assumes that everything found in the ARGS indexed array are unknown arguments and exits the
-# current shell with an error message and a non-zero exit code. If an optional argument is provided, is interpreted
-# as the index in the ARGS array from which unknown arguments are present. If there are such arguments, exit the current
-# shell with an error code.
+# current shell with a default error message ("unknown argument(s): ...") and a non-zero exit code.
+#
+# The behavior in respect to what arguments in ARGS are considered unknown, and what error message to generate can
+# be configured as follows:
+#
+# If there is a first argument, and it is an integer, the argument is interpreted as the index in the ARGS array from
+# which unknown arguments are present, and ff there are such arguments, exit the current shell with an error code.
+#
+# If there is a second argument, or the first argument is not an integer, they are interpreted as custom error message
+# prefix. The custom error message prefix is rendered verbatim without any additions or subtractions, followed by an
+# empty space, followed by the list of offending arguments, if any. An error message that contains spaces must be quoted.
 #
 function fail-on-unknown-arguments() {
 
@@ -254,10 +292,27 @@ function fail-on-unknown-arguments() {
 
     [[ ${#ARGS[@]} -eq 0 ]] && return 0
 
-    local i=$1
-    [[ -z ${i} ]] && i=0 # we assume all arguments are unknown
+    local i=0 # default behavior is to assume that all ARGS arguments are unknown
+    local error_message_prefix="unknown argument(s):"
 
-    expr ${i} + 1 >/dev/null || fail "invalid array index: ${i}"
+    if [[ -n $1 ]]; then
+
+        if expr $1 + 1 >/dev/null; then
+            #
+            # index
+            #
+            i=$1
+
+            [[ -n $2 ]] && error_message_prefix=$2
+        else
+            #
+            # the first argument is an error message prefix candidate, but not if there are two or more arguments;
+            # in this case, the first argument is interpreted as invalid array index
+            #
+            [[ -n $2 ]] && fail "invalid array index: $1"
+            error_message_prefix=$1
+        fi
+    fi
 
     local unknown_args
 
@@ -268,7 +323,7 @@ function fail-on-unknown-arguments() {
 
     [[ -z ${unknown_args} ]] && return 0
 
-    error "unknown argument(s): ${unknown_args}"
+    error "${error_message_prefix} ${unknown_args}"
     exit 1
 }
 #
@@ -686,4 +741,45 @@ function is-nfs-url() {
     local path=${url2#${host}}
     echo "${host} ${path}"
     return 0
+}
+
+#
+# Array functions
+#
+
+#
+# Return the index of the first array element equal to the function's second argument.
+#
+# First argument is the name of the array.
+# Second argument is the value to be found.
+#
+# The array must be previously declared with "declare -a", otherwise the function returns a 2 exit code.
+#
+# The function returns a zero exit code and sends a valid index at stdout, if the value is found.
+# The function returns a 1 as exit code and does not send anything at stdout if the value is not found.
+#
+# Usage:
+#
+#       declare -a VALUES
+#       VALUES=("A" "B" "C")
+#       local i
+#       i=$(index-of VALUES "B")
+#
+function index-of() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    local array_variable_name=$1
+    [[ -z ${array_variable_name} ]] && fail "array name not provided"
+    declare -a | grep -q "declare -a ${array_variable_name}" || return 2
+    local value=$2
+    [[ -z ${value} ]] && fail "value not provided"
+
+    local name="${array_variable_name}[@]"
+    local i=0
+    for v in ${!name}; do
+        [[ ${value} = ${v} ]] && { echo ${i}; return 0; }
+        ((i++))
+    done
+    return 1
 }
