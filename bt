@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+
+OUTPUT_FILE=~/tmp/bats.out
+
+function usage() {
+cat << EOF
+
+Thin wrapper around bats, which helps with debugging: it removes ${OUTPUT_FILE}, runs the specified test and then
+displays ${OUTPUT_FILE} content.
+
+Usage:
+
+    $(basename $0) <BATS-test-path>
+
+
+The test path is relative to the current directory.
+EOF
+}
+function main() {
+
+    local bats_test_file=$1
+
+    [[ -z ${bats_test_file} ]] && { usage; exit 0; }
+
+    [[ -f ${bats_test_file} ]] || { echo "BATS test file does not exist: ${bats_test_file}" 1>&2; exit 1; }
+
+    [[ -f ${OUTPUT_FILE} ]] && rm ${OUTPUT_FILE}
+
+    local command="bats ${bats_test_file}"
+
+    clear
+    echo ${command}
+    ${command}
+    echo "#"
+    echo "# ${OUTPUT_FILE} file content:"
+    echo "#"
+    cat ${OUTPUT_FILE}
+}
+
+main "$@"
