@@ -1084,5 +1084,43 @@ function setup() {
     [[ ${#ARGS[@]} -eq 0 ]]
 }
 
+@test "an option is the prefix of another, unrelated option (1)" {
+
+    declare -a ARGS
+    declare -A OPTIONS
+
+    OPTIONS["--A"]="string"
+    OPTIONS["--AB"]="string"
+
+    #
+    # we don't use "run" because we need to execute the function in the same shell, so we share the associative array
+    #
+    #export VERBOSE=true; export DEBUG_OUTPUT=~/tmp/bats.out
+    process-options --AB something || exit 1
+
+    [[ ${#OPTIONS[@]} -eq 1 ]]
+    [[ ${OPTIONS["--AB"]} = "something" ]]
+    [[ ${#ARGS[@]} -eq 0 ]]
+}
+
+@test "an option is the prefix of another, unrelated option (2)" {
+
+    declare -a ARGS
+    declare -A OPTIONS
+
+    OPTIONS["--A"]="string"
+    OPTIONS["--AB"]="string"
+
+    #
+    # we don't use "run" because we need to execute the function in the same shell, so we share the associative array
+    #
+    #export VERBOSE=true; export DEBUG_OUTPUT=~/tmp/bats.out
+    process-options --A something || exit 1
+
+    [[ ${#OPTIONS[@]} -eq 1 ]]
+    [[ ${OPTIONS["--A"]} = "something" ]]
+    [[ ${#ARGS[@]} -eq 0 ]]
+}
+
 
 

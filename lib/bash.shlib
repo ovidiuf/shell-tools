@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-BASH_SHLIB_VERSION=1.6.0
+BASH_SHLIB_VERSION=1.7.0
 
 #
 # Generic bash functionality
@@ -144,11 +144,13 @@ function process-options() {
     local arg
     local value
     local do_not_shift=false
+    local current_arg_processed=false
 
     declare -A results
     while [[ -n $1 ]]; do
         arg=$1
         match=false
+        current_arg_processed=false
         value=${arg#*=}
 
         if [[ ${arg} != ${value} ]]; then
@@ -164,6 +166,8 @@ function process-options() {
         fi
 
         for opt in "${!OPTIONS[@]}"; do
+
+            ${current_arg_processed} && break
 
             opt_spec=${OPTIONS[${opt}]}
             type=${opt_spec%% *}
@@ -201,44 +205,47 @@ function process-options() {
                             #
                             [[ -z ${value} ]] && { shift; value=$1; }
                             if [[ ${value} = "true" ]]; then
-                                results[${opt}]="true"
+                                value="true"
                             elif [[ ${value} = "false" ]]; then
-                                results[${opt}]="false"
+                                value="false"
                             else
                                 #
                                 # unrelated argument, default is true, but we also must avoid shifting again at the end
                                 # of the big loop, because at this moment $1 contains the next arg and we do not want to
                                 # lose it
                                 #
-                                results[${opt}]="true"
+                                value="true"
                                 do_not_shift=true
                             fi
-                            debug "${arg} matched boolean option and it was assigned to ${results[${opt}]}"
+                            debug "${arg} matched boolean option"
 
                         elif [[ ${type} = "string" ]]; then
                             [[ -z ${value} ]] && { shift; value=$1; }
                             [[ -z ${value} || ${value:0:1} = "-" ]] && { error "missing ${opt_alias} string value"; exit 1; }
-                            results[${opt}]="${value}"
-                            debug "${arg} ${type} value set to ${results[${opt}]}"
+
                         elif [[ ${type} = "integer" ]]; then
                             [[ -z ${value} ]] && { shift; value=$1; }
                             [[ -z ${value} || ${value:0:1} = "-" ]] && { error "missing ${opt_alias} integer value"; exit 1; }
                             #
-                            # check it's integer
+                            # check it is integer
                             #
                             if ! expr ${value} + 1 >/dev/null 2>&1; then
                                 error "${opt_alias} requires an integer value but got '${value}'"
                                 exit 1
                             fi
-                            results[${opt}]=${value}
-                            debug "${arg} ${type} value set to ${results[${opt}]}"
+
                         else
                             error "${FUNCNAME[0]}(): invalid option type '${type}' for option ${opt_alias}"
                             exit 1;
                         fi
+
+                        debug "${arg} ${type} value set to '${value}'"
+                        results[${opt}]="${value}"
+                        current_arg_processed=true
                         #
-                        # do not break, continue processing, the last match wins
+                        # break, we're done with the current argument
                         #
+                        break
                     fi
                 fi
             done
@@ -332,8 +339,8 @@ function fail-on-unknown-arguments() {
 #
 function fail() {
 
-    echo ${FAIL_HEADER} $@ 1>&2
-    [[ -n ${DEBUG_OUTPUT} ]] && echo ${FAIL_HEADER} $@ >> ${DEBUG_OUTPUT}
+    echo ${FAIL_HEADER} "$@" 1>&2
+    [[ -n ${DEBUG_OUTPUT} ]] && echo ${FAIL_HEADER} "$@" >> ${DEBUG_OUTPUT}
     exit 255
 }
 
@@ -343,8 +350,8 @@ function fail() {
 #
 function error {
 
-    echo ${ERROR_HEADER} $@ 1>&2
-    [[ -n ${DEBUG_OUTPUT} ]] && echo ${ERROR_HEADER} $@ >> ${DEBUG_OUTPUT}
+    echo ${ERROR_HEADER} "$@" 1>&2
+    [[ -n ${DEBUG_OUTPUT} ]] && echo ${ERROR_HEADER} "$@" >> ${DEBUG_OUTPUT}
     return 0
 }
 
@@ -354,8 +361,8 @@ function error {
 #
 function warn {
 
-    echo ${WARNING_HEADER} $@ 1>&2
-    [[ -n ${DEBUG_OUTPUT} ]] && echo ${WARNING_HEADER} $@ >> ${DEBUG_OUTPUT}
+    echo ${WARNING_HEADER} "$@" 1>&2
+    [[ -n ${DEBUG_OUTPUT} ]] && echo ${WARNING_HEADER} "$@" >> ${DEBUG_OUTPUT}
     return 0
 }
 
@@ -365,8 +372,8 @@ function warn {
 #
 function info {
 
-    echo $@ 1>&2
-    [[ -n ${DEBUG_OUTPUT} ]] && echo $@ >> ${DEBUG_OUTPUT}
+    echo "$@" 1>&2
+    [[ -n ${DEBUG_OUTPUT} ]] && echo "$@" >> ${DEBUG_OUTPUT}
     return 0
 }
 
@@ -380,7 +387,7 @@ function info {
 function debug() {
 
     ! ${VERBOSE} && return 0
-    [[ -z ${DEBUG_OUTPUT} ]] && echo $@ 1>&2 || echo $@ >> ${DEBUG_OUTPUT}
+    [[ -z ${DEBUG_OUTPUT} ]] && echo "$@" 1>&2 || echo "$@" >> ${DEBUG_OUTPUT}
     return 0
 }
 
