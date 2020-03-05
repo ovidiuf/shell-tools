@@ -31,10 +31,15 @@ function main() {
     clear
     echo ${command}
     ${command}
-    echo "#"
-    echo "# ${OUTPUT_FILE} file content:"
-    echo "#"
-    cat ${OUTPUT_FILE}
+
+    if [[ -f ${OUTPUT_FILE} ]]; then
+        echo "#"
+        echo "# ${OUTPUT_FILE} file content:"
+        echo "#"
+        cat ${OUTPUT_FILE}
+    else
+        echo "no ${OUTPUT_FILE} generated"
+    fi
 }
 
 main "$@"
