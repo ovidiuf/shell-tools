@@ -145,6 +145,7 @@ function process-options() {
     local value
     local do_not_shift=false
     local current_arg_processed=false
+    local potential_misspelling_heuristics_msg
 
     declare -A results
     while [[ -n $1 ]]; do
@@ -190,7 +191,7 @@ function process-options() {
 
                 if [[ ${arg#${opt_alias}} != ${arg} ]]; then
 
-                    trace "        ${arg} starts with ${opt_alias}, potential match ..."
+                    trace "        arg ${arg} starts with ${opt_alias}, potential match ..."
 
                     if [[ ${arg} != ${opt_alias} ]]; then
                         #
@@ -199,9 +200,10 @@ function process-options() {
                         #
                         local i=$(index-of ALIASES ${arg})
                         #
-                        # arg does not match a longer alias
+                        # arg does not match a longer alias, potential misspelling, we'll decide to display at the
+                        # end if no other match was found
                         #
-                        [[ -z ${i} ]] && fail "${arg}: invalid syntax, use ${opt_alias}=<${type}> or ${opt_alias} <${type}>"
+                        [[ -z ${i} ]] && potential_misspelling_heuristics_msg="${arg}: invalid syntax, use ${opt_alias}=<${type}> or ${opt_alias} <${type}>"
                     else
                         #
                         # option match - either the main option or an alias
