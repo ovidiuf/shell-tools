@@ -189,9 +189,9 @@ function process-options() {
                 trace "        alias: ${opt_alias}"
 
                 if [[ ${arg#${opt_alias}} != ${arg} ]]; then
-                    #
-                    # ${arg} starts with ${opt_alias}, tentative match ...
-                    #
+
+                    trace "        ${arg} starts with ${opt_alias}, potential match ..."
+
                     if [[ ${arg} != ${opt_alias} ]]; then
                         #
                         # arg starts with the alias, but contains extra characters; if it is not an exact match of a
