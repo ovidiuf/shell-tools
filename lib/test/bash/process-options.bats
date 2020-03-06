@@ -1084,7 +1084,26 @@ function setup() {
     [[ ${#ARGS[@]} -eq 0 ]]
 }
 
-@test "an option is the prefix of another, unrelated option (1)" {
+@test "an option is the prefix of another, but they are unrelated: listed as opt1, opt2, testing opt1" {
+
+    declare -a ARGS
+    declare -A OPTIONS
+
+    OPTIONS["--A"]="string"
+    OPTIONS["--AB"]="string"
+
+    #
+    # we don't use "run" because we need to execute the function in the same shell, so we share the associative array
+    #
+    #export VERBOSE=true; export DEBUG_OUTPUT=~/tmp/bats.out
+    process-options --A something || exit 1
+
+    [[ ${#OPTIONS[@]} -eq 1 ]]
+    [[ ${OPTIONS["--A"]} = "something" ]]
+    [[ ${#ARGS[@]} -eq 0 ]]
+}
+
+@test "an option is the prefix of another, but they are unrelated: listed as opt1, opt2, testing opt2" {
 
     declare -a ARGS
     declare -A OPTIONS
@@ -1103,13 +1122,13 @@ function setup() {
     [[ ${#ARGS[@]} -eq 0 ]]
 }
 
-@test "an option is the prefix of another, unrelated option (2)" {
+@test "an option is the prefix of another, but they are unrelated: listed as opt2, opt1, testing opt1" {
 
     declare -a ARGS
     declare -A OPTIONS
 
-    OPTIONS["--A"]="string"
     OPTIONS["--AB"]="string"
+    OPTIONS["--A"]="string"
 
     #
     # we don't use "run" because we need to execute the function in the same shell, so we share the associative array
@@ -1119,6 +1138,25 @@ function setup() {
 
     [[ ${#OPTIONS[@]} -eq 1 ]]
     [[ ${OPTIONS["--A"]} = "something" ]]
+    [[ ${#ARGS[@]} -eq 0 ]]
+}
+
+@test "an option is the prefix of another, but they are unrelated: listed as opt2, opt1, testing opt2" {
+
+    declare -a ARGS
+    declare -A OPTIONS
+
+    OPTIONS["--AB"]="string"
+    OPTIONS["--A"]="string"
+
+    #
+    # we don't use "run" because we need to execute the function in the same shell, so we share the associative array
+    #
+    #export VERBOSE=true; export DEBUG_OUTPUT=~/tmp/bats.out
+    process-options --AB something || exit 1
+
+    [[ ${#OPTIONS[@]} -eq 1 ]]
+    [[ ${OPTIONS["--AB"]} = "something" ]]
     [[ ${#ARGS[@]} -eq 0 ]]
 }
 
