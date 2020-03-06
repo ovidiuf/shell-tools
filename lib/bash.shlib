@@ -174,7 +174,7 @@ function process-options() {
 
             ${current_arg_processed} && break
 
-            trace "opt: ${opt}"
+            trace "    opt: ${opt}"
 
             opt_spec=${OPTIONS[${opt}]}
             type=${opt_spec%% *}
@@ -182,9 +182,11 @@ function process-options() {
             read -r -a ALIASES <<< "${opt_spec}"
             ALIASES[${#ALIASES[@]}]=${opt}
 
-            trace "evaluating ${opt} aliases (${ALIASES[@]}) in this order"
+            trace "    evaluating ${opt} aliases (${ALIASES[@]}) in the listed order"
 
             for opt_alias in ${ALIASES[@]}; do
+
+                trace "        alias: ${opt_alias}"
 
                 if [[ ${arg#${opt_alias}} != ${arg} ]]; then
                     #
