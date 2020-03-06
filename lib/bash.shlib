@@ -145,13 +145,14 @@ function process-options() {
     local value
     local do_not_shift=false
     local current_arg_processed=false
-    local potential_misspelling_heuristics_msg
+    local local potential_misspelling_heuristics_msg
 
     declare -A results
     while [[ -n $1 ]]; do
         arg=$1
         match=false
         current_arg_processed=false
+        local potential_misspelling_heuristics_msg=""
         value=${arg#*=}
 
         trace "arg: ${arg}"
@@ -265,6 +266,9 @@ function process-options() {
         done
 
         if ! ${match}; then
+
+            [[ -n ${potential_misspelling_heuristics_msg} ]] && fail "${potential_misspelling_heuristics_msg}"
+
             debug "$1 matches no option, will be added to ARGS"
             ARGS[${args_index}]=$1
             ((args_index++))
