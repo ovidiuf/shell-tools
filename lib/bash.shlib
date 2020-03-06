@@ -7,6 +7,7 @@ BASH_SHLIB_VERSION=1.8.0
 #
 
 export VERBOSE=false
+export TRACE=false
 export HELP=false
 export SEPARATOR=$'\x1f' # US - unit separator
 export DEBUG_OUTPUT
