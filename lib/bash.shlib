@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-BASH_SHLIB_VERSION=1.7.0
+BASH_SHLIB_VERSION=1.8.0
 
 #
 # Generic bash functionality
@@ -153,6 +153,8 @@ function process-options() {
         current_arg_processed=false
         value=${arg#*=}
 
+        trace "arg: ${arg}"
+
         if [[ ${arg} != ${value} ]]; then
             #
             # equal sign used, the value is already obvious
@@ -165,15 +167,22 @@ function process-options() {
             value=""
         fi
 
+        trace "value: ${value}"
+        trace "evaluating options (${!OPTIONS[@]}) in this order"
+
         for opt in "${!OPTIONS[@]}"; do
 
             ${current_arg_processed} && break
+
+            trace "opt: ${opt}"
 
             opt_spec=${OPTIONS[${opt}]}
             type=${opt_spec%% *}
             opt_spec=${opt_spec#${type}}
             read -r -a ALIASES <<< "${opt_spec}"
             ALIASES[${#ALIASES[@]}]=${opt}
+
+            trace "evaluating ${opt} aliases (${ALIASES[@]}) in this order"
 
             for opt_alias in ${ALIASES[@]}; do
 
@@ -390,6 +399,17 @@ function debug() {
     [[ -z ${DEBUG_OUTPUT} ]] && echo "$@" 1>&2 || echo "$@" >> ${DEBUG_OUTPUT}
     return 0
 }
+
+#
+# If TRACE is set, send trace info at stderr (not to interfere with function returns) or to DEBUG_OUTPUT, if set.
+#
+function trace() {
+
+    ! ${TRACE} && return 0
+    [[ -z ${DEBUG_OUTPUT} ]] && echo "$@" 1>&2 || echo "$@" >> ${DEBUG_OUTPUT}
+    return 0
+}
+
 
 #
 # If VERBOSE is set, dump the content of the file given as argument at stderr (not to interfere with function returns)
