@@ -168,7 +168,7 @@ function process-options() {
         fi
 
         trace "value: ${value}"
-        trace "evaluating options (${!OPTIONS[@]}) in this order"
+        trace "evaluating all registered options (${!OPTIONS[@]}) in the listed order"
 
         for opt in "${!OPTIONS[@]}"; do
 
