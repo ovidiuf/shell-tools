@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-BASH_SHLIB_VERSION=1.8.0
+BASH_SHLIB_VERSION=1.9.0
 
 #
 # Generic bash functionality
@@ -599,6 +599,31 @@ function to-absolute-path() {
     abs_path=${abs_path%/.}
     echo ${abs_path}
 
+}
+
+#
+# Usage: has <command>
+#
+# Returns 0 if the <command> is available. Returns 1 otherwise. It can be a binary in the PATH or a shell function.
+#
+function has() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    type "$1" &>/dev/null
+}
+
+#
+# Usage: is_macOS
+#
+# Returns 0 if running on macOS. Returns 1 otherwise.
+#
+function is_macOS() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    [[ "$(uname)" = "Darwin" ]]
+    return $?
 }
 
 #
