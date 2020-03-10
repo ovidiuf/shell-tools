@@ -42,6 +42,8 @@ cd shell-tools/lib
 
 # TODO
 
+* to-absolute-path() should drop ".."s and "."s from path.
+
 * (.) shell-tools/lib/tests runner to replace all-tests from everywhere – capability to run directories, files and individual tests. Requirements:
 ** Same tool to run all tests in a directory, an individual file (collections of tests) and an individual test?
 ** Run in debug mode with --verbose , capability to specify the DEBUG_OUTPUT - need to be able to indentify what failed easier than today.

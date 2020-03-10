@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-BASH_SHLIB_VERSION=1.9.0
+BASH_SHLIB_VERSION=1.9.1
 
 #
 # Generic bash functionality
@@ -565,6 +565,8 @@ function get-tmp-file-name() {
 # Turns a relative path to absolute path, returning the absolute path at stdout.
 # If the path is already absolute, the function is a noop. The function does not attempt to validate the path in any
 # way.
+#
+# TODO: to-absolute-path() should drop ".."s and "."s from path
 #
 function to-absolute-path() {
 
