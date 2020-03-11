@@ -42,6 +42,7 @@ cd shell-tools/lib
 
 # TODO
 
+* Setting TRACE=true should imply VERBOSE=true without the need to explicitly set VERBOSE to true.
 * to-absolute-path() should drop ".."s and "."s from path.
 
 * (.) shell-tools/lib/tests runner to replace all-tests from everywhere – capability to run directories, files and individual tests. Requirements:
