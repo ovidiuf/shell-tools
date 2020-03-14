@@ -20,6 +20,14 @@ load bash-library
     [[ ${output} = "/something" ]]
 }
 
+@test "absolute path (2)" {
+
+    run to-absolute-path /something/somethingelse
+
+    [[ ${status} -eq 0 ]]
+    [[ ${output} = /something/somethingelse ]]
+}
+
 @test "relative path, no leading dot" {
 
     run to-absolute-path something
@@ -43,4 +51,21 @@ load bash-library
     [[ ${status} -eq 0 ]]
     [[ ${output} = "$(pwd)/../something" ]]
 }
+
+@test "current directory" {
+
+    run to-absolute-path .
+
+    [[ ${status} -eq 0 ]]
+    [[ ${output} = $(pwd -P) ]]
+}
+
+@test "intermediary dot " {
+
+    run to-absolute-path a/./b
+
+    [[ ${status} -eq 0 ]]
+    [[ ${output} = $(pwd -P)/a/b ]]
+}
+
 

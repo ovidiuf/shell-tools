@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-BASH_SHLIB_VERSION=1.9.1
+BASH_SHLIB_VERSION=1.9.2
 
 #
 # Generic bash functionality
@@ -584,23 +584,21 @@ function to-absolute-path() {
     else
 
         #
-        # relative
+        # we assume it's relative to the current directory
         #
 
         path=${path#./}
         abs_path=$(pwd)/${path}
     fi
 
-    debug "absolute path: ${abs_path}"
-
-
     #
-    # remove trailing /.
+    # remove trailing /. and intermediary .
     #
-
+    abs_path=${abs_path//\/.\///}
     abs_path=${abs_path%/.}
+    debug "${path} -> ${abs_path}"
     echo ${abs_path}
-
+    return 0
 }
 
 #
