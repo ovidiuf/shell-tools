@@ -701,6 +701,9 @@ function pull() {
 # local command="...."
 # execute "${command}" false --native-command-dry-run
 #
+# By default, the function calls exit on failure. To avoid exiting the current shell, invoke as follows:
+#
+#   (execute "...")
 #
 function execute {
 
