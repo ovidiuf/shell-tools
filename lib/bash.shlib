@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-BASH_SHLIB_VERSION=1.9.2
+BASH_SHLIB_VERSION=1.10.0
 
 #
 # Generic bash functionality
@@ -470,7 +470,6 @@ function debug-file() {
 # fi
 #
 
-
 #
 # TODO: incomplete implementation
 #
@@ -804,6 +803,28 @@ function is-nfs-url() {
     [[ ${host} = ${url2} ]] && fail "invalid NFS URL, not in host/path format: ${url}"
     local path=${url2#${host}}
     echo "${host} ${path}"
+    return 0
+}
+
+#
+# Return 0 if the URL is an S3 URL, 1 otherwise. The URL does not need to resolve.
+# If valid S3 URL, return a space separated list ast stdout: the first element is the bucket name and the second is the
+# folder path
+#
+function is-s3-url() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    local url=$1
+    [[ -z ${url} ]] && fail "${FUNCNAME[0]}(): 'url' not provided"
+
+    [[ ${url} = ${url#s3://} ]] && return 1
+
+    local url2=${url#s3://}
+    local bucket=${url2%%/*}
+    local path=${url2#${bucket}}
+    [[ ${path:0:1} = "/" ]] || path="/${path}"
+    echo "${bucket} ${path}"
     return 0
 }
 
