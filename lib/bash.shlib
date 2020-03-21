@@ -750,7 +750,14 @@ function execute {
 
 #
 # Return 0 if the URL is a local filesystem URL, non-zero value otherwise. The URL does not need to resolve.
-# If valid file URL, return the URL value (without the protocol specification) at stdout
+# If valid file URL, return the URL value (without the protocol specification) at stdout.
+#
+# Usage:
+#
+# local path
+# if path=$(is-file-url ...); then
+#    ...
+# fi
 #
 function is-file-url() {
 
@@ -773,6 +780,13 @@ function is-file-url() {
 # Return 0 if the URL is a http/https URL, 1 otherwise. The URL does not need to resolve.
 # If valid http/https URL, return the URL value at stdout
 #
+# Usage:
+#
+# local path
+# if path=$(is-http-url ...); then
+#    ...
+# fi
+#
 function is-http-url() {
 
     debug "${FUNCNAME[0]}($@)"
@@ -788,6 +802,13 @@ function is-http-url() {
 # Return 0 if the URL is a NFS URL, 1 otherwise. The URL does not need to resolve.
 # If valid NFS URL, return a space separated list ast stdout: the first element is the NFS host and the second is the
 # path
+#
+# Usage:
+#
+# local path
+# if path=$(is-nfs-url ...); then
+#    ...
+# fi
 #
 function is-nfs-url() {
 
@@ -811,6 +832,13 @@ function is-nfs-url() {
 # If valid S3 URL, return a space separated list ast stdout: the first element is the bucket name and the second is the
 # folder path
 #
+# Usage:
+#
+# local path
+# if path=$(is-s3-url ...); then
+#    ...
+# fi
+#
 function is-s3-url() {
 
     debug "${FUNCNAME[0]}($@)"
@@ -818,7 +846,7 @@ function is-s3-url() {
     local url=$1
     [[ -z ${url} ]] && fail "${FUNCNAME[0]}(): 'url' not provided"
 
-    [[ ${url} = ${url#s3://} ]] && return 1
+    [[ ${url} = ${url#s3://} ]] && { debug "not an s3:// URL: ${url}"; return 1; }
 
     local url2=${url#s3://}
     local bucket=${url2%%/*}

@@ -32,6 +32,14 @@ load bash-library
     [[ -z ${output} ]]
 }
 
+@test "not a S3 URL (4)" {
+
+    run is-s3-url ./a.zip
+
+    [[ ${status} -eq 1 ]]
+    [[ -z ${output} ]]
+}
+
 @test "S3 URL" {
 
     #export VERBOSE=true; DEBUG_OUTPUT=~/tmp/bats.out
