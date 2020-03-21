@@ -33,6 +33,14 @@ load bash-library
     [[ ${output} = "subdir1" ]]
 }
 
+@test "one subdirectory, deep structure" {
+
+    run get-the-only-subdir ${BATS_TEST_DIRNAME}/data/get-the-only-subdir/dir4
+
+    [[ ${status} -eq 0 ]]
+    [[ ${output} = "subdir1" ]]
+}
+
 @test "two subdirectories" {
 
     export VERBOSE=true; export TRACE=true; export DEBUG_OUTPUT=~/tmp/bats.out
