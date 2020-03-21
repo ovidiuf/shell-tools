@@ -521,6 +521,10 @@ function input() {
 }
 
 #
+# File functionality
+#
+
+#
 # Creates a temporary directory with a random name (in a designated temporary area of the filesystem, usually /tmp) and
 # returns its name. The caller must insure the directory is removed if not useful anymore, otherwise they will
 # accumulate.
@@ -599,6 +603,38 @@ function to-absolute-path() {
     echo ${abs_path}
     return 0
 }
+
+#
+# Given a directory, send to stdout the name of the only subdirectory, if only one subdirectory exists, or nothing
+# in any other case.
+# Return the following exit codes:
+# 0 if only one subdirectory exists
+# 1 if the parent directory does not exist
+# 2 if the parent directory exists but contains no directories
+# 3 if the parent directory exists and contains more than one directory
+#
+function get-the-only-subdir() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    local parent_dir=$1
+    [[ -z ${parent_dir} ]] && fail "'parent_dir' not provided"
+    [[ ! -d ${parent_dir} ]] && { debug "no such directory: ${parent_dir}"; return 1; }
+    local dir
+    for d in $(find ${parent_dir} -type d -mindepth 1); do
+        trace "d: ${d}"
+        [[ -n ${dir} ]] && return 3
+        dir=${d#${parent_dir}/}
+        trace "dir: ${dir}"
+    done
+    [[ -z ${dir} ]] && return 2
+    echo "${dir}"
+    return 0
+}
+
+#
+# END of File functionality
+#
 
 #
 # Usage: has <command>
