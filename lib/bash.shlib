@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-BASH_SHLIB_VERSION=1.10.0
+BASH_SHLIB_VERSION=1.10.1
 
 #
 # Generic bash functionality
@@ -621,7 +621,7 @@ function get-the-only-subdir() {
     [[ -z ${parent_dir} ]] && fail "'parent_dir' not provided"
     [[ ! -d ${parent_dir} ]] && { debug "no such directory: ${parent_dir}"; return 1; }
     local dir
-    for d in $(find ${parent_dir} -type d -mindepth 1 -maxdepth 1); do
+    for d in $(find ${parent_dir} -mindepth 1 -maxdepth 1 -type d); do
         trace "d: ${d}"
         [[ -n ${dir} ]] && return 3
         dir=${d#${parent_dir}/}
