@@ -944,3 +944,25 @@ function is-yq-2() {
     output=${output#*version }
     [[ ${output:0:1} = "2" ]] && return 0 || return 1
 }
+
+#
+# Returns 0 if the path exists in the file and has a non-empty value, a non-zero value otherwise. Does not fail
+# on unspecified or non-existent files.
+#
+# Works uniformly for both yq 2 and 3
+#
+function yq-path-exists() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    local file=$1
+    local path=$2
+
+    [[ -z ${file} ]] && return 1
+
+    local output
+    output=$(yq r ${file} ${path})
+    [[ -n ${output} && ${output} != "null" ]] && return 0 || return 1
+
+
+}
