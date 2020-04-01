@@ -2,14 +2,5 @@
 
 [[ -f $(dirname $0)/../bash.shlib ]] && source $(dirname $0)/../bash.shlib || { echo "$(dirname $0)/../bash.shlib not found" 1>&2; exit 1; }
 
-VERBOSE=true
-#DRY_RUN=true
 
-
-declare -a VALUES
-VALUES=("A" "B" "C")
-
-index=$(index-of VALUES "B")
-echo ${index}
-
-
+is-yq-2 && echo "is 2" || echo "is NOT 2"
