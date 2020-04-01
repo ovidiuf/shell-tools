@@ -951,7 +951,7 @@ function is-yq-2() {
 #
 # Works uniformly for both yq 2 and 3
 #
-function yq-path-exists() {
+function yaml-path-exists() {
 
     debug "${FUNCNAME[0]}($@)"
 
@@ -962,7 +962,9 @@ function yq-path-exists() {
 
     local output
     output=$(yq r ${file} ${path})
-    [[ -n ${output} && ${output} != "null" ]] && return 0 || return 1
+    [[ -n ${output} && ${output} != "null" ]] && \
+        { debug "path ${path} exists"; return 0; } || \
+        { debug "path ${path} does not exist"; return 1; }
 
 
 }

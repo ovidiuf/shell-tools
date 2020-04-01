@@ -2,7 +2,7 @@ load bash-library
 
 @test "file not provided" {
 
-    run yq-path-exists
+    run yaml-path-exists
 
     [[ ${status} -ne 0 ]]
     [[ -z ${output} ]]
@@ -15,7 +15,7 @@ load bash-library
         return 0
     }
 
-    run yq-path-exists mock no.such.path
+    run yaml-path-exists mock no.such.path
 
     [[ ${status} -ne 0 ]]
     [[ -z ${output} ]]
@@ -27,7 +27,7 @@ load bash-library
         return 0
     }
 
-    run yq-path-exists mock no.such.path
+    run yaml-path-exists mock no.such.path
 
     [[ ${status} -ne 0 ]]
     [[ -z ${output} ]]
@@ -40,7 +40,7 @@ load bash-library
         return 0
     }
 
-    run yq-path-exists mock exists.but.empty
+    run yaml-path-exists mock exists.but.empty
 
     [[ ${status} -ne 0 ]]
     [[ -z ${output} ]]
@@ -52,7 +52,7 @@ load bash-library
         return 0
     }
 
-    run yq-path-exists mock exists.but.empty
+    run yaml-path-exists mock exists.but.empty
 
     [[ ${status} -ne 0 ]]
     [[ -z ${output} ]]
@@ -65,7 +65,7 @@ load bash-library
         return 0
     }
 
-    run yq-path-exists mock exists
+    run yaml-path-exists mock exists
 
     [[ ${status} -eq 0 ]]
     [[ -z ${output} ]]
@@ -78,7 +78,7 @@ load bash-library
         return 0
     }
 
-    run yq-path-exists mock exists
+    run yaml-path-exists mock exists
 
     [[ ${status} -eq 0 ]]
     [[ -z ${output} ]]
