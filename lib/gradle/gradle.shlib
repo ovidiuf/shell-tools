@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-GRADLE_SHLIB_VERSION=0.1.0
+GRADLE_SHLIB_VERSION=0.1.1
 
 #
 # return 0 if the directory passed as argument is a Gradle project home, non-zero otherwise
@@ -33,9 +33,9 @@ function get-gradle-runtime-classpath() {
 
     local project_dir=$1
 
-    [[ -z ${project_dir} ]] && fail "'project_dir' not provided"
-    [[ -d ${project_dir} ]] || fail "project_dir not a directory: ${project_dir}"
-    [[ -f ${project_dir}/build.gradle ]] || fail "project_dir ${project_dir} not a Gradle project directory, build.gradle missing"
+    [[ -z ${project_dir} ]] && fail "${FUNCNAME[0]}(): 'project_dir' not provided"
+    [[ -d ${project_dir} ]] || fail "${FUNCNAME[0]}(): project_dir not a directory: ${project_dir}"
+    [[ -f ${project_dir}/build.gradle ]] || fail "${FUNCNAME[0]}(): project_dir ${project_dir} not a Gradle project directory, build.gradle missing"
 
     (cd ${project_dir}; gradle -q printClasspath)
 }
