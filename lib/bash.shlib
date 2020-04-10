@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-BASH_SHLIB_VERSION=1.11.0
+BASH_SHLIB_VERSION=1.12.0
 
 #
 # Generic bash functionality
@@ -591,7 +591,7 @@ function to-absolute-path() {
         #
 
         path=${path#./}
-        abs_path=$(pwd)/${path}
+        abs_path=$(pwd -P)/${path}
     fi
 
     #

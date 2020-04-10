@@ -2,16 +2,59 @@
 
 JENKINS_SHLIB_VERSION=0.1.0
 
-function get-pipelines() {
+#
+# Return pipelines as JSON array. The output can be piped into jq.
+#
+function get-pipelines-as-json-array() {
 
     debug "${FUNCNAME[0]}($@)"
 
-    local base_url=$1 # base URL in format https://example.com/<instance-name>/blue/rest/organizations/jenkins. Must not end with slash
+    local jenkins_base_url=$1 # base URL in format https://example.com/<instance-name>/blue/rest/organizations/jenkins. Must not end with slash
     local username_password_base64_hash=$2
 
-    [[ -z ${base_url} ]] && fail "'base_url' not provided"
+    [[ -z ${jenkins_base_url} ]] && fail "'base_url' not provided"
     [[ -z ${username_password_base64_hash} ]] && fail "'username_password_base64_hash' not provided"
 
-    echo curl -H "Authorization: Basic ${username_password_base64_hash}" ${base_url}/pipelines/
-    curl -H "Authorization: Basic ${username_password_base64_hash}" ${base_url}/pipelines/
+    debug curl -s -H "Authorization: Basic ${username_password_base64_hash}" ${jenkins_base_url}/pipelines/
+    curl -s -H "Authorization: Basic ${username_password_base64_hash}" ${jenkins_base_url}/pipelines/
+}
+
+#
+# Return pipeline names, as a space separated list.
+# The pipeline type (simple, folder, multi-branch) can be optionally specified as the third argument. If the pipeline
+# type is specified, only the names of the pipelines with the given typed are returned.
+#
+function get-pipeline-names() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    local jenkins_base_url=$1
+    local username_password_base64_hash=$2
+    local type=$3 # Optional, can be 'simple', 'folder', 'multi-branch'
+    local result
+
+    for i in $(get-pipelines-as-json-array ${jenkins_base_url} ${username_password_base64_hash} | jq -r '.[] | .name'); do
+        [[ -z ${result} ]] && result=${i} || result="${result} ${i}"
+    done
+
+    echo ${result}
+}
+
+#
+# Converts a known pipeline type ('simple', 'folder', 'multi-branch' to an Blue Ocean pipeline class.
+# For known pipeline types, send the class at stdout and return zero.
+# For an unknown pipeline type, return a non-zero exit code.
+#
+function pipeline-type-to-class() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    local type=$1
+    [[ -z ${type} ]] && fail "'type' not provided"
+
+    [[ ${type} = "simple" ]] && { echo "io.jenkins.blueocean.rest.impl.pipeline.PipelineImpl"; return 0; }
+    [[ ${type} = "folder" ]] && { echo "io.jenkins.blueocean.service.embedded.rest.PipelineFolderImpl"; return 0; }
+    [[ ${type} = "multi-branch" ]] && { echo "io.jenkins.blueocean.rest.impl.pipeline.MultiBranchPipelineImpl"; return 0; }
+
+    return 1
 }

@@ -33,7 +33,7 @@ load bash-library
     run to-absolute-path something
 
     [[ ${status} -eq 0 ]]
-    [[ ${output} = "$(pwd)/something" ]]
+    [[ ${output} = "$(pwd -P)/something" ]]
 }
 
 @test "relative path, leading dot" {
@@ -41,7 +41,7 @@ load bash-library
     run to-absolute-path ./something
 
     [[ ${status} -eq 0 ]]
-    [[ ${output} = "$(pwd)/something" ]]
+    [[ ${output} = "$(pwd -P)/something" ]]
 }
 
 @test "relative path, two leading dots" {
@@ -49,7 +49,7 @@ load bash-library
     run to-absolute-path ../something
 
     [[ ${status} -eq 0 ]]
-    [[ ${output} = "$(pwd)/../something" ]]
+    [[ ${output} = "$(pwd -P)/../something" ]]
 }
 
 @test "current directory" {
