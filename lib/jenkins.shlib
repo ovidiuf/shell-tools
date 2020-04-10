@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+JENKINS_SHLIB_VERSION=0.1.0
+
+function get-pipelines() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    local base_url=$1 # base URL in format https://example.com/<instance-name>/blue/rest/organizations/jenkins. Must not end with slash
+    local username_password_base64_hash=$2
+
+    [[ -z ${base_url} ]] && fail "'base_url' not provided"
+    [[ -z ${username_password_base64_hash} ]] && fail "'username_password_base64_hash' not provided"
+
+    echo curl -H "Authorization: Basic ${username_password_base64_hash}" ${base_url}/pipelines/
+    curl -H "Authorization: Basic ${username_password_base64_hash}" ${base_url}/pipelines/
+}

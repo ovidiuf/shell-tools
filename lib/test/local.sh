@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-[[ -f $(dirname $0)/../bash.shlib ]] && source $(dirname $0)/../bash.shlib || { echo "$(dirname $0)/../bash.shlib not found" 1>&2; exit 1; }
+for i in bash.shlib jenkins.shlib; do [ -f $(dirname $0)/../${i} ] && source $(dirname $0)/../${i} || { echo "[error]: $(dirname $0)/../${i} not found" 1>&2; exit 1; } done
 
-
-is-yq-2 && echo "is 2" || echo "is NOT 2"
+VERBOSE=true
+get-pipelines $(cat ~/tmp/base-url) $(cat ~/tmp/auth)
