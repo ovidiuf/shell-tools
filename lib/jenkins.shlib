@@ -289,8 +289,12 @@ function do-log() {
     [[ -z ${branch} ]] && fail "branch not provided"
     local run_id=$3
     [[ -z ${run_id} ]] && fail "run ID not provided"
-    local node_id=$4
-    [[ -z ${node_id} ]] && fail "node ID not provided"
+    local node_id_or_name=$4
+    [[ -z ${node_id_or_name} ]] && fail "node ID or name not provided"
+
+    local node_id
+    node_id=$(node-name-to-node-id "${node_id_or_name}" "${pipeline_name}" "${branch}" ${run_id}) || \
+        fail "node \"${node_id_or_name}\" cannot be found in run ${pipeline_name}:${branch}#${run_id}"
 
     blue-ocean-rest-get pipelines/${pipeline_name}/branches/$(encode-to-rest-url ${branch})/runs/${run_id}/nodes/${node_id}/log/?start=0
 }
