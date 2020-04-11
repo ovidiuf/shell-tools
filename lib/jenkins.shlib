@@ -26,13 +26,24 @@ function blue-ocean-rest-get() {
 #
 # Return pipelines as JSON array. The output can be piped into jq.
 #
+# The pipeline type (simple, folder, multi-branch) can be optionally specified as the first argument.
+#
 # The function expects JENKINS_BASE_URL and JENKINS_BASE64_AUTH to be set in the context.
 #
 function get-pipelines() {
 
     debug "${FUNCNAME[0]}($@)"
 
-    blue-ocean-rest-get pipelines/
+    local type=$1 # Optional, can be 'simple', 'folder', 'multi-branch'
+
+    local select_expression=true
+    if [[ -n ${type} ]]; then
+        class=$(pipeline-type-to-class ${type}) || fail "unknown pipeline type: ${type}"
+        select_expression='._class=="'${class}'"'
+    fi
+    debug "select expression: ${select_expression}"
+
+    blue-ocean-rest-get pipelines/ | jq -r '[.[] | select('${select_expression}')]'
 }
 
 #

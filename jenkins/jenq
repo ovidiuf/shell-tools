@@ -38,7 +38,7 @@ Commands:
 
     pipeline - display various pipeline elements.
 
-Individual command help can be obtained withL
+Individual command help can be obtained with:
 
      $(basename $0) help <command>
 
@@ -53,6 +53,8 @@ function main() {
         [[ -n $1 ]] && { help-$1; exit 0; }
         usage; exit 0;
     fi
+
+    [[ -z $1 ]] && { usage; exit 0; }
 
     unset ARGS; declare -a ARGS
     declare -A OPTIONS
@@ -86,15 +88,13 @@ function main() {
 function help-pipelines() {
 cat << EOF
 
-Display current pipeline names.
+Display the pipeline names, or their JSON representation if --json is used.
 
 Usage:
 
-    $(basename $0) pipelines [-t|--type <pipeline-type>] [--json]
+    $(basename $0) pipelines [pipeline-type] [--json]
 
-Options:
-
-    -t|--type filter by the pipeline type.
+Pipeline types are: simple, folder, multi-branch.
 
 EOF
 }
@@ -105,13 +105,24 @@ function do-pipelines() {
 
     unset ARGS; declare -a ARGS
     declare -A OPTIONS
-    OPTIONS["--type"]="string -t"
+    OPTIONS["--json"]="boolean"
     process-options "$@"
-    fail-on-unknown-arguments 0
+    fail-on-unknown-arguments 1
+    set -- "${ARGS[@]}"
 
-    local pipeline_type=${OPTIONS["--type"]}
+    local json=${OPTIONS["--json"]}
 
-    get-pipeline-names ${pipeline_type}
+    pipeline_type=$1
+
+    if ${json}; then
+
+        get-pipelines ${pipeline_type}
+    else
+
+        get-pipeline-names ${pipeline_type}
+    fi
+
+
 }
 
 function help-pipeline() {

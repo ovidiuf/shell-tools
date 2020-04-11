@@ -15,11 +15,12 @@ function teardown() {
     rm -rf ${BATS_TEST_DIRNAME}/data/tmp/*
 }
 
-@test "success" {
+@test "success, no type" {
 
-    function curl() {
+    function blue-ocean-rest-get() {
+        debug "blue-ocean-rest-get($@)"
 cat << EOF
-{'some': 'pipelines'}
+[{"color": "red"}]
 EOF
     }
 
@@ -27,6 +28,17 @@ EOF
     run get-pipelines
 
     [[ ${status} -eq 0 ]]
-    [[ ${output} =~ "{'some': 'pipelines'}" ]]
+    output=$(echo ${output} | jq -r '.[] | .color')
+    [[ ${output} = "red" ]]
 }
+
+@test "invalid type" {
+
+    run get-pipelines no-such-type
+
+    [[ ${status} -eq 255 ]]
+    [[ ${output} =~ "unknown pipeline type" ]]
+    [[ ${output} =~ "no-such-type" ]]
+}
+
 

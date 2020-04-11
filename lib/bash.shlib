@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-BASH_SHLIB_VERSION=1.12.1
+BASH_SHLIB_VERSION=1.12.2
 
 #
 # Generic bash functionality
@@ -123,14 +123,20 @@ function process-common-arguments() {
 #           OPTIONS["--count"]="integer -c --COUNT"
 #           OPTIONS["--debug"]="boolean"
 #           process-options "$@"
-#           fail-on-unknown-arguments
+#           fail-on-unknown-arguments <count>
 #
 # If, for example, the arguments are "--debug --path something", 'OPTIONS' content will be:
 #
 #   ${OPTIONS["--path"]} = "something"
 #   ${OPTIONS["--debug"]} = "true"
 #
-# Optionally the arrays can be unsed with
+# The remaining arguments are available in ${ARGS[@]} indexed arrays and can be turned into positional arguments
+# again with:
+#
+#           set -- "${ARGS[@]}"
+#
+#
+# Optionally the arrays can be unset with
 # unset ARGS
 # unset OPTIONS
 #
