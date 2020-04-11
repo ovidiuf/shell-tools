@@ -70,3 +70,32 @@ EOF
     [[ $5 = "${JENKINS_BASE64_AUTH}" ]]
     [[ $6 = "${JENKINS_BASE_URL}/something/" ]]
 }
+
+@test "successful invocation with limits" {
+
+    function curl() {
+        echo "$@" > ${BATS_TEST_DIRNAME}/data/tmp/curl-args
+cat << EOF
+{'test': 'test'}
+EOF
+    }
+
+    [[ ! -f ${BATS_TEST_DIRNAME}/data/tmp/curl-args ]]
+
+    run blue-ocean-rest-get something/ 15 231
+
+    [[ ${status} -eq 0 ]]
+    [[ ${output} =~ "{'test': 'test'}" ]]
+
+    [[ -f ${BATS_TEST_DIRNAME}/data/tmp/curl-args ]]
+
+    IFS=" "
+    set - $(cat ${BATS_TEST_DIRNAME}/data/tmp/curl-args)
+    [[ $1 = "-s" ]]
+    [[ $2 = "-H" ]]
+    [[ $3 = "Authorization:" ]]
+    [[ $4 = "Basic" ]]
+    [[ $5 = "${JENKINS_BASE64_AUTH}" ]]
+    [[ $6 = "${JENKINS_BASE_URL}/something/?start=15&limit=231" ]]
+}
+

@@ -4,6 +4,8 @@ JENKINS_SHLIB_VERSION=0.1.0
 
 set -o pipefail
 
+BLUEOCEAN_REST_API_NODE_LIMIT=1000
+
 #
 # Commands and Help
 #
@@ -224,10 +226,10 @@ function do-nodes() {
 
     if ${json}; then
 
-        blue-ocean-rest-get pipelines/${pipeline_name}/branches/$(encode-to-rest-url ${branch})/runs/${run_id}/nodes/ | jq
+        blue-ocean-rest-get pipelines/${pipeline_name}/branches/$(encode-to-rest-url ${branch})/runs/${run_id}/nodes/ 0 ${BLUEOCEAN_REST_API_NODE_LIMIT} | jq
     else
 
-        blue-ocean-rest-get pipelines/${pipeline_name}/branches/$(encode-to-rest-url ${branch})/runs/${run_id}/nodes/ | jq -r '.[] | .id'
+        blue-ocean-rest-get pipelines/${pipeline_name}/branches/$(encode-to-rest-url ${branch})/runs/${run_id}/nodes/ 0 ${BLUEOCEAN_REST_API_NODE_LIMIT} | jq -r '.[] | .id'
     fi
 }
 
@@ -328,6 +330,12 @@ function set-global-variables() {
 #
 # The function expects JENKINS_BASE_URL and JENKINS_BASE64_AUTH to be set in the context.
 #
+# It expects the relative URL with all encoding issues resolved (for example, the branch must not contain slashes,
+# but the corresponding translated character).
+#
+# Optionally it accepts a start and a limit for the number of records. The default Blue Ocean behavior is to start
+# from record 0 and return 100 records (for nodes at least)
+#
 function blue-ocean-rest-get() {
 
     debug "${FUNCNAME[0]}($@)"
@@ -337,8 +345,21 @@ function blue-ocean-rest-get() {
 
     local relative_url=$1
     [[ -z ${relative_url} ]] && fail "'relative_url' not provided"
+    local start=$2 # optional, default is 0
+    local limit=$3 # optional, Blue Ocean built-in default is 100
 
     local url=${JENKINS_BASE_URL}/${relative_url}
+    local more_than_one=false
+    [[ -n ${start} || -n ${limit} ]] && url="${url}?"
+    if [[ -n ${start} ]]; then
+        url="${url}start=${start}"
+        more_than_one=true
+    fi
+    if [[ -n ${limit} ]]; then
+        ${more_than_one} && url="${url}&"
+        url="${url}limit=${limit}"
+        more_than_one=true
+    fi
 
     debug curl -s -H "Authorization: Basic ***" ${url}
     curl -s -H "Authorization: Basic ${JENKINS_BASE64_AUTH}" ${url}
