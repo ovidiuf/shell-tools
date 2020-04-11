@@ -14,9 +14,13 @@ The run number must be specified as argument.
 
 Usage:
 
-    $(basename $0) <build-number>
+    $(basename $0) [options] <build-number>
 
 The logs are collected in the current directory.
+
+Options:
+
+    --branch <branch> Specifies a branch. By default is ${BRANCH}.
 
 EOF
 }
@@ -26,9 +30,19 @@ function main() {
 
     ${HELP} || [[ -z $1 ]] && { usage; exit 0; }
 
-    local run_id=$1
+    unset ARGS; declare -a ARGS
+    declare -A OPTIONS
+    OPTIONS["--branch"]="string"
+    process-options "$@"
+    fail-on-unknown-arguments 1
+
     local pipeline=${PIPELINE_NAME}
-    local branch=${BRANCH}
+    local branch=${OPTIONS["--branch"]:-${BRANCH}}
+    local run_id=${ARGS[0]}
+
+    debug "pipeline: ${pipeline}"
+    debug "branch: ${branch}"
+    debug "run_id: ${run_id}"
 
     local target_dir_parent=$(pwd)
     local target_dir_name="${branch//\//_}#${run_id}"

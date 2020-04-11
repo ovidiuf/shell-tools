@@ -16,6 +16,7 @@ Jenkins instance query tool.
 
 Common Options:
 
+
     --host-url specifies the URL of the Jenkins instance host (ex: https://jenkins.example.com). The same value can
         be provided with JENKINS_HOST_URL environment variable. If both the environment variable and command line
         options are provided, command line value takes precedence.
@@ -51,6 +52,13 @@ Commands:
     node - display a specific node information.
 
     log - pull the execution log for a node.
+
+Examples:
+
+Display the node name and ID for a run:
+
+    jenq nodes <pipeline-name> <branch> <run-id> --json | jq -r '.[] | (.id + " " + .displayName)'
+
 
 Individual command help can be obtained with:
 
