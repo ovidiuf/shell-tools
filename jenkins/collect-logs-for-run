@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+
+ld=/Users/ovidiu/projects/shell-tools/lib
+for i in bash.shlib jenkins.shlib; do [ -f ${ld}/${i} ] && source ${ld}/${i} || { echo "[error]: ${ld}/${i} not found" 1>&2; exit 1; } done
+
+PIPELINE_NAME=c3server-k8s
+BRANCH=epic/cloud/team/k8sonly/develop
+
+function usage() {
+cat <<EOF
+
+Collect logs for ${PIPELINE_NAME} pipeline runs on branch ${BRANCH}.
+The run number must be specified as argument.
+
+Usage:
+
+    $(basename $0) <build-number>
+
+The logs are collected in the current directory.
+
+EOF
+}
+function main() {
+
+    process-common-arguments "$@" && set -- "${ARGS[@]}" || { echo "failed to process common arguments" 1>&2; exit 1; }
+
+    ${HELP} || [[ -z $1 ]] && { usage; exit 0; }
+
+    local run_id=$1
+    local pipeline=${PIPELINE_NAME}
+    local branch=${BRANCH}
+
+    local target_dir_parent=$(pwd)
+    local target_dir_name="${branch//\//_}#${run_id}"
+    local target_dir=${target_dir_parent}/${target_dir_name}
+    [[ ! -d ${target_dir} ]] && { mkdir -p ${target_dir} && info "created ${target_dir}"; }
+
+    local jenq=$(dirname $0)/jenq
+
+    for node_id in $(${jenq} pipeline ${pipeline} run ${branch} ${run_id} nodes | jq -r '.[] | .id'); do
+
+        local name
+        name=$(${jenq} pipeline ${pipeline} run ${branch} ${run_id} node ${node_id} | jq -r '.displayName') || \
+            fail "failed to read name for node ${node_id}"
+
+#        if [[ ${name} = "Testing" || ${name} = "parallel-synthetic-Parallel" || ${name} = "Server Testing Branch" || ${name} =~ apps ]]; then
+#            info "skipping logs for node \"${name}\""
+#            continue
+#        fi
+
+        local target_file=${target_dir}/${node_id}-${name// /_}.log
+        ${jenq} pipeline ${pipeline} run ${branch} ${run_id} node ${node_id} log > ${target_file}
+        info "collected logs for node ${name} in $(basename ${target_file})"
+    done
+}
+
+main "$@"

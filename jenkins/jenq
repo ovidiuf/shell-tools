@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-for i in bash.shlib jenkins.shlib; do [ -f $(dirname $0)/lib/${i} ] && source $(dirname $0)/lib/${i} || { echo "[error]: $(dirname $0)/lib/${i} not found" 1>&2; exit 1; } done
+for i in bash.shlib jenkins.shlib; do [ -f $(dirname $0)/../lib/${i} ] && source $(dirname $0)/../lib/${i} || { echo "[error]: $(dirname $0)/../lib/${i} not found" 1>&2; exit 1; } done
 
 VERSION=0.1.0
 # The Jenkins base URL (https://<host>/<instance-name>/blue/rest/organizations/jenkins). Must not end with slash.
@@ -9,7 +9,8 @@ JENKINS_BASE64_AUTH=UNINITIALIZED
 
 function usage() {
 cat <<EOF
-Query a Jenkins instance.
+
+Jenkins instance query tool.
 
     $(basename $0) [common-options] <command> [command-options]
 
@@ -116,13 +117,31 @@ function do-pipelines() {
 function help-pipeline() {
 cat << EOF
 
-Display the JSON representation of the specified pipeline.
+Display the JSON representation of the specified pipeline or pipeline elements.
 
 Usage:
 
+    $(basename $0) pipeline <pipeline-name>
+
     $(basename $0) pipeline <pipeline-name> runs
 
-    $(basename $0) pipeline <pipeline-name> run <branch-name> <run-id>
+    $(basename $0) pipeline <pipeline-name> run <branch> <run-id>
+
+    $(basename $0) pipeline <pipeline-name> run <branch> <run-id> nodes
+
+    $(basename $0) pipeline <pipeline-name> run <branch> <run-id> node <node-id>
+
+    $(basename $0) pipeline <pipeline-name> run <branch> <run-id> node <node-id> log
+
+Example:
+
+The list of nodes ID for a run:
+
+    $(basename $0) pipeline <pipeline-name> run <branch> <run-id> nodes | jq -r '.[] | .id'
+
+Details about nodes associated with a run:
+
+    $(basename $0) pipeline <pipeline-name> run <branch> <run-id> nodes | jq -r '.[]| (.id + " " + .displayName + " " + .state + " → " + .result)'
 
 EOF
 }
@@ -156,6 +175,7 @@ function do-pipeline() {
         branch=$1
         [[ -z ${branch} ]] && fail "branch not provided"
         shift
+
         run_id=$1
         [[ -z ${run_id} ]] && fail "run ID not provided"
         shift
@@ -174,8 +194,32 @@ function do-pipeline() {
             return 0
         fi
 
+        if [[ ${run_detail} = "node" ]]; then
 
-        fail "unknown pipeline detail: ${detail}"
+            node_id=$1
+            [[ -z ${node_id} ]] && fail "node ID not provided"
+            shift
+
+            local node_detail=$1
+            shift
+
+            if [[ -z ${node_detail} ]]; then
+                blue-ocean-rest-get pipelines/${pipeline_name}/branches/$(encode-to-rest-url ${branch})/runs/${run_id}/nodes/${node_id}/ | jq
+                return 0
+            fi
+
+
+            if [[ ${node_detail} = "log" ]]; then
+
+                blue-ocean-rest-get pipelines/${pipeline_name}/branches/$(encode-to-rest-url ${branch})/runs/${run_id}/nodes/${node_id}/log/?start=0
+                return 0
+            fi
+
+            fail "unknown node detail: ${node_detail}"
+        fi
+
+
+        fail "unknown run detail: ${run_detail}"
 
     fi
 
