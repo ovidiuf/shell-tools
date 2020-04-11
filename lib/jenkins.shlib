@@ -5,6 +5,323 @@ JENKINS_SHLIB_VERSION=0.1.0
 set -o pipefail
 
 #
+# Commands and Help
+#
+
+function help-pipelines() {
+cat << EOF
+
+Display the pipeline names, or their JSON representation if --json is used.
+
+Usage:
+
+    $(basename $0) pipelines [pipeline-type] [--json]
+
+Pipeline types are: simple, folder, multi-branch.
+
+EOF
+}
+
+function do-pipelines() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    unset ARGS; declare -a ARGS
+    declare -A OPTIONS
+    OPTIONS["--json"]="boolean"
+    process-options "$@"
+    fail-on-unknown-arguments 1
+    set -- "${ARGS[@]}"
+    local json=${OPTIONS["--json"]}
+
+    pipeline_type=$1
+
+    if ${json}; then
+
+        get-pipelines ${pipeline_type}
+    else
+
+        get-pipeline-names ${pipeline_type}
+    fi
+}
+
+function help-pipeline() {
+cat << EOF
+
+Display the JSON representation of the specified pipeline
+
+Usage:
+
+    $(basename $0) pipeline <pipeline-name>
+
+EOF
+}
+
+function do-pipeline() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    local pipeline_name=$1
+    [[ -z ${pipeline_name} ]] && fail "pipeline name not provided"
+
+    blue-ocean-rest-get pipelines/${pipeline_name}/ | jq
+}
+
+function help-branches() {
+cat << EOF
+
+Display the branch names for the specified multi-branch pipeline, or their JSON representation if --json is used.
+
+Usage:
+
+    $(basename $0) branches <pipeline-name> [--json]
+
+EOF
+}
+
+function do-branches() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    unset ARGS; declare -a ARGS
+    declare -A OPTIONS
+    OPTIONS["--json"]="boolean"
+    process-options "$@"
+    fail-on-unknown-arguments 1
+    set -- "${ARGS[@]}"
+    local json=${OPTIONS["--json"]}
+
+    pipeline_name=$1
+    [[ -z ${pipeline_name} ]] && fail "pipeline name not provided"
+
+    if ${json}; then
+
+        blue-ocean-rest-get pipelines/${pipeline_name}/branches/ | jq
+    else
+
+        blue-ocean-rest-get pipelines/${pipeline_name}/branches/ | jq -r '.[] | .displayName'
+    fi
+}
+
+function help-branch() {
+cat << EOF
+
+Display the JSON representation of the specified branch
+
+Usage:
+
+    $(basename $0) pipeline <pipeline-name> <branch>
+
+EOF
+}
+
+function do-branch() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    local pipeline_name=$1
+    [[ -z ${pipeline_name} ]] && fail "pipeline name not provided"
+    local branch=$2
+    [[ -z ${branch} ]] && fail "branch not provided"
+
+    blue-ocean-rest-get pipelines/${pipeline_name}/branches/$(encode-to-rest-url ${branch})/ | jq
+}
+
+function help-runs() {
+cat << EOF
+
+Display the run numbers for the specified branch pipeline, or their JSON representation if --json is used.
+
+Usage:
+
+    $(basename $0) runs <pipeline-name> <branch> [--json]
+
+EOF
+}
+
+function do-runs() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    unset ARGS; declare -a ARGS
+    declare -A OPTIONS
+    OPTIONS["--json"]="boolean"
+    process-options "$@"
+    fail-on-unknown-arguments 2
+    set -- "${ARGS[@]}"
+    local json=${OPTIONS["--json"]}
+
+    pipeline_name=$1
+    [[ -z ${pipeline_name} ]] && fail "pipeline name not provided"
+    branch=$2
+    [[ -z ${branch} ]] && fail "branch not provided"
+
+    if ${json}; then
+
+        blue-ocean-rest-get pipelines/${pipeline_name}/branches/$(encode-to-rest-url ${branch})/runs/ | jq
+    else
+
+        blue-ocean-rest-get pipelines/${pipeline_name}/branches/$(encode-to-rest-url ${branch})/runs/ | jq -r '.[] | .id'
+    fi
+}
+
+function help-run() {
+cat << EOF
+
+Display the JSON representation of the specified run
+
+Usage:
+
+    $(basename $0) pipeline <pipeline-name> <branch> <run-id>
+
+EOF
+}
+
+function do-run() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    local pipeline_name=$1
+    [[ -z ${pipeline_name} ]] && fail "pipeline name not provided"
+    local branch=$2
+    [[ -z ${branch} ]] && fail "branch not provided"
+    local run_id=$3
+    [[ -z ${run_id} ]] && fail "run ID not provided"
+
+    blue-ocean-rest-get pipelines/${pipeline_name}/branches/$(encode-to-rest-url ${branch})/runs/${run_id}/ | jq
+}
+
+function help-nodes() {
+cat << EOF
+
+Display the node IDs for the specified run, or their JSON representation if --json is used.
+
+Usage:
+
+    $(basename $0) nodes <pipeline-name> <branch> <run-id> [--json]
+
+EOF
+}
+
+function do-nodes() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    unset ARGS; declare -a ARGS
+    declare -A OPTIONS
+    OPTIONS["--json"]="boolean"
+    process-options "$@"
+    fail-on-unknown-arguments 3
+    set -- "${ARGS[@]}"
+    local json=${OPTIONS["--json"]}
+
+    pipeline_name=$1
+    [[ -z ${pipeline_name} ]] && fail "pipeline name not provided"
+    branch=$2
+    [[ -z ${branch} ]] && fail "branch not provided"
+    run_id=$3
+    [[ -z ${run_id} ]] && fail "run ID not provided"
+
+    if ${json}; then
+
+        blue-ocean-rest-get pipelines/${pipeline_name}/branches/$(encode-to-rest-url ${branch})/runs/${run_id}/nodes/ | jq
+    else
+
+        blue-ocean-rest-get pipelines/${pipeline_name}/branches/$(encode-to-rest-url ${branch})/runs/${run_id}/nodes/ | jq -r '.[] | .id'
+    fi
+}
+
+function help-node() {
+cat << EOF
+
+Display the JSON representation of the specified node.
+
+Usage:
+
+    $(basename $0) pipeline <pipeline-name> <branch> <run-id> <node-id|node-name>
+
+If the node name contains spaces, it must be quoted.
+
+EOF
+}
+
+function do-node() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    local pipeline_name=$1
+    [[ -z ${pipeline_name} ]] && fail "pipeline name not provided"
+    local branch=$2
+    [[ -z ${branch} ]] && fail "branch not provided"
+    local run_id=$3
+    [[ -z ${run_id} ]] && fail "run ID not provided"
+    local node_id_or_name=$4
+    [[ -z ${node_id_or_name} ]] && fail "node ID or name not provided"
+
+    local node_id
+    node_id=$(node-name-to-node-id "${node_id_or_name}" "${pipeline_name}" "${branch}" ${run_id}) || \
+        fail "node \"${node_id_or_name}\" cannot be found in run ${pipeline_name}:${branch}#${run_id}"
+
+    blue-ocean-rest-get pipelines/${pipeline_name}/branches/$(encode-to-rest-url ${branch})/runs/${run_id}/nodes/${node_id}/ | jq
+}
+
+function help-log() {
+cat << EOF
+
+Pull the log for the specified node and send it to stdout.
+
+Usage:
+
+    $(basename $0) log <pipeline-name> <branch> <run-id> <node-id|node-name>
+
+If the node name contains spaces, it must be quoted.
+
+EOF
+}
+
+function do-log() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    local pipeline_name=$1
+    [[ -z ${pipeline_name} ]] && fail "pipeline name not provided"
+    local branch=$2
+    [[ -z ${branch} ]] && fail "branch not provided"
+    local run_id=$3
+    [[ -z ${run_id} ]] && fail "run ID not provided"
+    local node_id=$4
+    [[ -z ${node_id} ]] && fail "node ID not provided"
+
+    blue-ocean-rest-get pipelines/${pipeline_name}/branches/$(encode-to-rest-url ${branch})/runs/${run_id}/nodes/${node_id}/log/?start=0
+}
+
+#
+# END of Commands and Help
+#
+
+#
+# Set the global variables JENKINS_BASE_URL and JENKINS_BASE64_AUTH
+#
+function set-global-variables() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    local host_url=$1
+    local username=$2
+    local password=$3
+    local instance_name=$4
+    [[ -z ${host_url} ]] && fail "'host_url' not provided"
+    [[ -z ${username} ]] && fail "'username' not provided"
+    [[ -z ${password} ]] && fail "'password' not provided"
+    [[ -z ${instance_name} ]] && fail "'instance_name' not provided"
+
+    JENKINS_BASE_URL=${host_url}/${instance_name}/blue/rest/organizations/jenkins
+    JENKINS_BASE64_AUTH=$(echo -n "${username}:${password}" | base64)
+    debug "JENKINS_BASE_URL: ${JENKINS_BASE_URL}"
+    debug "JENKINS_BASE64_AUTH: ${JENKINS_BASE64_AUTH}"
+}
+
+#
 # The function expects JENKINS_BASE_URL and JENKINS_BASE64_AUTH to be set in the context.
 #
 function blue-ocean-rest-get() {
@@ -103,3 +420,46 @@ function encode-to-rest-url() {
     echo "${result}"
 }
 
+#
+# If the argument is a node name, it converts it to node ID, if the node name is valid. If the argument is already
+# a node ID, leave it unchanged. Send the result to stdout and return 0 on successful operation (including if the
+# argument is already a node ID and the conversion was a noop). Return a non-zero code if the name cannot be converted
+# to a node ID.
+#
+function node-name-to-node-id() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    local node_name_or_id=$1
+
+    [[ -z ${node_name_or_id} ]] && fail "'node_name_or_id' not provided"
+
+    if expr ${node_name_or_id} + 1 >/dev/null 2>&1; then
+        #
+        # nodeID
+        #
+        debug "${node_name_or_id} is a node ID"
+        echo ${node_name_or_id}
+        return 0
+    fi
+
+    #
+    # We need the other arguments
+    #
+    local pipeline_name=$2
+    local branch=$3
+    local run_id=$4
+    [[ -z ${pipeline_name} ]] && fail "'pipeline_name' not provided"
+    [[ -z ${branch} ]] && fail "'branch' not provided"
+    [[ -z ${run_id} ]] && fail "'run_id' not provided"
+
+    #
+    # attempt to locate its run and look for the node with the given name
+    #
+    local node_id
+    node_id=$(blue-ocean-rest-get pipelines/${pipeline_name}/branches/$(encode-to-rest-url ${branch})/runs/${run_id}/nodes/ | jq -r '.[] | select(.displayName=="'"${node_name_or_id}"'") | .id')
+    debug "node_id: ${node_id}"
+
+    [[ -z ${node_id} ]] && return 1
+    echo ${node_id}
+}
