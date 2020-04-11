@@ -53,6 +53,15 @@ EOF
         local node_id="${url}"
         debug "blue-ocean-rest-get() node_id: ${node_id}"
 
+        if [[ ${node_id: -1} != "/" ]]; then
+            #
+            # We simulate Blue Ocean behavior that requires a slash at the end of the URL to return anything
+            #
+            return 0
+        fi
+
+        node_id=${node_id%/}
+
         if [[ ${node_id} = "101" || ${node_id} = "101-something" ]]; then
 cat << EOF
 {

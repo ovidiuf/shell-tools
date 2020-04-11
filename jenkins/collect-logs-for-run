@@ -50,8 +50,10 @@ function main() {
     [[ ! -d ${target_dir} ]] && { mkdir -p ${target_dir} && info "created ${target_dir}"; }
 
     local jenq=$(dirname $0)/jenq
+    local jeng_verbose
+    ${VERBOSE} && jeng_verbose="--verbose"
 
-    for node_id in $(${jenq} nodes ${pipeline} ${branch} ${run_id}); do
+    for node_id in $(${jenq} ${jeng_verbose} nodes ${pipeline} ${branch} ${run_id}); do
 
         debug "node_id: ${node_id}"
 
@@ -59,17 +61,17 @@ function main() {
         # TODO: querying again for name is inefficient, we can pull the JSON representation of all nodes in the outer loop
         #
         local node_name
-        node_name=$(${jenq} node ${pipeline} ${branch} ${run_id} ${node_id} | jq -r '.displayName') || \
+        node_name=$(${jenq} ${jeng_verbose} node ${pipeline} ${branch} ${run_id} ${node_id} | jq -r '.displayName') || \
             fail "failed to read name for node ${node_id}"
         debug "node name: ${node_name}"
 
-#        if [[ ${name} = "Testing" || ${name} = "parallel-synthetic-Parallel" || ${name} = "Server Testing Branch" || ${name} =~ apps ]]; then
-#            info "skipping logs for node \"${name}\""
-#            continue
-#        fi
+        if [[ ${node_name} = "Testing" ]]; then
+            info "skipping logs for node \"${node_name}\""
+            continue
+        fi
 
         local target_file=${target_dir}/${node_id}-${node_name// /_}.log
-        ${jenq} log ${pipeline} ${branch} ${run_id} ${node_id} log > ${target_file}
+        ${jenq} ${jeng_verbose} log ${pipeline} ${branch} ${run_id} ${node_id} log > ${target_file}
         info "collected logs for node ${node_name} in $(basename ${target_file})"
     done
 }

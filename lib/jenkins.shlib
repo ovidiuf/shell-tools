@@ -474,9 +474,9 @@ function node-name-to-node-id() {
         # corresponding resource
         #
         local json
-        local node_url="pipelines/${pipeline_name}/branches/$(encode-to-rest-url ${branch})/runs/${run_id}/nodes/${node_name_or_id}"
+        local node_url="pipelines/${pipeline_name}/branches/$(encode-to-rest-url ${branch})/runs/${run_id}/nodes/${node_name_or_id}/"
         json=$(blue-ocean-rest-get ${node_url}) || { debug "failed to get REST resource for ${node_url}"; return 1; }
-        trace ${json}
+        debug ${json}
 
         if ! echo ${json} | jq -r '.id' >/dev/null 2>&1; then
 
