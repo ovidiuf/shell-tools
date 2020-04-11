@@ -297,7 +297,7 @@ Display the node IDs for the specified run, or their JSON representation if --js
 
 Usage:
 
-    $(basename $0) runs <pipeline-name> <branch> <run-id> [--json]
+    $(basename $0) nodes <pipeline-name> <branch> <run-id> [--json]
 
 EOF
 }

@@ -66,12 +66,7 @@ function get-pipeline-names() {
     fi
     debug "select_expression: ${select_expression}"
 
-    local result
-    for i in $(get-pipelines | jq -r '.[] | select('${select_expression}') | .name'); do
-        [[ -z ${result} ]] && result=${i} || result="${result} ${i}"
-    done
-    [[ -z ${result} ]] && return 1
-    echo ${result}
+    get-pipelines | jq -r '.[] | select('${select_expression}') | .name'
 }
 
 #

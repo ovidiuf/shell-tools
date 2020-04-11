@@ -22,7 +22,7 @@ function teardown() {
     #export VERBOSE=true; export TRACE=true; export DEBUG_OUTPUT=~/tmp/bats.out
     run get-pipeline-names
 
-    [[ ${status} -eq 1 ]]
+    [[ ${status} -eq 255 ]]
     [[ ${output} =~ "'JENKINS_BASE_URL' not set in context" ]]
 }
 
@@ -59,7 +59,9 @@ EOF
     run get-pipeline-names
 
     [[ ${status} -eq 0 ]]
-    [[ ${output} = "simple-pipeline-A folder-pipeline-B multi-branch-pipeline-C" ]]
+    [[ ${lines[0]} = "simple-pipeline-A" ]]
+    [[ ${lines[1]} = "folder-pipeline-B" ]]
+    [[ ${lines[2]} = "multi-branch-pipeline-C" ]]
 }
 
 @test "only simple pipelines" {
