@@ -446,40 +446,63 @@ function encode-to-rest-url() {
 }
 
 #
-# If the argument is a node name, it converts it to node ID, if the node name is valid. If the argument is already
-# a node ID, leave it unchanged. Send the result to stdout and return 0 on successful operation (including if the
-# argument is already a node ID and the conversion was a noop). Return a non-zero code if the name cannot be converted
-# to a node ID.
+# If the argument is already a node ID, verify if it is valid and leave it unchanged. If the argument is a node name
+# convert it to node ID, if the node name is valid. Send the result to stdout and return 0 on successful operation
+# (including if the argument is already a node ID and the conversion was a noop). Return a non-zero code if the name
+# cannot be converted to a node ID.
 #
 function node-name-to-node-id() {
 
     debug "${FUNCNAME[0]}($@)"
 
     local node_name_or_id=$1
-
-    [[ -z ${node_name_or_id} ]] && fail "'node_name_or_id' not provided"
-
-    if expr ${node_name_or_id} + 1 >/dev/null 2>&1; then
-        #
-        # nodeID
-        #
-        debug "${node_name_or_id} is a node ID"
-        echo ${node_name_or_id}
-        return 0
-    fi
-
-    #
-    # We need the other arguments
-    #
     local pipeline_name=$2
     local branch=$3
     local run_id=$4
+
+    [[ -z ${node_name_or_id} ]] && fail "'node_name_or_id' not provided"
     [[ -z ${pipeline_name} ]] && fail "'pipeline_name' not provided"
     [[ -z ${branch} ]] && fail "'branch' not provided"
     [[ -z ${run_id} ]] && fail "'run_id' not provided"
 
+    if [[ ${node_name_or_id// /} != ${node_name_or_id} ]]; then
+
+        debug "an ID cannot contains spaces, so \"${node_name_or_id}\" cannot be an ID"
+    else
+        #
+        # argument does not contain spaces, it could be an ID, assume it is node ID and attempt to locate the
+        # corresponding resource
+        #
+        local json
+        local node_url="pipelines/${pipeline_name}/branches/$(encode-to-rest-url ${branch})/runs/${run_id}/nodes/${node_name_or_id}"
+        json=$(blue-ocean-rest-get ${node_url}) || { debug "failed to get REST resource for ${node_url}"; return 1; }
+        trace ${json}
+
+        if ! echo ${json} | jq -r '.id' >/dev/null 2>&1; then
+
+            debug "the REST layer did not return a valid JSON, the node resource was not found"
+        else
+
+            local node_id
+            node_id=$(echo ${json} | jq -r '.id')
+            debug "node_name_or_id: ${node_name_or_id}, node_id: ${node_id}"
+            #
+            # if the node with this node ID exists, we return the same node ID here
+            #
+            if [[ ${node_name_or_id} = ${node_id} ]]; then
+                debug "argument is already a node ID: ${node_id}"
+                echo ${node_id}
+                return 0
+            fi
+            if [[ -n ${node_id} && ${node_id} != ${node_name_or_id} ]]; then
+                fail "invalid state, a query for node ID ${node_name_or_id} returned a resource with a different node ID: ${node_id}"
+            fi
+            debug "node resource for ID ${node_name_or_id} not found, attempting to resolve it as a name"
+        fi
+    fi
+
     #
-    # attempt to locate its run and look for the node with the given name
+    # query the run and look for the node with the given name
     #
     local node_id
     node_id=$(blue-ocean-rest-get pipelines/${pipeline_name}/branches/$(encode-to-rest-url ${branch})/runs/${run_id}/nodes/ | jq -r '.[] | select(.displayName=="'"${node_name_or_id}"'") | .id')
