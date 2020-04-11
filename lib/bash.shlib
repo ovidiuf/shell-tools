@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-BASH_SHLIB_VERSION=1.12.0
+BASH_SHLIB_VERSION=1.12.1
 
 #
 # Generic bash functionality
@@ -45,7 +45,10 @@ declare -a ARGS
 #
 # process-common-arguments() sets HELP=true if it sees help|--help|-h among its arguments, and removes the argument from
 # the list. This approach allows commands to display help regardless of the relative order of the command and the help
-# argument on the command line.
+# argument on the command line. To display help, use this pattern, where usage() must be previously defined.
+#
+# ${HELP} || [[ -z $1 ]] && { usage; exit 0; }
+#
 #
 function process-common-arguments() {
 
@@ -109,9 +112,12 @@ function process-common-arguments() {
 # The function arguments that do not match any option are returned as content of the global ARGS array, in a pattern
 # that is similar to the one used by the process-common-arguments() function.
 #
+# Warning: if process-common-arguments was previously invoked, it used ARGS already, so the array must be unset and
+# declared again, as shown below:
+#
 # Usage:
 #
-#           declare -a ARGS
+#           declare -a ARGS # if process-common-arguments was used, execute unset ARGS prior to declaring it
 #           declare -A OPTIONS
 #           OPTIONS["--path"]="string -p"
 #           OPTIONS["--count"]="integer -c --COUNT"

@@ -2,42 +2,80 @@
 
 JENKINS_SHLIB_VERSION=0.1.0
 
+set -o pipefail
+
 #
-# Return pipelines as JSON array. The output can be piped into jq.
+# The function expects JENKINS_BASE_URL and JENKINS_BASE64_AUTH to be set in the context.
 #
-function get-pipelines-as-json-array() {
+function blue-ocean-rest-get() {
 
     debug "${FUNCNAME[0]}($@)"
 
-    local jenkins_base_url=$1 # base URL in format https://example.com/<instance-name>/blue/rest/organizations/jenkins. Must not end with slash
-    local username_password_base64_hash=$2
+    [[ -z ${JENKINS_BASE_URL} ]] && fail "'JENKINS_BASE_URL' not set in context"
+    [[ -z ${JENKINS_BASE64_AUTH} ]] && fail "'JENKINS_BASE64_AUTH' not set in context"
 
-    [[ -z ${jenkins_base_url} ]] && fail "'base_url' not provided"
-    [[ -z ${username_password_base64_hash} ]] && fail "'username_password_base64_hash' not provided"
+    local relative_url=$1
+    [[ -z ${relative_url} ]] && fail "'relative_url' not provided"
 
-    debug curl -s -H "Authorization: Basic ${username_password_base64_hash}" ${jenkins_base_url}/pipelines/
-    curl -s -H "Authorization: Basic ${username_password_base64_hash}" ${jenkins_base_url}/pipelines/
+    local url=${JENKINS_BASE_URL}/${relative_url}
+
+    debug curl -s -H "Authorization: Basic ***" ${url}
+    curl -s -H "Authorization: Basic ${JENKINS_BASE64_AUTH}" ${url}
 }
 
 #
-# Return pipeline names, as a space separated list.
-# The pipeline type (simple, folder, multi-branch) can be optionally specified as the third argument. If the pipeline
-# type is specified, only the names of the pipelines with the given typed are returned.
+# Return pipelines as JSON array. The output can be piped into jq.
+#
+# The function expects JENKINS_BASE_URL and JENKINS_BASE64_AUTH to be set in the context.
+#
+function get-pipelines() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    blue-ocean-rest-get pipelines/
+}
+
+#
+# Return pipeline names, as a space separated list. The pipeline type (simple, folder, multi-branch) can be optionally
+# specified as the third argument. If the pipeline type is specified, only the names of the pipelines with the given
+# typed are returned. Function will fail on invalid pipeline type. Return 1 on empty pipeline list.
+#
+# The function expects JENKINS_BASE_URL and JENKINS_BASE64_AUTH to be set in the context.
 #
 function get-pipeline-names() {
 
     debug "${FUNCNAME[0]}($@)"
 
-    local jenkins_base_url=$1
-    local username_password_base64_hash=$2
-    local type=$3 # Optional, can be 'simple', 'folder', 'multi-branch'
-    local result
+    local type=$1 # Optional, can be 'simple', 'folder', 'multi-branch'
 
-    for i in $(get-pipelines-as-json-array ${jenkins_base_url} ${username_password_base64_hash} | jq -r '.[] | .name'); do
+    local select_expression=true
+    if [[ -n ${type} ]]; then
+        class=$(pipeline-type-to-class ${type}) || fail "unknown pipeline type: ${type}"
+        select_expression='._class=="'${class}'"'
+    fi
+    debug "select_expression: ${select_expression}"
+
+    local result
+    for i in $(get-pipelines | jq -r '.[] | select('${select_expression}') | .name'); do
         [[ -z ${result} ]] && result=${i} || result="${result} ${i}"
     done
-
+    [[ -z ${result} ]] && return 1
     echo ${result}
+}
+
+#
+# Return the pipeline JSON representation.
+#
+# The function expects JENKINS_BASE_URL and JENKINS_BASE64_AUTH to be set in the context.
+#
+function get-pipeline() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    local name=$1
+    [[ -z ${name} ]] && fail "'name' not provided"
+
+    blue-ocean-rest-get pipelines/${name}/
 }
 
 #
@@ -58,3 +96,59 @@ function pipeline-type-to-class() {
 
     return 1
 }
+
+#
+# Return pipeline runs as JSON array. For a simple pipeline, the pipeline run series returned by the function contain
+# a monotonically increasing ID series. For a multi-branch pipeline, the runs may contain duplicate IDs for distinct
+# branches. The output can be piped into jq.
+#
+function get-pipeline-runs() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    local name=$1
+    [[ -z ${name} ]] && fail "'name' not provided"
+
+    blue-ocean-rest-get pipelines/${name}/runs/
+}
+
+#
+# Return a pipeline run JSON representation.
+#
+# The branch name is required. If the branch name contains characters that are not compatible with the REST URL encoding
+# scheme or which have a special meaning for the URL (such as "/"), those characters will be automatically encoded to
+# make them compatible with the URL.
+#
+function get-multi-branch-pipeline-run() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    local pipeline_name=$1
+    local branch_name=$2
+    local run_id=$3
+
+
+    [[ -z ${pipeline_name} ]] && fail "'pipeline_name' not provided"
+    [[ -z ${branch_name} ]] && fail "'branch_name' not provided"
+    [[ -z ${run_id} ]] && fail "'run_id' not provided"
+
+    branch_name=$(encode-to-rest-url ${branch_name})
+
+    blue-ocean-rest-get pipelines/${pipeline_name}/branches/${branch_name}/runs/${run_id}/
+}
+
+#
+# Encode characters such as "/" to make them compatible with Jenkins REST URLs.
+#
+function encode-to-rest-url() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    local arg=$1
+    [[ -z ${arg} ]] && return 0
+
+    local result=${arg//\//%252F}
+    [[ ${arg} != ${result} ]] && debug "${arg} → ${result}"
+    echo "${result}"
+}
+

@@ -1,0 +1,185 @@
+#!/usr/bin/env bash
+
+for i in bash.shlib jenkins.shlib; do [ -f $(dirname $0)/lib/${i} ] && source $(dirname $0)/lib/${i} || { echo "[error]: $(dirname $0)/lib/${i} not found" 1>&2; exit 1; } done
+
+VERSION=0.1.0
+# The Jenkins base URL (https://<host>/<instance-name>/blue/rest/organizations/jenkins). Must not end with slash.
+JENKINS_BASE_URL=UNINITIALIZED
+JENKINS_BASE64_AUTH=UNINITIALIZED
+
+function usage() {
+cat <<EOF
+Query a Jenkins instance.
+
+    $(basename $0) [common-options] <command> [command-options]
+
+Common Options:
+
+    --host-url specifies the URL of the Jenkins instance host (ex: https://jenkins.example.com). The same value can
+        be provided with JENKINS_HOST_URL environment variable. If both the environment variable and command line
+        options are provided, command line value takes precedence.
+
+    --username specifies the user name to authenticated against the Jenkins instance. The same value can be provided
+        with JENKINS_USERNAME environment variable. If both the environment variable and command line options are
+        provided, command line value takes precedence.
+
+    --password specifies the password to use to authenticated against the Jenkins instance. The same value can be
+        provided with JENKINS_PASSWORD environment variable. If both the environment variable and command line options
+        are provided, command line value takes precedence.
+
+    --instance-name specifies the name of the Jenkins instance (ex: release).  The same value can be provided with
+        JENKINS_INSTANCE_NAME environment variable. If both the environment variable and command line options are
+        provided, command line value takes precedence.
+
+Commands:
+
+    pipelines - display the pipeline names, optionally filtered by pipeline type.
+
+    pipeline - display various pipeline elements.
+
+Individual command help can be obtained withL
+
+     $(basename $0) help <command>
+
+EOF
+}
+
+function main() {
+
+    process-common-arguments "$@" && set -- "${ARGS[@]}" || { echo "failed to process common arguments" 1>&2; exit 1; }
+
+    if ${HELP}; then
+        [[ -n $1 ]] && { help-$1; exit 0; }
+        usage; exit 0;
+    fi
+
+    unset ARGS; declare -a ARGS
+    declare -A OPTIONS
+    OPTIONS["--host-url"]="string"
+    OPTIONS["--username"]="string"
+    OPTIONS["--password"]="string"
+    OPTIONS["--instance-name"]="string"
+    process-options "$@"
+
+    local host_url=${OPTIONS["--host-url"]:-${JENKINS_HOST_URL}}
+    [[ -z ${host_url} ]] && fail "Jenkins host URL not provided; use --host-url command line option or set JENKINS_HOST_URL environment variable"
+    local username=${OPTIONS["--username"]:-${JENKINS_USERNAME}}
+    [[ -z ${username} ]] && fail "Jenkins user name not provided; use --username command line option or set JENKINS_USERNAME environment variable"
+    local password=${OPTIONS["--password"]:-${JENKINS_PASSWORD}}
+    [[ -z ${password} ]] && fail "Jenkins password not provided; use --password command line option or set JENKINS_PASSWORD environment variable"
+    local instance_name=${OPTIONS["--instance-name"]:-${JENKINS_INSTANCE_NAME}}
+    [[ -z ${instance_name} ]] && fail "Jenkins instance name not provided; use --instance-name command line option or set JENKINS_INSTANCE_NAME environment variable"
+
+    JENKINS_BASE_URL=${host_url}/${instance_name}/blue/rest/organizations/jenkins
+    JENKINS_BASE64_AUTH=$(echo -n "${username}:${password}" | base64)
+    debug "JENKINS_BASE_URL: ${JENKINS_BASE_URL}"
+    debug "JENKINS_BASE64_AUTH: ${JENKINS_BASE64_AUTH}"
+
+    local command=$1
+
+    shift
+
+    do-${command} "$@"
+}
+
+function help-pipelines() {
+cat << EOF
+
+Display current pipeline names.
+
+Usage:
+
+    $(basename $0) pipelines [-t|--type <pipeline-type>] [--json]
+
+Options:
+
+    -t|--type filter by the pipeline type.
+
+EOF
+}
+
+function do-pipelines() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    unset ARGS; declare -a ARGS
+    declare -A OPTIONS
+    OPTIONS["--type"]="string -t"
+    process-options "$@"
+    fail-on-unknown-arguments 0
+
+    local pipeline_type=${OPTIONS["--type"]}
+
+    get-pipeline-names ${pipeline_type}
+}
+
+function help-pipeline() {
+cat << EOF
+
+Display the JSON representation of the specified pipeline.
+
+Usage:
+
+    $(basename $0) pipeline <pipeline-name> runs
+
+    $(basename $0) pipeline <pipeline-name> run <branch-name> <run-id>
+
+EOF
+}
+
+function do-pipeline() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    local pipeline_name=$1
+    shift
+
+    [[ -z ${pipeline_name} ]] && fail "pipeline name not provided"
+
+    local detail=$1
+    shift
+
+    if [[ -z ${detail} ]]; then
+
+        get-pipeline ${pipeline_name} | jq
+        return 0
+    fi
+
+    if [[ ${detail} = "runs" ]]; then
+
+        get-pipeline-runs ${pipeline_name} | jq
+        return 0
+    fi
+
+    if [[ ${detail} = "run" ]]; then
+
+        branch=$1
+        [[ -z ${branch} ]] && fail "branch not provided"
+        shift
+        run_id=$1
+        [[ -z ${run_id} ]] && fail "run ID not provided"
+        shift
+
+        local run_detail=$1
+        shift
+
+        if [[ -z ${run_detail} ]]; then
+            get-multi-branch-pipeline-run ${pipeline_name} ${branch} ${run_id} | jq
+            return 0
+        fi
+
+        if [[ ${run_detail} = "nodes" ]]; then
+
+            blue-ocean-rest-get pipelines/${pipeline_name}/branches/$(encode-to-rest-url ${branch})/runs/${run_id}/nodes/ | jq
+            return 0
+        fi
+
+
+        fail "unknown pipeline detail: ${detail}"
+
+    fi
+
+    fail "unknown pipeline detail: ${detail}"
+}
+
+main "$@"
