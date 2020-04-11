@@ -45,7 +45,7 @@ function main() {
     debug "run_id: ${run_id}"
 
     local target_dir_parent=$(pwd)
-    local target_dir_name="${branch//\//_}#${run_id}"
+    local target_dir_name="${branch//\//_}-${run_id}"
     local target_dir=${target_dir_parent}/${target_dir_name}
     [[ ! -d ${target_dir} ]] && { mkdir -p ${target_dir} && info "created ${target_dir}"; }
 
