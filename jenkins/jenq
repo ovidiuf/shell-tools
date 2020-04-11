@@ -34,9 +34,23 @@ Common Options:
 
 Commands:
 
-    pipelines - display the pipeline names, optionally filtered by pipeline type.
+    pipelines - return pipelines, optionally filtered by pipeline type.
 
-    pipeline - display various pipeline elements.
+    pipeline - display a specific pipeline information.
+
+    branches - return branches for a multi-branch pipeline.
+
+    branch - display a specific branch information.
+
+    runs - return runs for a branch.
+
+    run - display a specific run information.
+
+    nodes - return nodes for a run
+
+    node - display a specific node information.
+
+    log - pull the execution log for a node.
 
 Individual command help can be obtained with:
 
@@ -109,7 +123,6 @@ function do-pipelines() {
     process-options "$@"
     fail-on-unknown-arguments 1
     set -- "${ARGS[@]}"
-
     local json=${OPTIONS["--json"]}
 
     pipeline_type=$1
@@ -121,38 +134,16 @@ function do-pipelines() {
 
         get-pipeline-names ${pipeline_type}
     fi
-
-
 }
 
 function help-pipeline() {
 cat << EOF
 
-Display the JSON representation of the specified pipeline or pipeline elements.
+Display the JSON representation of the specified pipeline
 
 Usage:
 
     $(basename $0) pipeline <pipeline-name>
-
-    $(basename $0) pipeline <pipeline-name> runs
-
-    $(basename $0) pipeline <pipeline-name> run <branch> <run-id>
-
-    $(basename $0) pipeline <pipeline-name> run <branch> <run-id> nodes
-
-    $(basename $0) pipeline <pipeline-name> run <branch> <run-id> node <node-id>
-
-    $(basename $0) pipeline <pipeline-name> run <branch> <run-id> node <node-id> log
-
-Example:
-
-The list of nodes ID for a run:
-
-    $(basename $0) pipeline <pipeline-name> run <branch> <run-id> nodes | jq -r '.[] | .id'
-
-Details about nodes associated with a run:
-
-    $(basename $0) pipeline <pipeline-name> run <branch> <run-id> nodes | jq -r '.[]| (.id + " " + .displayName + " " + .state + " → " + .result)'
 
 EOF
 }
@@ -162,79 +153,229 @@ function do-pipeline() {
     debug "${FUNCNAME[0]}($@)"
 
     local pipeline_name=$1
-    shift
-
     [[ -z ${pipeline_name} ]] && fail "pipeline name not provided"
 
-    local detail=$1
-    shift
+    blue-ocean-rest-get pipelines/${pipeline_name}/ | jq
+}
 
-    if [[ -z ${detail} ]]; then
+function help-branches() {
+cat << EOF
 
-        get-pipeline ${pipeline_name} | jq
-        return 0
+Display the branch names for the specified multi-branch pipeline, or their JSON representation if --json is used.
+
+Usage:
+
+    $(basename $0) branches <pipeline-name> [--json]
+
+EOF
+}
+
+function do-branches() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    unset ARGS; declare -a ARGS
+    declare -A OPTIONS
+    OPTIONS["--json"]="boolean"
+    process-options "$@"
+    fail-on-unknown-arguments 1
+    set -- "${ARGS[@]}"
+    local json=${OPTIONS["--json"]}
+
+    pipeline_name=$1
+    [[ -z ${pipeline_name} ]] && fail "pipeline name not provided"
+
+    if ${json}; then
+
+        blue-ocean-rest-get pipelines/${pipeline_name}/branches/ | jq
+    else
+
+        blue-ocean-rest-get pipelines/${pipeline_name}/branches/ | jq -r '.[] | .displayName'
     fi
+}
 
-    if [[ ${detail} = "runs" ]]; then
+function help-branch() {
+cat << EOF
 
-        get-pipeline-runs ${pipeline_name} | jq
-        return 0
+Display the JSON representation of the specified branch
+
+Usage:
+
+    $(basename $0) pipeline <pipeline-name> <branch>
+
+EOF
+}
+
+function do-branch() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    local pipeline_name=$1
+    [[ -z ${pipeline_name} ]] && fail "pipeline name not provided"
+    local branch=$2
+    [[ -z ${branch} ]] && fail "branch not provided"
+
+    blue-ocean-rest-get pipelines/${pipeline_name}/branches/$(encode-to-rest-url ${branch})/ | jq
+}
+
+function help-runs() {
+cat << EOF
+
+Display the run numbers for the specified branch pipeline, or their JSON representation if --json is used.
+
+Usage:
+
+    $(basename $0) runs <pipeline-name> <branch> [--json]
+
+EOF
+}
+
+function do-runs() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    unset ARGS; declare -a ARGS
+    declare -A OPTIONS
+    OPTIONS["--json"]="boolean"
+    process-options "$@"
+    fail-on-unknown-arguments 2
+    set -- "${ARGS[@]}"
+    local json=${OPTIONS["--json"]}
+
+    pipeline_name=$1
+    [[ -z ${pipeline_name} ]] && fail "pipeline name not provided"
+    branch=$2
+    [[ -z ${branch} ]] && fail "branch not provided"
+
+    if ${json}; then
+
+        blue-ocean-rest-get pipelines/${pipeline_name}/branches/$(encode-to-rest-url ${branch})/runs/ | jq
+    else
+
+        blue-ocean-rest-get pipelines/${pipeline_name}/branches/$(encode-to-rest-url ${branch})/runs/ | jq -r '.[] | .id'
     fi
+}
 
-    if [[ ${detail} = "run" ]]; then
+function help-run() {
+cat << EOF
 
-        branch=$1
-        [[ -z ${branch} ]] && fail "branch not provided"
-        shift
+Display the JSON representation of the specified run
 
-        run_id=$1
-        [[ -z ${run_id} ]] && fail "run ID not provided"
-        shift
+Usage:
 
-        local run_detail=$1
-        shift
+    $(basename $0) pipeline <pipeline-name> <branch> <run-id>
 
-        if [[ -z ${run_detail} ]]; then
-            get-multi-branch-pipeline-run ${pipeline_name} ${branch} ${run_id} | jq
-            return 0
-        fi
+EOF
+}
 
-        if [[ ${run_detail} = "nodes" ]]; then
+function do-run() {
 
-            blue-ocean-rest-get pipelines/${pipeline_name}/branches/$(encode-to-rest-url ${branch})/runs/${run_id}/nodes/ | jq
-            return 0
-        fi
+    debug "${FUNCNAME[0]}($@)"
 
-        if [[ ${run_detail} = "node" ]]; then
+    local pipeline_name=$1
+    [[ -z ${pipeline_name} ]] && fail "pipeline name not provided"
+    local branch=$2
+    [[ -z ${branch} ]] && fail "branch not provided"
+    local run_id=$3
+    [[ -z ${run_id} ]] && fail "run ID not provided"
 
-            node_id=$1
-            [[ -z ${node_id} ]] && fail "node ID not provided"
-            shift
+    blue-ocean-rest-get pipelines/${pipeline_name}/branches/$(encode-to-rest-url ${branch})/runs/${run_id}/ | jq
+}
 
-            local node_detail=$1
-            shift
+function help-nodes() {
+cat << EOF
 
-            if [[ -z ${node_detail} ]]; then
-                blue-ocean-rest-get pipelines/${pipeline_name}/branches/$(encode-to-rest-url ${branch})/runs/${run_id}/nodes/${node_id}/ | jq
-                return 0
-            fi
+Display the node IDs for the specified run, or their JSON representation if --json is used.
 
+Usage:
 
-            if [[ ${node_detail} = "log" ]]; then
+    $(basename $0) runs <pipeline-name> <branch> <run-id> [--json]
 
-                blue-ocean-rest-get pipelines/${pipeline_name}/branches/$(encode-to-rest-url ${branch})/runs/${run_id}/nodes/${node_id}/log/?start=0
-                return 0
-            fi
+EOF
+}
 
-            fail "unknown node detail: ${node_detail}"
-        fi
+function do-nodes() {
 
+    debug "${FUNCNAME[0]}($@)"
 
-        fail "unknown run detail: ${run_detail}"
+    unset ARGS; declare -a ARGS
+    declare -A OPTIONS
+    OPTIONS["--json"]="boolean"
+    process-options "$@"
+    fail-on-unknown-arguments 3
+    set -- "${ARGS[@]}"
+    local json=${OPTIONS["--json"]}
 
+    pipeline_name=$1
+    [[ -z ${pipeline_name} ]] && fail "pipeline name not provided"
+    branch=$2
+    [[ -z ${branch} ]] && fail "branch not provided"
+    run_id=$3
+    [[ -z ${run_id} ]] && fail "run ID not provided"
+
+    if ${json}; then
+
+        blue-ocean-rest-get pipelines/${pipeline_name}/branches/$(encode-to-rest-url ${branch})/runs/${run_id}/nodes/ | jq
+    else
+
+        blue-ocean-rest-get pipelines/${pipeline_name}/branches/$(encode-to-rest-url ${branch})/runs/${run_id}/nodes/ | jq -r '.[] | .id'
     fi
+}
 
-    fail "unknown pipeline detail: ${detail}"
+function help-node() {
+cat << EOF
+
+Display the JSON representation of the specified node.
+
+Usage:
+
+    $(basename $0) pipeline <pipeline-name> <branch> <run-id> <node-id>
+
+EOF
+}
+
+function do-node() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    local pipeline_name=$1
+    [[ -z ${pipeline_name} ]] && fail "pipeline name not provided"
+    local branch=$2
+    [[ -z ${branch} ]] && fail "branch not provided"
+    local run_id=$3
+    [[ -z ${run_id} ]] && fail "run ID not provided"
+    local node_id=$4
+    [[ -z ${node_id} ]] && fail "node ID not provided"
+
+    blue-ocean-rest-get pipelines/${pipeline_name}/branches/$(encode-to-rest-url ${branch})/runs/${run_id}/nodes/${node_id}/ | jq
+}
+
+function help-log() {
+cat << EOF
+
+Pull the log for the specified node and send it to stdout.
+
+Usage:
+
+    $(basename $0) log <pipeline-name> <branch> <run-id> <node-id>
+
+EOF
+}
+
+function do-log() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    local pipeline_name=$1
+    [[ -z ${pipeline_name} ]] && fail "pipeline name not provided"
+    local branch=$2
+    [[ -z ${branch} ]] && fail "branch not provided"
+    local run_id=$3
+    [[ -z ${run_id} ]] && fail "run ID not provided"
+    local node_id=$4
+    [[ -z ${node_id} ]] && fail "node ID not provided"
+
+    blue-ocean-rest-get pipelines/${pipeline_name}/branches/$(encode-to-rest-url ${branch})/runs/${run_id}/nodes/${node_id}/log/?start=0
 }
 
 main "$@"

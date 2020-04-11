@@ -75,21 +75,6 @@ function get-pipeline-names() {
 }
 
 #
-# Return the pipeline JSON representation.
-#
-# The function expects JENKINS_BASE_URL and JENKINS_BASE64_AUTH to be set in the context.
-#
-function get-pipeline() {
-
-    debug "${FUNCNAME[0]}($@)"
-
-    local name=$1
-    [[ -z ${name} ]] && fail "'name' not provided"
-
-    blue-ocean-rest-get pipelines/${name}/
-}
-
-#
 # Converts a known pipeline type ('simple', 'folder', 'multi-branch' to an Blue Ocean pipeline class.
 # For known pipeline types, send the class at stdout and return zero.
 # For an unknown pipeline type, return a non-zero exit code.
@@ -106,21 +91,6 @@ function pipeline-type-to-class() {
     [[ ${type} = "multi-branch" ]] && { echo "io.jenkins.blueocean.rest.impl.pipeline.MultiBranchPipelineImpl"; return 0; }
 
     return 1
-}
-
-#
-# Return pipeline runs as JSON array. For a simple pipeline, the pipeline run series returned by the function contain
-# a monotonically increasing ID series. For a multi-branch pipeline, the runs may contain duplicate IDs for distinct
-# branches. The output can be piped into jq.
-#
-function get-pipeline-runs() {
-
-    debug "${FUNCNAME[0]}($@)"
-
-    local name=$1
-    [[ -z ${name} ]] && fail "'name' not provided"
-
-    blue-ocean-rest-get pipelines/${name}/runs/
 }
 
 #
