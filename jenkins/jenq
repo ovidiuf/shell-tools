@@ -7,7 +7,7 @@ VERSION=0.1.0
 # The Jenkins base URL (https://<host>/<instance-name>/blue/rest/organizations/jenkins). Must not end with slash.
 JENKINS_BASE_URL=UNINITIALIZED # set by initialize-global-context()
 JENKINS_BASE64_AUTH=UNINITIALIZED # set by initialize-global-context()
-JENKINS_TMP_DIR # temporary directory that contains various temporary files per run, created and set by initialize-global-context()
+JENKINS_TMP_DIR=/tmp # temporary directory that contains various temporary files per run, created and set by initialize-global-context()
 
 function usage() {
 cat <<EOF
@@ -59,7 +59,11 @@ Examples:
 
 Display the node name and ID for a run:
 
-    jenq nodes <pipeline-name> <branch> <run-id> --json | jq -r '.[] | (.id + " " + .displayName)'
+    $(basename $0) nodes --json <pipeline-name> <branch> <run-id> | jq -r '.[] | (.id + " " + .displayName)'
+
+Display the names of the nodes that failed:
+
+    $(basename $0) nodes --json <pipeline-name> <branch> <run-id> | jq -r 'select(.result=="FAILURE") | .displayName'
 
 
 Individual command help can be obtained with:
