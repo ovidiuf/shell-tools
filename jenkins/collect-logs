@@ -10,17 +10,17 @@ function usage() {
 cat <<EOF
 
 Collect logs for ${PIPELINE_NAME} pipeline runs on branch ${BRANCH}.
-The run number must be specified as argument.
+The run (build) number must be specified as argument.
 
 Usage:
 
-    $(basename $0) [options] <build-number>
+    $(basename $0) [options] <run-number>
 
 The logs are collected in the current directory.
 
 Options:
 
-    --branch <branch> Specifies a branch. By default is ${BRANCH}.
+    -b|--branch <branch> Specifies a branch. By default is ${BRANCH}.
 
 EOF
 }
@@ -32,7 +32,7 @@ function main() {
 
     unset ARGS; declare -a ARGS
     declare -A OPTIONS
-    OPTIONS["--branch"]="string"
+    OPTIONS["--branch"]="string -b"
     process-options "$@"
     fail-on-unknown-arguments 1
 
