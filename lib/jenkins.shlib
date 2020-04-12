@@ -226,8 +226,7 @@ function do-nodes() {
 
     if ${json}; then
 
-
-        blue-ocean-rest-get pipelines/${pipeline_name}/branches/$(encode-to-rest-url ${branch})/runs/${run_id}/nodes/ 0 ${BLUEOCEAN_REST_API_NODE_LIMIT} | jq
+        get-nodes ${pipeline_name} ${branch} ${run_id}
     else
 
         get-nodes ${pipeline_name} ${branch} ${run_id} | jq -r '.id'
