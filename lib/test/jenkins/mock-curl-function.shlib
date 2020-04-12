@@ -1,0 +1,92 @@
+function curl() {
+
+    echo "$@" > ${BATS_TEST_DIRNAME}/data/tmp/curl-args
+
+    [[ $1 = "-s" ]] || fail "invalid curl argument 1: $1"
+    [[ $2 = "-H" ]] || fail "invalid curl argument 2: $2"
+    [[ $3 = "Authorization: Basic ${JENKINS_BASE64_AUTH}" ]] || fail "invalid curl argument 3: $3"
+
+        local url=$4
+
+        local s=${url#*pipelines/}
+        local pipeline_name=${s%%/*}
+        s=${s#${pipeline_name}/branches/}
+        local branch_name=${s%%/*}
+        s=${s#${branch_name}/runs/}
+        local run_id=${s%%/*}
+        s=${s#${run_id}}
+
+        if [[ ${pipeline_name} != "test-pipeline" ]]; then
+cat << EOF
+{
+  "message" : "Pipeline ${pipeline_name} not found",
+  "code" : 404,
+  "errors" : [ ]
+}
+EOF
+            return 0
+        fi
+
+        if [[ ${branch_name} != "test-branch" ]]; then
+cat << EOF
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8"/>
+<title>Error 404 Not Found</title>
+</head>
+<body><h2>HTTP ERROR 404</h2>
+<p>Problem accessing /cloud/blue/rest/organizations/jenkins/pipelines/${pipeline_name}/branches/${branch_name}/runs/${run_id}${s}. Reason:
+<pre>    Not Found</pre></p><hr><a href="http://eclipse.org/jetty">Powered by Jetty:// 9.4.z-SNAPSHOT</a><hr/>
+
+</body>
+</html>
+EOF
+            return 0
+        fi
+
+        if [[ ${run_id} != "1" ]]; then
+cat << EOF
+{
+  "message" : "Run ${run_id} not found in organization jenkins and pipeline ${branch_name}",
+  "code" : 404,
+  "errors" : [ ]
+}
+EOF
+            return 0
+        fi
+
+        #
+        # pipeline name, branch name and run ID valid
+        #
+cat << EOF
+[
+  {
+    "_class": "io.jenkins.blueocean.rest.impl.pipeline.PipelineNodeImpl",
+    "displayName": "node 1",
+    "id": "1",
+    "result": "SUCCESS",
+    "startTime": "2020-04-09T22:25:23.640-0700",
+    "state": "FINISHED",
+    "type": "STAGE"
+  },
+  {
+    "_class": "io.jenkins.blueocean.rest.impl.pipeline.PipelineNodeImpl",
+    "displayName": "node 2",
+    "id": "2",
+    "result": "SUCCESS",
+    "startTime": "2020-04-09T22:38:30.583-0700",
+    "state": "FINISHED",
+    "type": "STAGE"
+  },
+  {
+    "_class": "io.jenkins.blueocean.rest.impl.pipeline.PipelineNodeImpl",
+    "displayName": "node 3",
+    "id": "3",
+    "result": "SUCCESS",
+    "startTime": "2020-04-09T22:38:30.601-0700",
+    "state": "FINISHED",
+    "type": "STAGE"
+  }
+]
+EOF
+    }

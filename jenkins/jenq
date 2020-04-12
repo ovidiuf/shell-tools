@@ -3,9 +3,11 @@
 for i in bash.shlib jenkins.shlib; do [ -f $(dirname $0)/../lib/${i} ] && source $(dirname $0)/../lib/${i} || { echo "[error]: $(dirname $0)/../lib/${i} not found" 1>&2; exit 1; } done
 
 VERSION=0.1.0
+
 # The Jenkins base URL (https://<host>/<instance-name>/blue/rest/organizations/jenkins). Must not end with slash.
-JENKINS_BASE_URL=UNINITIALIZED # set by set-global-variables()
-JENKINS_BASE64_AUTH=UNINITIALIZED # set by set-global-variables()
+JENKINS_BASE_URL=UNINITIALIZED # set by initialize-global-context()
+JENKINS_BASE64_AUTH=UNINITIALIZED # set by initialize-global-context()
+JENKINS_TMP_DIR # temporary directory that contains various temporary files per run, created and set by initialize-global-context()
 
 function usage() {
 cat <<EOF
@@ -95,7 +97,7 @@ function main() {
     local instance_name=${OPTIONS["--instance-name"]:-${JENKINS_INSTANCE_NAME}}
     [[ -z ${instance_name} ]] && fail "Jenkins instance name not provided; use --instance-name command line option or set JENKINS_INSTANCE_NAME environment variable"
 
-    set-global-variables ${host_url} ${username} ${password} ${instance_name}
+    initialize-global-context ${host_url} ${username} ${password} ${instance_name}
 
     local command=$1
 

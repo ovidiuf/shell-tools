@@ -306,9 +306,10 @@ function do-log() {
 #
 
 #
-# Set the global variables JENKINS_BASE_URL and JENKINS_BASE64_AUTH
+# Set the global variables JENKINS_BASE_UR, JENKINS_BASE64_AUTH, JENKINS_TMP_DIR and initializes the global context
+# by creating temporary directory, etc.
 #
-function set-global-variables() {
+function initialize-global-context() {
 
     debug "${FUNCNAME[0]}($@)"
 
@@ -316,6 +317,8 @@ function set-global-variables() {
     local username=$2
     local password=$3
     local instance_name=$4
+    local preserve_tmp_dir=${5:-false}
+
     [[ -z ${host_url} ]] && fail "'host_url' not provided"
     [[ -z ${username} ]] && fail "'username' not provided"
     [[ -z ${password} ]] && fail "'password' not provided"
@@ -323,12 +326,23 @@ function set-global-variables() {
 
     JENKINS_BASE_URL=${host_url}/${instance_name}/blue/rest/organizations/jenkins
     JENKINS_BASE64_AUTH=$(echo -n "${username}:${password}" | base64)
+
+    JENKINS_TMP_DIR=$(get-tmp-dir) || exit 1
+
+    if ${preserve_tmp_dir}; then
+        debug "temporary directory ${JENKINS_TMP_DIR} will be preserved on exit"
+    else
+        trap "rm -rf ${JENKINS_TMP_DIR} && debug deleted temporary directory ${JENKINS_TMP_DIR} || warn failed to delete temporary directory ${JENKINS_TMP_DIR}" EXIT && \
+        debug "registered temporary directory ${JENKINS_TMP_DIR} cleanup procedure"
+    fi
+
     debug "JENKINS_BASE_URL: ${JENKINS_BASE_URL}"
     debug "JENKINS_BASE64_AUTH: ${JENKINS_BASE64_AUTH}"
+    debug "JENKINS_TMP_DIR: ${JENKINS_TMP_DIR}"
 }
 
 #
-# The function expects JENKINS_BASE_URL and JENKINS_BASE64_AUTH to be set in the context.
+# The function expects JENKINS_BASE_URL, JENKINS_BASE64_AUTH and JENKINS_TMP_DIR to be set in the context.
 #
 # It expects the relative URL with all encoding issues resolved (for example, the branch must not contain slashes,
 # but the corresponding translated character).
@@ -342,6 +356,8 @@ function blue-ocean-rest-get() {
 
     [[ -z ${JENKINS_BASE_URL} ]] && fail "'JENKINS_BASE_URL' not set in context"
     [[ -z ${JENKINS_BASE64_AUTH} ]] && fail "'JENKINS_BASE64_AUTH' not set in context"
+    [[ -z ${JENKINS_TMP_DIR} ]] && fail "'JENKINS_TMP_DIR' not set in context"
+    [[ ! -d ${JENKINS_TMP_DIR}  ]] && fail "JENKINS_TMP_DIR does not exist: ${JENKINS_TMP_DIR}"
 
     local relative_url=$1
     [[ -z ${relative_url} ]] && fail "'relative_url' not provided"
@@ -361,8 +377,42 @@ function blue-ocean-rest-get() {
         more_than_one=true
     fi
 
+    local output_file=${JENKINS_TMP_DIR}/blue-ocean-rest-output
+
     debug curl -s -H "Authorization: Basic ***" ${url}
-    curl -s -H "Authorization: Basic ${JENKINS_BASE64_AUTH}" ${url}
+    curl -s -H "Authorization: Basic ${JENKINS_BASE64_AUTH}" ${url} > ${output_file}
+
+    debug "server response:"
+    debug-file ${output_file} 100
+
+    debug "parsing Blue Ocean server output ${output_file}"
+    local error_message
+
+    #
+    # Blue Ocean reacts differently to an unknown pipeline or run ID (produces JSON content) than to unknown branch
+    # (produces HTML). First try to interpret as HTML
+    #
+    if grep -q "<html>" ${output_file}; then
+
+        debug "Blue Ocean server output is HTML"
+
+        if grep -i -q "error 404" ${output_file}; then
+            #
+            # one of the resources specified by the URL does not exist
+            #
+            fail "one of the resources specified in the URL does not exist: ${relative_url}"
+        else
+            fail "unknown HTML format: ${output_file}"
+        fi
+    fi
+
+    debug "interpreting Blue Ocean server output as JSON"
+
+    error_message=$(jq -r 'select(.code == 404) | .message' ${output_file} 2>/dev/null)
+    [[ -n ${error_message} ]] && fail ${error_message} || debug "server output NOT a code 404 response"
+
+
+    cat ${output_file}
 }
 
 #
@@ -519,61 +569,22 @@ function get-nodes() {
 
     debug "${FUNCNAME[0]}($@)"
 
+    [[ -z ${JENKINS_TMP_DIR} ]] && fail "'JENKINS_TMP_DIR' not set in context"
+    [[ ! -d ${JENKINS_TMP_DIR}  ]] && fail "JENKINS_TMP_DIR does not exist: ${JENKINS_TMP_DIR}"
+
     local pipeline_name=$1
     local branch=$2
     local run_id=$3
-    local preserve_tmp_dir=${4:-false}
 
     [[ -z ${pipeline_name} ]] && fail "'pipeline_name' not provided"
     [[ -z ${branch} ]] && fail "'branch' not provided"
     [[ -z ${run_id} ]] && fail "'run_id' not provided"
 
-    local nodes_url=pipelines/${pipeline_name}/branches/$(encode-to-rest-url ${branch})/runs/${run_id}/nodes/
-    debug "nodes_url: ${nodes_url}"
+    local output_file=${JENKINS_TMP_DIR}/blue-ocean-rest-get-output
 
-    local tmp_dir
-    tmp_dir=$(get-tmp-dir) || exit 1
-    if ${preserve_tmp_dir}; then
-        debug "temporary directory ${tmp_dir} will be preserved on exit"
-    else
-        trap "rm -rf ${tmp_dir} && debug deleted temporary directory ${tmp_dir} || warn failed to delete temporary directory ${tmp_dir}" EXIT && \
-        debug "registered temporary directory ${tmp_dir} cleanup procedure"
-    fi
+    blue-ocean-rest-get \
+        pipelines/${pipeline_name}/branches/$(encode-to-rest-url ${branch})/runs/${run_id}/nodes/ \
+        0 ${BLUEOCEAN_REST_API_NODE_LIMIT} > ${output_file}
 
-    local server_output=${tmp_dir}/nodes-output
-
-    blue-ocean-rest-get ${nodes_url} 0 ${BLUEOCEAN_REST_API_NODE_LIMIT} > ${server_output}
-
-    debug "parsing Blue Ocean server output ${server_output}"
-    local error_message
-
-    #
-    # Blue Ocean reacts differently to an unknown pipeline or run ID (produces JSON content) than to unknown branch
-    # (produces HTML); First try to interpret as HTML
-    #
-    if grep -q "<html>" ${server_output}; then
-
-        debug "Blue Ocean server output is HTML"
-
-        if grep -i -q "error 404" ${server_output}; then
-            #
-            # branch not found
-            #
-            fail "unknown branch: ${branch}"
-        else
-            fail "unknown HTML format: ${server_output}"
-        fi
-    fi
-
-    debug "interpreting Blue Ocean server output as JSON"
-
-    error_message=$(jq -r 'select(.code == 404) | .message' ${server_output} 2>/dev/null)
-    [[ -n ${error_message} ]] && fail ${error_message} || debug "server output NOT a code 404 response"
-
-    #
-    # valid JSON containing node representations
-    #
-    debug "applying array-to-iterator .[] filter on Blue Ocean JSON output ${server_output} and sending the result to stdout"
-    jq '.[]' ${server_output} || \
-        { debug-file ${server_output}; fail "failed to apply array-to-iterator .[] filter on Blue Ocean JSON output ${server_output}"; }
+    jq '.[]' ${output_file} || fail "failed to apply array-to-iterator .[] filter on Blue Ocean JSON output ${output_file}"
 }

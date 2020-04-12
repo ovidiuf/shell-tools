@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-BASH_SHLIB_VERSION=1.12.2
+BASH_SHLIB_VERSION=1.13.0
 
 #
 # Generic bash functionality
@@ -431,10 +431,11 @@ function trace() {
     return 0
 }
 
-
 #
 # If VERBOSE is set, dump the content of the file given as argument at stderr (not to interfere with function returns)
-# or to DEBUG_OUTPUT, if set. If the file does not exist or cannot be read, report accordingly
+# or to DEBUG_OUTPUT, if set. If the file does not exist or cannot be read, report accordingly.
+# A second argument, if provided, is interpreted as the number of lines from the beginning of the file to be dumped.
+# If not provided, all lines are dumped.
 #
 function debug-file() {
 
@@ -444,7 +445,12 @@ function debug-file() {
     [[ -z ${file} ]] && { debug "no file provided"; return 0; }
     [[ -f ${file} ]] || { debug "no such file: ${file}"; return 0; }
     [[ -r ${file} ]] || { debug "file is not readable: ${file}"; return 0; }
-    [[ -z ${DEBUG_OUTPUT} ]] && cat ${file} 1>&2 || cat ${file} >> ${DEBUG_OUTPUT}
+    local line_count=$2
+    if [[ -z ${line_count} ]]; then
+        [[ -z ${DEBUG_OUTPUT} ]] && cat ${file} 1>&2 || cat ${file} >> ${DEBUG_OUTPUT}
+    else
+        [[ -z ${DEBUG_OUTPUT} ]] && head -${line_count} ${file} 1>&2 || head -${line_count} ${file} >> ${DEBUG_OUTPUT}
+    fi
     return 0
 }
 
