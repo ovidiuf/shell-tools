@@ -3,7 +3,7 @@
 ld=$(dirname $0)/../lib
 for i in bash.shlib jenkins.shlib; do [ -f ${ld}/${i} ] && source ${ld}/${i} || { echo "[error]: ${ld}/${i} not found" 1>&2; exit 1; } done
 
-VERSION=0.1.0
+VERSION=0.1.1
 PIPELINE_NAME=c3server-k8s
 BRANCH=epic/cloud/team/k8sonly/develop
 
@@ -71,8 +71,8 @@ function main() {
             continue
         fi
 
-        local target_file=${target_dir}/${node_id}-${node_name// /_}.log
-        ${jenq} ${jeng_verbose} log ${pipeline} ${branch} ${run_id} ${node_id} log > ${target_file}
+        local target_file="${target_dir}/${node_id}-${node_name// /_}.log"
+        ${jenq} ${jeng_verbose} log ${pipeline} ${branch} ${run_id} ${node_id} log > "${target_file}"
         info "collected logs for node ${node_name} in $(basename ${target_file})"
     done
 }
