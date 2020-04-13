@@ -2,7 +2,7 @@
 
 for i in bash.shlib jenkins.shlib; do [ -f $(dirname $0)/../lib/${i} ] && source $(dirname $0)/../lib/${i} || { echo "[error]: $(dirname $0)/../lib/${i} not found" 1>&2; exit 1; } done
 
-VERSION=0.2.1
+VERSION=0.3.0
 
 # The Jenkins base URL (https://<host>/<instance-name>/blue/rest/organizations/jenkins). Must not end with slash.
 JENKINS_BASE_URL=UNINITIALIZED # set by initialize-global-context()
@@ -52,11 +52,16 @@ Commands:
 
     run - display run information.
 
-    nodes - return nodes for a run
+    nodes - return nodes for a run.
 
     node - display node information.
 
     log - pull the execution log for a node.
+
+    test-summary - return the test summary for a run (the total number of tests, the number of failed tests, etc).
+
+    tests - return all tests for a run, as a JSON map stream. The total number of JSON maps is equal with the total
+        number of tests reported by "test-summary", and the amount of data might be quite large.
 
 Examples:
 

@@ -3,6 +3,7 @@
 set -o pipefail
 
 BLUEOCEAN_REST_API_NODE_LIMIT=1000
+BLUEOCEAN_REST_API_TEST_LIMIT=100000
 
 #
 # Commands and Help
@@ -172,7 +173,7 @@ Display the JSON representation of the specified run
 
 Usage:
 
-    $(basename $0) pipeline <pipeline-name> <branch> <run-id>
+    $(basename $0) run <pipeline-name> <branch> <run-id>
 
 EOF
 }
@@ -297,6 +298,93 @@ function do-log() {
         fail "node \"${node_id_or_name}\" cannot be found in run ${pipeline_name}:${branch}#${run_id}"
 
     blue-ocean-rest-get pipelines/${pipeline_name}/branches/$(encode-to-rest-url ${branch})/runs/${run_id}/nodes/${node_id}/log/?start=0
+}
+
+function help-test-summary() {
+cat << EOF
+
+Return the test summary for a run.
+
+Usage:
+
+    $(basename $0) test-summary <pipeline-name> <branch> <run-id>
+
+Display the following information:
+- Total number of tests
+- Number of passed tests
+- Number of skipped tests
+- Number of failed tests
+- Number of fixed tests since the last run
+- Number of regressions since the last run
+- "Existing failed"
+
+EOF
+}
+
+function do-test-summary() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    [[ -z ${JENKINS_TMP_DIR} ]] && fail "'JENKINS_TMP_DIR' not set in context"
+    [[ ! -d ${JENKINS_TMP_DIR}  ]] && fail "JENKINS_TMP_DIR does not exist: ${JENKINS_TMP_DIR}"
+
+    local pipeline_name=$1
+    [[ -z ${pipeline_name} ]] && fail "pipeline name not provided"
+    local branch=$2
+    [[ -z ${branch} ]] && fail "branch not provided"
+    local run_id=$3
+    [[ -z ${run_id} ]] && fail "run ID not provided"
+
+    local result_file=${JENKINS_TMP_DIR}/$(get-tmp-file-name test-summary)
+
+    blue-ocean-rest-get pipelines/${pipeline_name}/branches/$(encode-to-rest-url ${branch})/runs/${run_id}/blueTestSummary/ > ${result_file} || exit 1
+
+cat <<EOF
+
+    Total tests:                $(jq -r '.total' ${result_file})
+    Passed:                     $(jq -r '.passed' ${result_file})
+    Skipped:                    $(jq -r '.skipped' ${result_file})
+    Failed:                     $(jq -r '.failed' ${result_file})
+    Fixed since last run:       $(jq -r '.fixed' ${result_file})
+    Regressions since last run: $(jq -r '.regressions' ${result_file})
+    Existing failed:            $(jq -r '.existingFailed' ${result_file})
+
+EOF
+}
+
+function help-tests() {
+cat << EOF
+
+Return the JSON representation for all tests of a run. The result is a JSON map stream. The total number of JSON maps
+is equal with the total number of tests reported by "test-summary", and the amount of data might be quite large. The
+number of returned test representation returned is limited to ${BLUEOCEAN_REST_API_TEST_LIMIT}.
+
+Usage:
+
+    $(basename $0) tests <pipeline-name> <branch> <run-id>
+
+EOF
+}
+
+function do-tests() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    [[ -z ${JENKINS_TMP_DIR} ]] && fail "'JENKINS_TMP_DIR' not set in context"
+    [[ ! -d ${JENKINS_TMP_DIR}  ]] && fail "JENKINS_TMP_DIR does not exist: ${JENKINS_TMP_DIR}"
+
+    local pipeline_name=$1
+    [[ -z ${pipeline_name} ]] && fail "pipeline name not provided"
+    local branch=$2
+    [[ -z ${branch} ]] && fail "branch not provided"
+    local run_id=$3
+    [[ -z ${run_id} ]] && fail "run ID not provided"
+
+    local result_file=${JENKINS_TMP_DIR}/$(get-tmp-file-name tests)
+
+    blue-ocean-rest-get pipelines/${pipeline_name}/branches/$(encode-to-rest-url ${branch})/runs/${run_id}/tests/ 0 ${BLUEOCEAN_REST_API_TEST_LIMIT} > ${result_file} || exit 1
+
+    jq '.[]' ${result_file}
 }
 
 #
