@@ -65,6 +65,10 @@ Display the names of the nodes that failed:
 
     $(basename $0) nodes --json <pipeline-name> <branch> <run-id> | jq -r 'select(.result=="FAILURE") | .displayName'
 
+Display the nodes whose name match a certain pattern and their result:
+
+    $(basename $0) nodes --json <pipeline-name> <branch> <run-id> | jq -r 'select(.displayName | contains("something")) | (.displayName + ": " + .result)'
+
 
 Individual command help can be obtained with:
 
