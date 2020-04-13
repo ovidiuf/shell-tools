@@ -2,7 +2,7 @@
 
 for i in bash.shlib jenkins.shlib; do [ -f $(dirname $0)/../lib/${i} ] && source $(dirname $0)/../lib/${i} || { echo "[error]: $(dirname $0)/../lib/${i} not found" 1>&2; exit 1; } done
 
-VERSION=0.2.0
+VERSION=0.2.1
 
 # The Jenkins base URL (https://<host>/<instance-name>/blue/rest/organizations/jenkins). Must not end with slash.
 JENKINS_BASE_URL=UNINITIALIZED # set by initialize-global-context()
@@ -14,7 +14,7 @@ TMP_FILE_NAME_PREFIX=jenq
 function usage() {
 cat <<EOF
 
-Jenkins instance query tool.
+Jenkins query tool. Connects to the Blue Ocean API server and queries for pipeline, branch, run, node and log details.
 
     $(basename $0) [common-options] <command> [command-options]
 
@@ -42,19 +42,19 @@ Commands:
 
     pipelines - return pipelines, optionally filtered by pipeline type.
 
-    pipeline - display a specific pipeline information.
+    pipeline - display pipeline information.
 
     branches - return branches for a multi-branch pipeline.
 
-    branch - display a specific branch information.
+    branch - display branch information.
 
     runs - return runs for a branch.
 
-    run - display a specific run information.
+    run - display run information.
 
     nodes - return nodes for a run
 
-    node - display a specific node information.
+    node - display node information.
 
     log - pull the execution log for a node.
 
