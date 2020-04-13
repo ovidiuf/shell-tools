@@ -380,6 +380,8 @@ function blue-ocean-rest-get() {
     debug curl -s -H "Authorization: Basic ***" ${url}
     curl -s -H "Authorization: Basic ${JENKINS_BASE64_AUTH}" ${url} > ${output_file}
 
+    # commented out because the server response is large, though it does not have multiple lines. Should improve
+    # debug file to also limit based on size (characters) not only lines.
     # debug "server response:"
     # debug-file ${output_file} 100
 
@@ -390,7 +392,7 @@ function blue-ocean-rest-get() {
     # Blue Ocean reacts differently to an unknown pipeline or run ID (produces JSON content) than to unknown branch
     # (produces HTML). First try to interpret as HTML
     #
-    if grep -q "<html>" ${output_file}; then
+    if grep -q "^ *<html>" ${output_file}; then
 
         debug "Blue Ocean server output is HTML"
 
@@ -400,7 +402,7 @@ function blue-ocean-rest-get() {
             #
             fail "one of the resources specified in the URL does not exist: ${relative_url}"
         else
-            warn "${relative_url} produced unknown HTML format: ${output_file}"
+            fail "${relative_url} produced unknown HTML format: ${output_file}"
         fi
     fi
 
