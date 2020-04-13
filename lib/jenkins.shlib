@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-JENKINS_SHLIB_VERSION=0.1.0
-
 set -o pipefail
 
 BLUEOCEAN_REST_API_NODE_LIMIT=1000
@@ -377,13 +375,13 @@ function blue-ocean-rest-get() {
         more_than_one=true
     fi
 
-    local output_file=${JENKINS_TMP_DIR}/blue-ocean-rest-output
+    local output_file=${JENKINS_TMP_DIR}/$(get-tmp-file-name "blueocean")
 
     debug curl -s -H "Authorization: Basic ***" ${url}
     curl -s -H "Authorization: Basic ${JENKINS_BASE64_AUTH}" ${url} > ${output_file}
 
-    debug "server response:"
-    debug-file ${output_file} 100
+    # debug "server response:"
+    # debug-file ${output_file} 100
 
     debug "parsing Blue Ocean server output ${output_file}"
     local error_message
@@ -402,7 +400,7 @@ function blue-ocean-rest-get() {
             #
             fail "one of the resources specified in the URL does not exist: ${relative_url}"
         else
-            fail "unknown HTML format: ${output_file}"
+            warn "${relative_url} produced unknown HTML format: ${output_file}"
         fi
     fi
 
@@ -410,7 +408,6 @@ function blue-ocean-rest-get() {
 
     error_message=$(jq -r 'select(.code == 404) | .message' ${output_file} 2>/dev/null)
     [[ -n ${error_message} ]] && fail ${error_message} || debug "server output NOT a code 404 response"
-
 
     cat ${output_file}
 }

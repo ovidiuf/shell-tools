@@ -2,12 +2,14 @@
 
 for i in bash.shlib jenkins.shlib; do [ -f $(dirname $0)/../lib/${i} ] && source $(dirname $0)/../lib/${i} || { echo "[error]: $(dirname $0)/../lib/${i} not found" 1>&2; exit 1; } done
 
-VERSION=0.1.0
+VERSION=0.2.0
 
 # The Jenkins base URL (https://<host>/<instance-name>/blue/rest/organizations/jenkins). Must not end with slash.
 JENKINS_BASE_URL=UNINITIALIZED # set by initialize-global-context()
 JENKINS_BASE64_AUTH=UNINITIALIZED # set by initialize-global-context()
 JENKINS_TMP_DIR=/tmp # temporary directory that contains various temporary files per run, created and set by initialize-global-context()
+
+TMP_FILE_NAME_PREFIX=jenq
 
 function usage() {
 cat <<EOF
@@ -17,7 +19,6 @@ Jenkins instance query tool.
     $(basename $0) [common-options] <command> [command-options]
 
 Common Options:
-
 
     --host-url specifies the URL of the Jenkins instance host (ex: https://jenkins.example.com). The same value can
         be provided with JENKINS_HOST_URL environment variable. If both the environment variable and command line
@@ -34,6 +35,8 @@ Common Options:
     --instance-name specifies the name of the Jenkins instance (ex: release).  The same value can be provided with
         JENKINS_INSTANCE_NAME environment variable. If both the environment variable and command line options are
         provided, command line value takes precedence.
+
+    --preserve-tmp-dir instructs the command to preserve the content of the temporary directory for the run.
 
 Commands:
 
@@ -69,7 +72,6 @@ Display the nodes whose name match a certain pattern and their result:
 
     $(basename $0) nodes --json <pipeline-name> <branch> <run-id> | jq -r 'select(.displayName | contains("something")) | (.displayName + ": " + .result)'
 
-
 Individual command help can be obtained with:
 
      $(basename $0) help <command>
@@ -94,6 +96,7 @@ function main() {
     OPTIONS["--username"]="string"
     OPTIONS["--password"]="string"
     OPTIONS["--instance-name"]="string"
+    OPTIONS["--preserve-tmp-dir"]="boolean"
     process-options "$@"
 
     local host_url=${OPTIONS["--host-url"]:-${JENKINS_HOST_URL}}
@@ -105,7 +108,9 @@ function main() {
     local instance_name=${OPTIONS["--instance-name"]:-${JENKINS_INSTANCE_NAME}}
     [[ -z ${instance_name} ]] && fail "Jenkins instance name not provided; use --instance-name command line option or set JENKINS_INSTANCE_NAME environment variable"
 
-    initialize-global-context ${host_url} ${username} ${password} ${instance_name}
+    initialize-global-context ${host_url} ${username} ${password} ${instance_name} ${OPTIONS["--preserve-tmp-dir"]}
+
+    set -- "${ARGS[@]}"
 
     local command=$1
 

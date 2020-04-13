@@ -3,7 +3,7 @@
 ld=$(dirname $0)/../lib
 for i in bash.shlib jenkins.shlib; do [ -f ${ld}/${i} ] && source ${ld}/${i} || { echo "[error]: ${ld}/${i} not found" 1>&2; exit 1; } done
 
-VERSION=0.1.1
+VERSION=0.1.2
 PIPELINE_NAME=c3server-k8s
 BRANCH=epic/cloud/team/k8sonly/develop
 
@@ -23,6 +23,10 @@ Options:
 
     -b|--branch <branch> Specifies a branch. By default is ${BRANCH}.
 
+    --preserve-tmp-dir - preserve temporary directories.
+
+
+
 EOF
 }
 function main() {
@@ -34,12 +38,14 @@ function main() {
     unset ARGS; declare -a ARGS
     declare -A OPTIONS
     OPTIONS["--branch"]="string -b"
+    OPTIONS["--preserve-tmp-dir"]="boolean"
     process-options "$@"
     fail-on-unknown-arguments 1
 
     local pipeline=${PIPELINE_NAME}
     local branch=${OPTIONS["--branch"]:-${BRANCH}}
     local run_id=${ARGS[0]}
+    local preserve_tmp_dir=${OPTIONS["--preserve-tmp-dir"]:false}
 
     debug "pipeline: ${pipeline}"
     debug "branch: ${branch}"
@@ -53,8 +59,9 @@ function main() {
     local jenq=$(dirname $0)/jenq
     local jeng_verbose
     ${VERBOSE} && jeng_verbose="--verbose"
+    ${preserve_tmp_dir} && jenq_preserve_tmp_dir="--preserve-tmp-dir"
 
-    for node_id in $(${jenq} ${jeng_verbose} nodes ${pipeline} ${branch} ${run_id}); do
+    for node_id in $(${jenq} ${jeng_verbose} ${jenq_preserve_tmp_dir} nodes ${pipeline} ${branch} ${run_id}); do
 
         debug "node_id: ${node_id}"
 
@@ -62,7 +69,7 @@ function main() {
         # TODO: querying again for name is inefficient, we can pull the JSON representation of all nodes in the outer loop
         #
         local node_name
-        node_name=$(${jenq} ${jeng_verbose} node ${pipeline} ${branch} ${run_id} ${node_id} | jq -r '.displayName') || \
+        node_name=$(${jenq} ${jeng_verbose} ${jenq_preserve_tmp_dir} node ${pipeline} ${branch} ${run_id} ${node_id} | jq -r '.displayName') || \
             fail "failed to read name for node ${node_id}"
         debug "node name: ${node_name}"
 
@@ -72,7 +79,7 @@ function main() {
         fi
 
         local target_file="${target_dir}/${node_id}-${node_name// /_}.log"
-        ${jenq} ${jeng_verbose} log ${pipeline} ${branch} ${run_id} ${node_id} log > "${target_file}"
+        ${jenq} ${jeng_verbose} ${jenq_preserve_tmp_dir} log ${pipeline} ${branch} ${run_id} ${node_id} log > "${target_file}"
         info "collected logs for node ${node_name} in $(basename ${target_file})"
     done
 }
