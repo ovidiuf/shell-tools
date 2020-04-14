@@ -11,25 +11,21 @@ BRANCH=epic/cloud/team/k8sonly/develop
 function usage() {
 cat <<EOF
 
-Collect logs, test results and other metadata for ${PIPELINE_NAME} pipeline runs
-on branch ${BRANCH}. The run (build) number must be
-specified as argument.
+Collect logs, test results and other metadata for ${PIPELINE_NAME} pipeline runs on branch ${BRANCH}.
+The run (build) number must be specified as argument.
 
 Usage:
 
     $(basename $0) [options] <run-number> [target-dir]
 
-Metadata files are placed into a new subdirectory created specifically
-for this run in the target directory, or if the target directory is not
-specified, in the current directory.
+Metadata files are placed into a new subdirectory created specifically for this run in the target directory, or if the
+target directory is not specified, in the current directory.
 
 Options:
 
-    -p|--pipeline <pipeline-name> Specifies the pipeline.
-        The default is ${PIPELINE_NAME}.
+    -p|--pipeline <pipeline-name> Specifies the pipeline. The default is ${PIPELINE_NAME}.
 
-    -b|--branch <branch> Specifies a branch. The default is
-        ${BRANCH}.
+    -b|--branch <branch> Specifies a branch. The default is ${BRANCH}.
 
     --preserve-tmp-dir - preserve temporary directories.
 
@@ -77,10 +73,19 @@ function main() {
     command="${command} --pipeline ${pipeline}"
     command="${command} --branch ${branch}"
     command="${command} ${run_id}"
-    command="${command} \"${metadata_file_dir}/logs\""
 
-    info ${command}
-    ${command} || fail "failed to execute collect-logs"
+    info ${command} \"${metadata_file_dir}/logs\"
+    ${command} "${metadata_file_dir}/logs" || fail "failed to execute collect-logs"
+
+    command="$(dirname $0)/collect-tests"
+    ${VERBOSE} && command="${command} --verbose"
+    ${preserve_tmp_dir} && command="${command} --preserve-tmp-dir"
+    command="${command} --pipeline ${pipeline}"
+    command="${command} --branch ${branch}"
+    command="${command} ${run_id}"
+
+    info ${command} \"${metadata_file_dir}\"
+    ${command} "${metadata_file_dir}" || fail "failed to execute collect-tests"
 }
 
 main "$@"

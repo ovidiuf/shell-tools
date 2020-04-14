@@ -11,26 +11,23 @@ BRANCH=epic/cloud/team/k8sonly/develop
 function usage() {
 cat <<EOF
 
-Collect logs for ${PIPELINE_NAME} pipeline runs on branch ${BRANCH}.
-The run (build) number and the target directory must be specified as
-arguments.
+Collect logs for ${PIPELINE_NAME} pipeline runs on branch ${BRANCH}. The run (build) number and the
+target directory must be specified as arguments.
 
 Usage:
 
     $(basename $0) [options] <run-number> [target-dir]
 
-If the target directory is not specified, the logs are collected in the
-current directory. If the target directory does not exist, it will be
-created.
+If the target directory is not specified, the logs are collected in the current directory. If the target directory does
+not exist, it will be created.
 
 Options:
 
-    -p|--pipeline <pipeline-name> Specifies the pipeline.
-        The default is ${PIPELINE_NAME}.
+    -p|--pipeline <pipeline-name> Specifies the pipeline. The default is ${PIPELINE_NAME}.
 
     -b|--branch <branch> Specifies a branch. By default is ${BRANCH}.
 
-    --preserve-tmp-dir - preserve temporary directories.
+    --preserve-tmp-dir Preserve temporary directories.
 
 
 EOF
