@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+
+ld=$(dirname $0)/../lib
+for i in bash.shlib jenkins.shlib; do [ -f ${ld}/${i} ] && source ${ld}/${i} || { echo "[error]: ${ld}/${i} not found" 1>&2; exit 1; } done
+
+VERSION=0.1.0
+
+PIPELINE_NAME=c3server-k8s
+BRANCH=epic/cloud/team/k8sonly/develop
+
+function usage() {
+cat <<EOF
+
+Collect logs, test results and other metadata for ${PIPELINE_NAME} pipeline runs
+on branch ${BRANCH}. The run (build) number must be
+specified as argument.
+
+Usage:
+
+    $(basename $0) [options] <run-number> [target-dir]
+
+Metadata files are placed into a new subdirectory created specifically
+for this run in the target directory, or if the target directory is not
+specified, in the current directory.
+
+Options:
+
+    -p|--pipeline <pipeline-name> Specifies the pipeline.
+        The default is ${PIPELINE_NAME}.
+
+    -b|--branch <branch> Specifies a branch. The default is
+        ${BRANCH}.
+
+    --preserve-tmp-dir - preserve temporary directories.
+
+EOF
+}
+function main() {
+
+    process-common-arguments "$@" && set -- "${ARGS[@]}" || { echo "failed to process common arguments" 1>&2; exit 1; }
+
+    ${HELP} || [[ -z $1 ]] && { usage; exit 0; }
+
+    unset ARGS; declare -a ARGS
+    declare -A OPTIONS
+    OPTIONS["--pipeline"]="string -p"
+    OPTIONS["--branch"]="string -b"
+    OPTIONS["--preserve-tmp-dir"]="boolean"
+    process-options "$@"
+    fail-on-unknown-arguments 2
+
+    local pipeline=${OPTIONS["--pipeline"]:-${PIPELINE_NAME}}
+    local branch=${OPTIONS["--branch"]:-${BRANCH}}
+    local preserve_tmp_dir=${OPTIONS["--preserve-tmp-dir"]:false}
+
+    local run_id=${ARGS[0]}
+    local target_dir=${ARGS[1]:-$(pwd)}
+
+    debug "pipeline: ${pipeline}"
+    debug "branch: ${branch}"
+    debug "run_id: ${run_id}"
+    debug "target_dir: ${target_dir}"
+
+    [[ -z ${run_id} ]] && fail "run ID must be provided"
+
+    local metadata_file_dir_name=${run_id}-${branch//\//_}-${pipeline}
+    debug "metadata_file_dir_name: ${metadata_file_dir_name}"
+    local metadata_file_dir=${target_dir}/${metadata_file_dir_name}
+
+    [[ -d ${metadata_file_dir} ]] && fail "target build metadata directory ${metadata_file_dir} already exists"
+    mkdir -p "${metadata_file_dir}" && info "created target build metadata directory ${metadata_file_dir}" || \
+        fail "mkdir -p \"${metadata_file_dir}\" failed"
+
+    local command="$(dirname $0)/collect-logs"
+    ${VERBOSE} && command="${command} --verbose"
+    ${preserve_tmp_dir} && command="${command} --preserve-tmp-dir"
+    command="${command} --pipeline ${pipeline}"
+    command="${command} --branch ${branch}"
+    command="${command} ${run_id}"
+    command="${command} \"${metadata_file_dir}/logs\""
+
+    info ${command}
+    ${command} || fail "failed to execute collect-logs"
+}
+
+main "$@"

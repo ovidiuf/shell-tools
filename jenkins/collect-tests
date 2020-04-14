@@ -3,7 +3,7 @@
 ld=$(dirname $0)/../lib
 for i in bash.shlib jenkins.shlib; do [ -f ${ld}/${i} ] && source ${ld}/${i} || { echo "[error]: ${ld}/${i} not found" 1>&2; exit 1; } done
 
-VERSION=0.1.3
+VERSION=0.1.0
 
 PIPELINE_NAME=c3server-k8s
 BRANCH=epic/cloud/team/k8sonly/develop
@@ -11,7 +11,7 @@ BRANCH=epic/cloud/team/k8sonly/develop
 function usage() {
 cat <<EOF
 
-Collect logs for ${PIPELINE_NAME} pipeline runs on branch ${BRANCH}.
+Collect test metadata for ${PIPELINE_NAME} pipeline runs on branch ${BRANCH}.
 The run (build) number and the target directory must be specified as
 arguments.
 
@@ -58,7 +58,7 @@ function main() {
 
     debug "pipeline: ${pipeline}"
     debug "branch: ${branch}"
-    debug "run_id: ${run_id}"
+    debug "run_id: c"
     debug "target_dir: ${target_dir}"
 
     if [[ ! -d ${target_dir} ]]; then
@@ -68,28 +68,9 @@ function main() {
     local command="$(dirname $0)/jenq"
     ${VERBOSE} && command="${command} --verbose"
     ${preserve_tmp_dir} && command="${command} --preserve-tmp-dir"
-
-    for node_id in $(${command} nodes ${pipeline} ${branch} ${run_id}); do
-
-        debug "node_id: ${node_id}"
-
-        #
-        # TODO: querying again for name is inefficient, we can pull the JSON representation of all nodes in the outer loop
-        #
-        local node_name
-        node_name=$(${command} node ${pipeline} ${branch} ${run_id} ${node_id} | jq -r '.displayName') || \
-            fail "failed to read name for node ${node_id}"
-        debug "node name: ${node_name}"
-
-        if [[ ${node_name} = "Testing" ]]; then
-            info "skipping logs for node \"${node_name}\""
-            continue
-        fi
-
-        local target_file="${target_dir}/${node_id}-${node_name// /_}.log"
-        ${command} log ${pipeline} ${branch} ${run_id} ${node_id} log > "${target_file}"
-        info "collected logs for node \"${node_name}\" in $(basename "${target_file}")"
-    done
+    command="${command} tests ${pipeline} ${branch} ${run_id}"
+    info "${command} > \"${target_dir}/tests.json\""
+    ${command} > "${target_dir}/tests.json"
 }
 
 main "$@"
