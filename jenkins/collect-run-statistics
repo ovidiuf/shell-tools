@@ -12,7 +12,8 @@ function usage() {
 cat <<EOF
 
 Collect logs, test results and other metadata for ${PIPELINE_NAME} pipeline runs on branch ${BRANCH}.
-The run (build) number must be specified as argument.
+The run (build) number must be specified as argument. The command relies on collect-logs and collect-tests commands
+that must be present in the same directory.
 
 Usage:
 
