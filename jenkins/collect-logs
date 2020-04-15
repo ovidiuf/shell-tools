@@ -19,8 +19,9 @@ Usage:
 
     $(basename $0) [options] <run-number> [target-dir]
 
-If the target directory is not specified, the logs are collected in the current directory. If the target directory does
-not exist, it will be created.
+If the target directory is not specified, the current directory will be used. $(basename $0) will create a subdirectory
+whose name is based on the pipeline name, branch name and run number. If the target directory does not exist, it will be
+created.
 
 Options:
 
@@ -65,11 +66,13 @@ function main() {
     debug "pipeline: ${pipeline}"
     debug "branch: ${branch}"
     debug "run_id: ${run_id}"
-    debug "target_dir: ${target_dir}"
     debug "preserve_tmp_dir: ${preserve_tmp_dir}"
     debug "auxiliary_logs: ${auxiliary_logs}"
 
-    if [[ ! -d ${target_dir} ]]; then
+    target_dir=${target_dir}/${run_id}-${branch//\//_}-${pipeline}
+    debug "target_dir: ${target_dir}"
+
+    if [[ ! -d "${target_dir}" ]]; then
         mkdir -p "${target_dir}" && info "created directory ${target_dir}" || fail "mkdir -p \"${target_dir}\" failed"
     fi
 
@@ -176,7 +179,5 @@ function get-auxiliary-log-urls() {
     echo ${result}
 }
 
-#VERBOSE=true
 main "$@"
-#get-auxiliary-log-urls "$@"
 
