@@ -3,7 +3,7 @@
 ld=$(dirname $0)/../lib
 for i in bash.shlib jenkins.shlib; do [ -f ${ld}/${i} ] && source ${ld}/${i} || { echo "[error]: ${ld}/${i} not found" 1>&2; exit 1; } done
 
-VERSION=0.1.3
+VERSION=0.2.0
 
 PIPELINE_NAME=c3server-k8s
 BRANCH=epic/cloud/team/k8sonly/develop
@@ -12,7 +12,8 @@ function usage() {
 cat <<EOF
 
 Collect logs for ${PIPELINE_NAME} pipeline runs on branch ${BRANCH}. The run (build) number and the
-target directory must be specified as arguments.
+target directory must be specified as arguments. Auxiliary logs are also collected by default. For an explanation of
+what auxiliary logs are and how to disable auxiliary log collection, see --no-auxiliary-logs option below.
 
 Usage:
 
@@ -29,6 +30,11 @@ Options:
 
     --preserve-tmp-dir Preserve temporary directories.
 
+    --no-auxiliary-logs Each node may produce auxiliary logs, such as server logs, system logs, etc.  $(basename $0)
+        assumes that each node produces them, and attempts to collect them. If no auxiliary logs are found or collection
+        fails for some reason, $(basename $0) will warn. To prevent $(basename $0)  from collecting the  auxiliary logs,
+        specify --no-auxiliary-logs among the command arguments.
+
 
 EOF
 }
@@ -43,12 +49,15 @@ function main() {
     OPTIONS["--pipeline"]="string -p"
     OPTIONS["--branch"]="string -b"
     OPTIONS["--preserve-tmp-dir"]="boolean"
+    OPTIONS["--no-auxiliary-logs"]="boolean"
     process-options "$@"
     fail-on-unknown-arguments 2
 
     local pipeline=${OPTIONS["--pipeline"]:-${PIPELINE_NAME}}
     local branch=${OPTIONS["--branch"]:-${BRANCH}}
     local preserve_tmp_dir=${OPTIONS["--preserve-tmp-dir"]:false}
+    local auxiliary_logs=true
+    ${OPTIONS["--no-auxiliary-logs"]} && auxiliary_logs=false
 
     local run_id=${ARGS[0]}
     local target_dir=${ARGS[1]:-$(pwd)}
@@ -57,6 +66,8 @@ function main() {
     debug "branch: ${branch}"
     debug "run_id: ${run_id}"
     debug "target_dir: ${target_dir}"
+    debug "preserve_tmp_dir: ${preserve_tmp_dir}"
+    debug "auxiliary_logs: ${auxiliary_logs}"
 
     if [[ ! -d ${target_dir} ]]; then
         mkdir -p "${target_dir}" && info "created directory ${target_dir}" || fail "mkdir -p \"${target_dir}\" failed"
@@ -79,14 +90,93 @@ function main() {
         debug "node name: ${node_name}"
 
         if [[ ${node_name} = "Testing" ]]; then
-            info "skipping logs for node \"${node_name}\""
+            info "skipped logs for node ${node_name}"
             continue
         fi
 
         local target_file="${target_dir}/${node_id}-${node_name// /_}.log"
         ${command} log ${pipeline} ${branch} ${run_id} ${node_id} log > "${target_file}"
-        info "collected logs for node \"${node_name}\" in $(basename "${target_file}")"
+
+        info "$(basename "${target_file}")"
+
+        ${auxiliary_logs} && collect-auxiliary-logs "${target_file}"
+
     done
 }
 
+function collect-auxiliary-logs() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    local jenkins_log_file="$1"
+    [[ -z ${jenkins_log_file} ]] && fail "'jenkins_log_file' not provided"
+    [[ -f ${jenkins_log_file} ]] || fail "no such jenkins log file: ${jenkins_log_file}"
+
+    local auxiliary_log_urls
+    auxiliary_log_urls=$(get-auxiliary-log-urls "${jenkins_log_file}")
+
+    [[ -z ${auxiliary_log_urls} ]] && { debug "no auxiliary logs specified in $(basename "${jenkins_log_file}")"; return 0; }
+
+    auxiliary_log_target_dir=$(dirname "${jenkins_log_file}")/$(basename "${jenkins_log_file}" .log)
+
+    if [[ ! -d "${auxiliary_log_target_dir}" ]]; then
+        mkdir -p "${auxiliary_log_target_dir}" && debug "created directory ${auxiliary_log_target_dir}" || \
+            fail "mkdir -p ${auxiliary_log_target_dir} failed"
+    fi
+
+    for aux_log in ${auxiliary_log_urls}; do
+        collect-auxiliary-log ${aux_log} "${auxiliary_log_target_dir}"
+    done
+}
+
+function collect-auxiliary-log() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    local auxiliary_log_url=$1
+    [[ -z ${auxiliary_log_url} ]] && fail "'auxiliary_log_url' not provided"
+    local target_dir=$2
+    [[ -z ${target_dir} ]] && fail "'target_dir' not provided"
+    [[ -d "${target_dir}" ]] || fail "no such directory: ${target_dir}"
+
+    (cd "${target_dir}"; wget -q ${auxiliary_log_url}) || { warn "failed to download ${auxiliary_log_url}"; return 1; }
+
+    local auxiliary_log_file_name=${auxiliary_log_url##*/}
+
+    (cd "${target_dir}"; gunzip < ./${auxiliary_log_file_name} | tar xf -) || { warn "failed to unpack ${auxiliary_log_file_name}"; return 1; }
+
+    rm "${target_dir}/${auxiliary_log_file_name}" && debug "removed ${target_dir}/${auxiliary_log_file_name}" || \
+        fail "failed to rm ${target_dir}/${auxiliary_log_file_name}"
+
+    info "$(basename "${target_dir}")/$(basename ${auxiliary_log_file_name} .tgz)"
+}
+
+#
+# Send to stdout a space separated list with the URLs of the auxiliary logs, or an empty string if no auxiliary log
+# URLs are identified in the main log
+#
+function get-auxiliary-log-urls() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    local jenkins_log_file="$1"
+    [[ -z ${jenkins_log_file} ]] && fail "'jenkins_log_file' not provided"
+    [[ -f ${jenkins_log_file} ]] || fail "no such jenkins log file: ${jenkins_log_file}"
+
+    local result
+
+    local anchor="Server Logs are stored in "
+
+    IFS="$(printf '\n\r')"; for i in $(grep ${anchor} "${jenkins_log_file}"); do
+        i=${i##*${anchor}}
+        debug "auxiliary log URL: ${i}"
+        [[ -z ${result} ]] && result=${i} || result="${result} ${i}"
+    done
+    IFS="$(printf ' \t\n')"
+    echo ${result}
+}
+
+#VERBOSE=true
 main "$@"
+#get-auxiliary-log-urls "$@"
+

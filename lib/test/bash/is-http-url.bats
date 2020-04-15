@@ -31,3 +31,12 @@ load bash-library
     [[ ${status} -eq 1 ]]
     [[ -z ${output} ]]
 }
+
+@test "not a HTTP/HTTPS URL (2)" {
+
+    #export VERBOSE=true; export DEBUG_OUTPUT=~/tmp/bats.out
+    run is-http-url "[2018-04-14T09:05:46.376Z]"
+
+    [[ ${status} -eq 1 ]]
+    [[ -z ${output} ]]
+}

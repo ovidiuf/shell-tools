@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-BASH_SHLIB_VERSION=1.13.0
+BASH_SHLIB_VERSION=1.13.1
 
 #
 # Generic bash functionality
@@ -848,7 +848,7 @@ function is-http-url() {
     local url=$1
     [[ -z ${url} ]] && fail "${FUNCNAME[0]}(): 'url' not provided"
 
-    [[ ${url} != ${url#http://} || ${url} != ${url#https://} ]] && { echo "${url}"; return 0; }
+    [[ ${url:0:7} = "http://" || ${url:0:8} = "https://" ]] && { echo "${url}"; return 0; }
     return 1
 }
 
