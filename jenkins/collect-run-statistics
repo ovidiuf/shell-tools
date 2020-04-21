@@ -3,7 +3,7 @@
 ld=$(dirname $0)/../lib
 for i in bash.shlib jenkins.shlib; do [ -f ${ld}/${i} ] && source ${ld}/${i} || { echo "[error]: ${ld}/${i} not found" 1>&2; exit 1; } done
 
-VERSION=0.1.0
+VERSION=0.1.1
 
 PIPELINE_NAME=c3server-k8s
 BRANCH=epic/cloud/team/k8sonly/develop
@@ -73,6 +73,7 @@ function main() {
     ${preserve_tmp_dir} && command="${command} --preserve-tmp-dir"
     command="${command} --pipeline ${pipeline}"
     command="${command} --branch ${branch}"
+    command="${command} --no-subdir"
     command="${command} ${run_id}"
 
     info ${command} \"${metadata_file_dir}/logs\"

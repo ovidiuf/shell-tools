@@ -3,7 +3,7 @@
 ld=$(dirname $0)/../lib
 for i in bash.shlib jenkins.shlib; do [ -f ${ld}/${i} ] && source ${ld}/${i} || { echo "[error]: ${ld}/${i} not found" 1>&2; exit 1; } done
 
-VERSION=0.2.0
+VERSION=0.2.1
 
 PIPELINE_NAME=c3server-k8s
 BRANCH=epic/cloud/team/k8sonly/develop
@@ -19,15 +19,21 @@ Usage:
 
     $(basename $0) [options] <run-number> [target-dir]
 
-If the target directory is not specified, the current directory will be used. $(basename $0) will create a subdirectory
-whose name is based on the pipeline name, branch name and run number. If the target directory does not exist, it will be
-created.
+If the target directory is not specified, the current directory will be used as default target. By default, $(basename $0)
+will create a subdirectory whose name is based on the pipeline name, branch name and run number, unless --no-subdir
+option is used; in this case the logs will be placed directly in the target directory. If the target directory does
+not exist, it will be created.
 
 Options:
 
     -p|--pipeline <pipeline-name> Specifies the pipeline. The default is ${PIPELINE_NAME}.
 
     -b|--branch <branch> Specifies a branch. By default is ${BRANCH}.
+
+    --no-subdir Inhibits the default behavior of creating a target subdirectory whose name is based on the pipeline
+        name, branch name and run number. If --no-subdir is used, the logs will be placed directly in the target
+        directory. By default, $(basename $0) will create a subdirectory whose name is based on the pipeline name,
+        branch name and run number, in the target directory and store the logs there.
 
     --preserve-tmp-dir Preserve temporary directories.
 
@@ -51,6 +57,7 @@ function main() {
     OPTIONS["--branch"]="string -b"
     OPTIONS["--preserve-tmp-dir"]="boolean"
     OPTIONS["--no-auxiliary-logs"]="boolean"
+    OPTIONS["--no-subdir"]="boolean"
     process-options "$@"
     fail-on-unknown-arguments 2
 
@@ -59,6 +66,8 @@ function main() {
     local preserve_tmp_dir=${OPTIONS["--preserve-tmp-dir"]:false}
     local auxiliary_logs=true
     ${OPTIONS["--no-auxiliary-logs"]} && auxiliary_logs=false
+    local create_target_subdir=true
+    ${OPTIONS["--no-subdir"]} && create_target_subdir=false
 
     local run_id=${ARGS[0]}
     local target_dir=${ARGS[1]:-$(pwd)}
@@ -68,9 +77,12 @@ function main() {
     debug "run_id: ${run_id}"
     debug "preserve_tmp_dir: ${preserve_tmp_dir}"
     debug "auxiliary_logs: ${auxiliary_logs}"
+    debug "create_target_subdir: ${create_target_subdir}"
 
-    target_dir=${target_dir}/${run_id}-${branch//\//_}-${pipeline}
-    debug "target_dir: ${target_dir}"
+    if ${create_target_subdir}; then
+        target_dir=${target_dir}/${run_id}-${branch//\//_}-${pipeline}
+        debug "target_dir: ${target_dir}"
+    fi
 
     if [[ ! -d "${target_dir}" ]]; then
         mkdir -p "${target_dir}" && info "created directory ${target_dir}" || fail "mkdir -p \"${target_dir}\" failed"
