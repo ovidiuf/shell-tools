@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-BASH_SHLIB_VERSION=1.13.1
+BASH_SHLIB_VERSION=1.13.2
 
 #
 # Generic bash functionality
@@ -380,8 +380,8 @@ function fail() {
 #
 function error {
 
-    echo ${ERROR_HEADER} "$@" 1>&2
-    [[ -n ${DEBUG_OUTPUT} ]] && echo ${ERROR_HEADER} "$@" >> ${DEBUG_OUTPUT}
+    echo "${ERROR_HEADER}" "$@" 1>&2
+    [[ -n ${DEBUG_OUTPUT} ]] && echo "${ERROR_HEADER}" "$@" >> "${DEBUG_OUTPUT}"
     return 0
 }
 
@@ -391,8 +391,8 @@ function error {
 #
 function warn {
 
-    echo ${WARNING_HEADER} "$@" 1>&2
-    [[ -n ${DEBUG_OUTPUT} ]] && echo ${WARNING_HEADER} "$@" >> ${DEBUG_OUTPUT}
+    echo "${WARNING_HEADER}" "$@" 1>&2
+    [[ -n ${DEBUG_OUTPUT} ]] && echo "${WARNING_HEADER}" "$@" >> "${DEBUG_OUTPUT}"
     return 0
 }
 
@@ -403,7 +403,7 @@ function warn {
 function info {
 
     echo "$@" 1>&2
-    [[ -n ${DEBUG_OUTPUT} ]] && echo "$@" >> ${DEBUG_OUTPUT}
+    [[ -n ${DEBUG_OUTPUT} ]] && echo "$@" >> "${DEBUG_OUTPUT}"
     return 0
 }
 
@@ -417,7 +417,7 @@ function info {
 function debug() {
 
     ! ${VERBOSE} && return 0
-    [[ -z ${DEBUG_OUTPUT} ]] && echo "$@" 1>&2 || echo "$@" >> ${DEBUG_OUTPUT}
+    [[ -z ${DEBUG_OUTPUT} ]] && echo "$@" 1>&2 || echo "$@" >> "${DEBUG_OUTPUT}"
     return 0
 }
 
@@ -427,7 +427,7 @@ function debug() {
 function trace() {
 
     ! ${TRACE} && return 0
-    [[ -z ${DEBUG_OUTPUT} ]] && echo "$@" 1>&2 || echo "$@" >> ${DEBUG_OUTPUT}
+    [[ -z ${DEBUG_OUTPUT} ]] && echo "$@" 1>&2 || echo "$@" >> "${DEBUG_OUTPUT}"
     return 0
 }
 
@@ -983,6 +983,4 @@ function yaml-path-exists() {
     [[ -n ${output} && ${output} != "null" ]] && \
         { debug "path ${path} exists"; return 0; } || \
         { debug "path ${path} does not exist"; return 1; }
-
-
 }
