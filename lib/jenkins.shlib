@@ -490,7 +490,10 @@ function blue-ocean-rest-get() {
             #
             fail "one of the resources specified in the URL does not exist: ${relative_url}"
         else
-            fail "${relative_url} produced unknown HTML format: ${output_file}"
+            debug "output file: ${output_file}"
+            error "${relative_url} produced unknown HTML format"
+            cat ${output_file} 1>&2
+            fail "exiting"
         fi
     fi
 
