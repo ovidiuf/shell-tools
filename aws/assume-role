@@ -1,0 +1,192 @@
+#!/usr/bin/env bash
+
+for i in bash.shlib; do [ -f $(dirname $0)/../lib/${i} ] && source $(dirname $0)/../lib/${i} || { echo "[error]: $(dirname $0)/../lib/${i} not found" 1>&2; exit 1; } done
+
+VERSION=0.1.0
+
+function usage() {
+
+cat <<EOF
+Assumes a role configured in the environment as AWS_ROLE, unless the role is already assumed.
+
+Incomplete implementation: for the time being we are only sending at stdout the environment variables that must be
+configured, and not actually configuring the environment.
+EOF
+}
+
+function main() {
+
+    process-common-arguments "$@" && set -- "${ARGS[@]}" || { echo "failed to process common arguments" 1>&2; exit 1; }
+
+    local role_to_assume
+    role_to_assume=$(get-role-to-assume) || exit 1
+
+    if is-role-assumed "${role_to_assume}"; then
+        info "${role_to_assume} has already been assumed"
+        exit 0
+    fi
+
+    info "we are $(get-current-identity), assuming ${role_to_assume} ..."
+
+    exit
+
+    local session_name
+    session_name=$(role-arn-to-session-name ${role_to_assume}) || exit 1
+    debug "session name: ${session_name}"
+
+    local sts_assume_role_output
+
+    sts_assume_role_output=$(aws sts assume-role --role-arn "${role_to_assume}" --role-session-name ${session_name}) || \
+        fail "failed to execute aws sts assume-role"
+
+    debug "${sts_assume_role_output}"
+
+    configure-environment "${sts_assume_role_output}"
+}
+
+#
+# reads the role to assume (from environment, command line, config file, etc., applying priorities)
+#
+function get-role-to-assume() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    [[ -z ${AWS_ROLE} ]] && fail "\AWS_ROLE environment variable not defined"
+    echo ${AWS_ROLE}
+}
+
+#
+# returns 0 if the role is already assumed, non-zero otherwise
+#
+function is-role-assumed() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    local role_to_assume=$1
+    [[ -z ${role_to_assume} ]] && fail "'role_to_assume' not provided"
+
+    local crt_identity
+    crt_identity=$(get-current-identity) || exit 1
+    debug "current identity: ${crt_identity}"
+
+    local c=${crt_identity#arn:aws:sts::}
+    [[ ${crt_identity} = ${c} ]] && fail "invalid current identity ${crt_identity}, does not start with arn:aws:sts::"
+    local current_aws_account=${c%%:*}
+    debug "current_aws_account: ${current_aws_account}"
+
+    local r=${role_to_assume#arn:aws:iam::}
+    [[ ${role_to_assume} = ${r} ]] && fail "invalid role to assume ${role_to_assume}, does not start with arn:aws:iam::"
+    local aws_account_to_assume=${r%%:*}
+    debug "aws_account_to_assume: ${aws_account_to_assume}"
+
+    if [[ ${current_aws_account} != ${aws_account_to_assume} ]]; then
+        debug "the AWS account for current identity (${current_aws_account}) differs from the AWS account of the role to assume (${aws_account_to_assume})"
+        return 1
+    fi
+
+    c=${c#${current_aws_account}:}
+    local current_path=${c%%/*}
+    debug "current_path: ${current_path}"
+
+    if [[ ${current_path} != "assumed-role" ]]; then
+        debug "current identity is not an 'assumed-role': ${crt_identity}"
+        return 1
+    fi
+
+    c=${c#assumed-role/}
+    local crt_role=${c%%/*}
+    debug "crt_role: ${crt_role}"
+
+    r=${r#${aws_account_to_assume}:}
+    local role_to_assume_path=${r%%/*}
+    [[ ${role_to_assume_path} = "role" ]] || fail "the role to assume does not seem to be an IAM role, it does not have a 'role' path: ${role_to_assume}"
+
+    local role_to_assume_name=${r#${role_to_assume_path}/}
+    debug "role_to_assume_name: ${role_to_assume_name}"
+
+    if [[ ${crt_role} = ${role_to_assume_name} ]]; then
+        debug "role ${role_to_assume} already assumed, current identity ${crt_identity}"
+        return 0
+    else
+        debug "role ${role_to_assume} is not assumed, current identity ${crt_identity}"
+        return 1
+    fi
+}
+#
+# return the ARN of the current identity at stdout
+#
+function get-current-identity() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    aws sts get-caller-identity | jq -r '.Arn' || fail "failed to execute aws sts get-caller-identity"
+}
+
+function role-arn-to-session-name() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    local role_arn=$1
+    [[ -z ${role_arn} ]] && fail "'role_arn' not provided"
+    echo ${role_arn##*/}-session
+}
+
+#
+# input: aws sts assume-role command output
+#
+function get-access-key-id() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    local sts_assume_role_output=$1
+    [[ -z ${sts_assume_role_output} ]] && fail "'sts_assume_role_output' not provided"
+
+    echo ${sts_assume_role_output} | jq -r '.Credentials.AccessKeyId'
+}
+
+#
+# input: aws sts assume-role command output
+#
+function get-secret-access-key() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    local sts_assume_role_output=$1
+    [[ -z ${sts_assume_role_output} ]] && fail "'sts_assume_role_output' not provided"
+
+    echo ${sts_assume_role_output} | jq -r '.Credentials.SecretAccessKey'
+}
+
+#
+# input: aws sts assume-role command output
+#
+function get-session-token() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    local sts_assume_role_output=$1
+    [[ -z ${sts_assume_role_output} ]] && fail "'sts_assume_role_output' not provided"
+
+    echo ${sts_assume_role_output} | jq -r '.Credentials.SessionToken'
+}
+
+#
+# input: aws sts assume-role command output
+#
+function configure-environment() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    local sts_assume_role_output=$1
+    [[ -z ${sts_assume_role_output} ]] && fail "'sts_assume_role_output' not provided"
+
+    local access_key_id=$(get-access-key-id "${sts_assume_role_output}") || exit 1
+    local secret_access_key=$(get-secret-access-key "${sts_assume_role_output}") || exit 1
+    local session_token=$(get-session-token "${sts_assume_role_output}") || exit 1
+
+    echo "export AWS_ACCESS_KEY_ID=\"${access_key_id}\""
+    echo "export AWS_SECRET_ACCESS_KEY=\"${secret_access_key}\""
+    echo "export AWS_SESSION_TOKEN=\"${session_token}\""
+}
+
+main "$@"
