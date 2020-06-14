@@ -28,8 +28,6 @@ function main() {
 
     info "we are $(get-current-identity), assuming ${role_to_assume} ..."
 
-    exit
-
     local session_name
     session_name=$(role-arn-to-session-name ${role_to_assume}) || exit 1
     debug "session name: ${session_name}"
@@ -69,8 +67,8 @@ function is-role-assumed() {
     crt_identity=$(get-current-identity) || exit 1
     debug "current identity: ${crt_identity}"
 
-    local c=${crt_identity#arn:aws:sts::}
-    [[ ${crt_identity} = ${c} ]] && fail "invalid current identity ${crt_identity}, does not start with arn:aws:sts::"
+    local c=${crt_identity#arn:aws:*::}
+    [[ ${crt_identity} = ${c} ]] && fail "invalid current identity ${crt_identity}, does not start with arn:aws:*::"
     local current_aws_account=${c%%:*}
     debug "current_aws_account: ${current_aws_account}"
 
