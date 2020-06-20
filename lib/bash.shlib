@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-BASH_SHLIB_VERSION=1.13.2
+BASH_SHLIB_VERSION=1.14.0
 
 #
 # Generic bash functionality
@@ -667,11 +667,33 @@ function has() {
 }
 
 #
-# Usage: is_macOS
+# Usage: has-tools <list-of-tools>
+#
+# Returns 0 if all tools are installed; 1 otherwise
+#
+has-tools() {
+
+    debug "${FUNCNAME[0]}($@)"
+
+    local installed
+
+    installed=0
+
+    for tool; do
+        has "${tool}" || { error "${tool} is not installed"; installed=1; }
+    done
+
+    return $installed
+}
+
+
+
+#
+# Usage: is-macOS
 #
 # Returns 0 if running on macOS. Returns 1 otherwise.
 #
-function is_macOS() {
+function is-macOS() {
 
     debug "${FUNCNAME[0]}($@)"
 
