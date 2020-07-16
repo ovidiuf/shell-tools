@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+
+#
+# functions useful in an interactive terminal situation
+#
+
+#
+# Send to stdout the current prompt
+#
+function generate-prompt() {
+
+    local prompt
+    local git_dir
+    local work_tree_root_abs_path
+    local tree_symbol="Ψ"
+    local branch_symbol="ᚴ"
+    if git_dir=$(git rev-parse --git-dir 2>&1); then
+        #
+        # we are in a git directory, provide information about worktree and branch
+        #
+        if [[ ${git_dir} = .git ]]; then
+            #
+            # root of the main work tree
+            #
+            work_tree_root_abs_path=$(pwd)
+            prompt="main-${tree_symbol}:$(basename ${work_tree_root_abs_path})"
+        else
+            local tail=${git_dir##*/}
+            if [[ ${tail} = .git ]]; then
+                #
+                # subdirectory of the main work tree
+                #
+                work_tree_root_abs_path=${git_dir%/.git}
+                prompt="main-${tree_symbol}:$(basename ${work_tree_root_abs_path})"
+            else
+                #
+                # inside of a linked work tree
+                #
+                prompt="linked-${tree_symbol}:${tail}"
+            fi
+        fi
+        local branch=$(git rev-parse --abbrev-ref HEAD)
+        prompt+=" ${branch_symbol}:${branch}"
+        local rel_path=$(git rev-parse --show-prefix)
+        rel_path=${rel_path%/}
+        prompt+=" ${rel_path}"
+    else
+        prompt=$(pwd)
+    fi
+
+    prompt+="> "
+    echo "${prompt}"
+}
+
+## \[\e[0m\] resets the color to default color
+#reset_color='\[\e[0m\]'
+##  \[\033[33m\] sets the color to yellow
+#path_color='\[\033[33m\]'
+## \e[0;32m\ sets the color to green
+#git_clean_color='\[\e[0;32m\]'
+## \e[0;31m\ sets the color to red
+#git_dirty_color='\[\e[0;31m\]'
+#
+## determines if the git branch you are on is clean or dirty
+#git_prompt ()
+#{
+#  # Is this a git directory?
+#  if ! git rev-parse --git-dir > /dev/null 2>&1; then
+#    return 0
+#  fi
+#  # Grab working branch name
+#  git_branch=$(git branch 2>/dev/null| sed -n '/^\*/s/^\* //p')
+#  # Clean or dirty branch
+#  if git diff --quiet 2>/dev/null >&2; then
+#    git_color="${git_clean_color}"
+#  else
+#    git_color="${git_dirty_color}"
+#  fi
+#  echo " [$git_color$git_branch${reset_color}]"
+#}
