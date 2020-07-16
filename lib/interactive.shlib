@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
+#
+# Functions useful in an interactive terminal situation
+#
 
 #
-# functions useful in an interactive terminal situation
-#
-
-#
-# Send to stdout the current prompt
+# Send to stdout the current prompt. Handle git directories detecting and displaying the work tree and the current
+# branch.
 #
 function generate-prompt() {
 
@@ -51,30 +51,3 @@ function generate-prompt() {
     prompt+="> "
     echo "${prompt}"
 }
-
-## \[\e[0m\] resets the color to default color
-#reset_color='\[\e[0m\]'
-##  \[\033[33m\] sets the color to yellow
-#path_color='\[\033[33m\]'
-## \e[0;32m\ sets the color to green
-#git_clean_color='\[\e[0;32m\]'
-## \e[0;31m\ sets the color to red
-#git_dirty_color='\[\e[0;31m\]'
-#
-## determines if the git branch you are on is clean or dirty
-#git_prompt ()
-#{
-#  # Is this a git directory?
-#  if ! git rev-parse --git-dir > /dev/null 2>&1; then
-#    return 0
-#  fi
-#  # Grab working branch name
-#  git_branch=$(git branch 2>/dev/null| sed -n '/^\*/s/^\* //p')
-#  # Clean or dirty branch
-#  if git diff --quiet 2>/dev/null >&2; then
-#    git_color="${git_clean_color}"
-#  else
-#    git_color="${git_dirty_color}"
-#  fi
-#  echo " [$git_color$git_branch${reset_color}]"
-#}
