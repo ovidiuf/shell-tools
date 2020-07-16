@@ -12,7 +12,7 @@ function generate-prompt() {
     local prompt
     local git_dir
     local work_tree_root_abs_path
-    local tree_symbol="Ψ"
+    local tree_symbol="ᛘ"
     local branch_symbol="ᚴ"
     if git_dir=$(git rev-parse --git-dir 2>&1); then
         #
