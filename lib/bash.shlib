@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-BASH_SHLIB_VERSION=1.14.0
+BASH_SHLIB_VERSION=1.14.1
 
 #
 # Generic bash functionality
@@ -680,7 +680,7 @@ has-tools() {
     installed=0
 
     for tool; do
-        has "${tool}" || { error "${tool} is not installed"; installed=1; }
+        has "${tool}" || { error "Executable file ${tool} not found in \$PATH"; installed=1; }
     done
 
     return $installed
