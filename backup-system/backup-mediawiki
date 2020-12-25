@@ -1,23 +1,128 @@
 #!/usr/bin/env bash
 
-function display-help() {
+[[ -f $(dirname $0)/../lib/bash.shlib ]] && . $(dirname $0)/../lib/bash.shlib || { echo "$(dirname $0)/../lib/bash.shlib not found" 1>&2; exit 1; }
+
+function usage() {
 
 cat <<EOF
 
-$(basename $0) is a tool to backup a mediawiki instance (database content, files, extension and configuration).
-$(basename $0) produces a single file that can be used as argument to restore-mediawiki to restore the instance.
+$(basename $0) is a tool to backup a mediawiki instance (database content, files, extensions, configuration and
+everything is needed to fully restore the instance). $(basename $0) produces a single file that can be used as
+argument to restore-mediawiki to restore the instance.
 
 Usage:
 
-  $(basename $0) <installation-dir>
+  $(basename $0) <mediawiki-installation-dir> [-t|--target-dir <dir>]
 
-<installation-dir> is the local file system directory where the mediawiki instance is installed (by default
-/var/www/<wiki-v
+<mediawiki-installation-dir> is the local file system directory where the mediawiki instance is installed
+(by default /var/www/mediawiki-<version>). The backup file is placed in the current directory, unless
+-t|--target-dir option is used.
+
 EOF
 }
 
 function main() {
-  display-help
+
+  process-common-arguments "$@" && set -- "${ARGS[@]}" || fail "failed to process common arguments"
+
+  ${HELP} || [[ -z $1 ]] && { usage; exit 0; }
+
+  unset ARGS
+  declare -a ARGS
+  declare -A OPTIONS
+  OPTIONS["--target-dir"]="string -t"
+  process-options "$@"
+  fail-on-unknown-arguments 1
+
+  local tmp_dir
+  tmp_dir=$(get-tmp-dir) || exit 1
+  # shellcheck disable=SC2064
+  trap "cleanup ${tmp_dir}" EXIT
+
+  backup-mediawiki "${1}" "${tmp_dir}" "${OPTIONS[--target-dir]}"
+}
+
+function backup-mediawiki() {
+
+  debug "${FUNCNAME[0]}($@)"
+  local mediawiki_dir=$1
+  local tmp_dir=$2
+  local target_dir=${3:-.}
+
+  debug "mediawiki_dir: ${mediawiki_dir}"
+  debug "tmp_dir: ${tmp_dir}"
+  debug "target_dir: ${target_dir}"
+
+  ensure-valid-mediawiki-dir "${mediawiki_dir}"
+  backup-database "${mediawiki_dir}" "${tmp_dir}"
+  backup-server-files "${mediawiki_dir}" "${tmp_dir}"
+}
+
+function ensure-valid-mediawiki-dir() {
+
+  debug "${FUNCNAME[0]}($@)"
+  local mediawiki_dir=$1
+  [[ -z ${mediawiki_dir} ]] && fail "no mediawiki directory specified"
+  [[ ! -d ${mediawiki_dir} ]] && fail "not a directory: ${mediawiki_dir}"
+  [[ ! -f ${mediawiki_dir}/LocalSettings.php ]] && fail "not a mediawiki directory, missing LocalSettings.php: ${mediawiki_dir}"
+}
+
+#
+# Second argument is the variable name (wgDBserver for database server name, etc.)
+# Fail is no file or no corresponding value is found.
+#
+function get-php-defined-value() {
+
+    debug "${FUNCNAME[0]}($@)"
+    local f=$1
+    local name=$2
+    [[ -f ${f} ]] || fail "no such file: ${f}"
+    local value
+    value=$(cat ${f} | grep "\$${name} *= *" | sed -e 's/^.* *= *"\(.*\)".*$/\1/')
+    [[ -z ${value} ]] && fail "\$${name}  not defined in ${f}"
+    echo "${value}"
+}
+
+function backup-database() {
+
+  debug "${FUNCNAME[0]}($@)"
+  local mediawiki_dir=$1
+  local tmp_dir=$2 # tmp dir is supposed to exist
+  local local_settings_file=${mediawiki_dir}/LocalSettings.php
+  local database_host database_user database_password database_name
+  database_host=$(get-php-defined-value "${local_settings_file}" wgDBserver) || exit 1
+  database_user=$(get-php-defined-value "${local_settings_file}" wgDBuser) || exit 1
+  database_password=$(get-php-defined-value "${local_settings_file}" wgDBpassword) || exit 1
+  database_name=$(get-php-defined-value "${local_settings_file}" wgDBname) || exit 1
+
+  debug "database_host: ${database_host}"
+  debug "database_user: ${database_user}"
+  debug "database_password: ${database_password}"
+  debug "database_name: ${database_name}"
+
+  local backup_file=${tmp_dir}/database-backup.sql
+  debug "backing up database in ${backup_file} ..."
+  if mysqldump -h ${database_host} -u ${database_user} --password=${database_password} --default-character-set=binary ${database_name} > ${backup_file}; then
+    debug "database backup successful"
+  else
+    fail "failed to backup database"
+  fi
+}
+
+function backup-server-files() {
+
+  debug "${FUNCNAME[0]}($@)"
+  local mediawiki_dir=$1
+  local target_dir=$2 # target dir is supposed to exist
+  debug "backing up server files in ${target_dir} ..."
+}
+
+function cleanup() {
+
+  debug "${FUNCNAME[0]}($@)"
+
+  local tmp_dir=$1
+  rm -rf "${tmp_dir}" && debug "removed temporary directory ${tmp_dir}" || warn "failed to remove temporary directory ${tmp_dir}"
 }
 
 main "$@"
