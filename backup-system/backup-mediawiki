@@ -1,7 +1,23 @@
 #!/usr/bin/env bash
 
+function display-help() {
+
+cat <<EOF
+
+$(basename $0) is a tool to backup a mediawiki instance (database content, files, extension and configuration).
+$(basename $0) produces a single file that can be used as argument to restore-mediawiki to restore the instance.
+
+Usage:
+
+  $(basename $0) <installation-dir>
+
+<installation-dir> is the local file system directory where the mediawiki instance is installed (by default
+/var/www/<wiki-v
+EOF
+}
+
 function main() {
-  echo "."
+  display-help
 }
 
 main "$@"
