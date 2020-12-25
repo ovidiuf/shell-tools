@@ -103,7 +103,7 @@ function backup-database() {
   local backup_file=${tmp_dir}/database-backup.sql
   debug "backing up database in ${backup_file} ..."
   if mysqldump -h ${database_host} -u ${database_user} --password=${database_password} --default-character-set=binary ${database_name} > ${backup_file}; then
-    debug "database backup successful"
+    debug "database backup successful, backup size $(wc -c ${backup_file} | awk '{print $1}')"
   else
     fail "failed to backup database"
   fi
