@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-[[ -f $(dirname $0)/../lib/bash.shlib ]] && . $(dirname $0)/../lib/bash.shlib || { echo "$(dirname $0)/../lib/bash.shlib not found" 1>&2; exit 1; }
+[[ -f $(dirname "$0")/../lib/bash.shlib ]] && . $(dirname $0)/../lib/bash.shlib || { echo "$(dirname $0)/../lib/bash.shlib not found" 1>&2; exit 1; }
 
 function usage() {
 
@@ -44,7 +44,7 @@ function main() {
 
 function backup-mediawiki() {
 
-  debug "${FUNCNAME[0]}($@)"
+  debug "${FUNCNAME[0]}($*)"
   local mediawiki_dir=$1
   local tmp_dir=$2
   local target_dir=${3:-.}
@@ -54,13 +54,14 @@ function backup-mediawiki() {
   debug "target_dir: ${target_dir}"
 
   ensure-valid-mediawiki-dir "${mediawiki_dir}"
+  ensure-root
   backup-database "${mediawiki_dir}" "${tmp_dir}"
   backup-server-files "${mediawiki_dir}" "${tmp_dir}"
 }
 
 function ensure-valid-mediawiki-dir() {
 
-  debug "${FUNCNAME[0]}($@)"
+  debug "${FUNCNAME[0]}($*)"
   local mediawiki_dir=$1
   [[ -z ${mediawiki_dir} ]] && fail "no mediawiki directory specified"
   [[ ! -d ${mediawiki_dir} ]] && fail "not a directory: ${mediawiki_dir}"
@@ -73,7 +74,7 @@ function ensure-valid-mediawiki-dir() {
 #
 function get-php-defined-value() {
 
-    debug "${FUNCNAME[0]}($@)"
+    debug "${FUNCNAME[0]}($*)"
     local f=$1
     local name=$2
     [[ -f ${f} ]] || fail "no such file: ${f}"
@@ -85,7 +86,7 @@ function get-php-defined-value() {
 
 function backup-database() {
 
-  debug "${FUNCNAME[0]}($@)"
+  debug "${FUNCNAME[0]}($*)"
   local mediawiki_dir=$1
   local tmp_dir=$2 # tmp dir is supposed to exist
   local local_settings_file=${mediawiki_dir}/LocalSettings.php
@@ -103,7 +104,7 @@ function backup-database() {
   local backup_file=${tmp_dir}/database-backup.sql
   debug "backing up database in ${backup_file} ..."
   if mysqldump -h ${database_host} -u ${database_user} --password=${database_password} --default-character-set=binary ${database_name} > ${backup_file}; then
-    debug "database backup successful, backup size $(wc -c ${backup_file} | awk '{print $1}')"
+    debug "database backup successful, backup size $(wc -c ${backup_file} | awk '{print $1}') bytes"
   else
     fail "failed to backup database"
   fi
@@ -111,18 +112,26 @@ function backup-database() {
 
 function backup-server-files() {
 
-  debug "${FUNCNAME[0]}($@)"
+  debug "${FUNCNAME[0]}($*)"
   local mediawiki_dir=$1
-  local target_dir=$2 # target dir is supposed to exist
+  local tmp_dir=$2 # tmp dir is supposed to exist
   debug "backing up server files in ${target_dir} ..."
 }
 
 function cleanup() {
 
-  debug "${FUNCNAME[0]}($@)"
-
+  debug "${FUNCNAME[0]}($*)"
   local tmp_dir=$1
   rm -rf "${tmp_dir}" && debug "removed temporary directory ${tmp_dir}" || warn "failed to remove temporary directory ${tmp_dir}"
+}
+
+#
+# fail if we are not root. We want to archive as root to preserve the original file ownership.
+#
+function ensure-root() {
+
+  debug "${FUNCNAME[0]}()"
+  [[ $(id -u) != "0" ]] && fail "$(basename $0) is not run as root but as $(id -u)"
 }
 
 main "$@"
