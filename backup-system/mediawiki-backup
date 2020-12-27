@@ -117,6 +117,9 @@ function backup-database() {
   fi
 }
 
+#
+# Recursively copies the entire mediawiki installation tree, preserving
+#
 function backup-server-files() {
 
   debug "${FUNCNAME[0]}($*)"
@@ -124,9 +127,9 @@ function backup-server-files() {
   local tmp_dir=$2 # tmp dir is supposed to exist
 
   mediawiki_dir=${mediawiki_dir%/}
-  debug "backing up server files from ${mediawiki_dir} in ${target_dir} ..."
-  if cp -R ${mediawiki_dir} ${tmp_dir}; then
-    debug "server directory backup successful"
+  debug "backing up server files from ${mediawiki_dir} to ${tmp_dir} ..."
+  if cp --archive "${mediawiki_dir}" "${tmp_dir}"; then
+    debug "server directory backup successful to ${tmp_dir}"
   else
     fail "failed to backup server directory ${mediawiki_dir} in ${tmp_dir}"
   fi
