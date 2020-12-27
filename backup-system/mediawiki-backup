@@ -168,7 +168,7 @@ function build-backup-archive() {
   local target_dir=$2
   local name=$(basename ${dated_tmp_dir})
   debug "creating tgz archive from ..."
-  if tar -cpszv "${target_dir}/${name}.tgz" -C $(dirname ${dated_tmp_dir}) "${name}"; then
+  if tar -cpszf "${target_dir}/${name}.tgz" -C $(dirname ${dated_tmp_dir}) "${name}"; then
     info "backup archive: ${target_dir}/${name}.tgz"
   else
     fail "failed to tar tar -cpszv ${target_dir}/${name}.tgz -C $(dirname ${dated_tmp_dir}) ${name}"
