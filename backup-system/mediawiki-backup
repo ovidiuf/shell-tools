@@ -96,7 +96,8 @@ function create-dated-subdir() {
   debug "${FUNCNAME[0]}($*)"
   local parent_dir=$1
   [[ -d ${parent_dir} ]] || fail "parent directory does not exist: ${parent_dir}"
-  local dir=${parent_dir}/$(date +'%Y.%m.%d-%H.%M.%S')-mediawiki-backup
+  local dir
+  dir=${parent_dir}/$(date +'%Y.%m.%d-%H.%M.%S')-mediawiki-backup
   mkdir "${dir}" || fail "failed to create dated subdirectory: ${dir}"
   echo "${dir}"
 }
@@ -166,8 +167,10 @@ function build-backup-archive() {
   debug "${FUNCNAME[0]}($*)"
   local dated_tmp_dir=$1
   local target_dir=$2
-  local name=$(basename ${dated_tmp_dir})
-  local command="tar -cpszf ${target_dir}/${name}.tgz -C $(dirname ${dated_tmp_dir}) ${name}"
+  local name command
+  target_dir=${target_dir%/}
+  name=$(basename ${dated_tmp_dir})
+  command="tar -cpszf ${target_dir}/${name}.tgz -C $(dirname ${dated_tmp_dir}) ${name}"
   debug "executing ${command}"
   if ${command}; then
     info "backup archive: ${target_dir}/${name}.tgz"
@@ -188,6 +191,5 @@ function cleanup() {
     rm -rf "${tmp_dir}" && debug "removed temporary directory ${tmp_dir}" || warn "failed to remove temporary directory ${tmp_dir}"
   fi
 }
-
 
 main "$@"
