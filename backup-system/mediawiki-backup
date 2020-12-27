@@ -38,7 +38,7 @@ function main() {
   declare -a ARGS
   declare -A OPTIONS
   OPTIONS["--target-dir"]="string -t"
-  OPTIONS["--preserve-tmp"]="string -p"
+  OPTIONS["--preserve-tmp"]="boolean -p"
   process-options "$@"
   fail-on-unknown-arguments 1
 
