@@ -62,8 +62,11 @@ function backup-mediawiki() {
 
   ensure-valid-mediawiki-dir "${mediawiki_dir}"
   ensure-root
-  backup-database "${mediawiki_dir}" "${tmp_dir}"
-  backup-server-files "${mediawiki_dir}" "${tmp_dir}"
+
+  local dated_tmp_dir
+  dated_tmp_dir=$(create-dated-subdir "${tmp_dir}") || exit 1
+  backup-database "${mediawiki_dir}" "${dated_tmp_dir}"
+  backup-server-files "${mediawiki_dir}" "${dated_tmp_dir}"
 }
 
 function ensure-valid-mediawiki-dir() {
@@ -73,6 +76,28 @@ function ensure-valid-mediawiki-dir() {
   [[ -z ${mediawiki_dir} ]] && fail "no mediawiki directory specified"
   [[ ! -d ${mediawiki_dir} ]] && fail "not a directory: ${mediawiki_dir}"
   [[ ! -f ${mediawiki_dir}/LocalSettings.php ]] && fail "not a mediawiki directory, missing LocalSettings.php: ${mediawiki_dir}"
+}
+
+#
+# fail if we are not root. We want to archive as root to preserve the original file ownership.
+#
+function ensure-root() {
+
+  debug "${FUNCNAME[0]}()"
+  [[ $(id -u) != "0" ]] && fail "$(basename $0) is not run as root but as $(id -u)"
+}
+
+#
+# Creates a dated subdirectory in the given directory and return the path to stdout. The parent must exist
+#
+function create-dated-subdir() {
+
+  debug "${FUNCNAME[0]}($*)"
+  local parent_dir=$1
+  [[ -d ${parent_dir} ]] || fail "parent directory does not exist: ${parent_dir}"
+  local dir=${parent_dir}/$(date +'%y.%m.%d-%H.%M.%S')-mediawiki-backup
+  mkdir ${dir} || fail "failed to create dated subdirectory: ${dir}"
+  echo ${dir}
 }
 
 #
@@ -148,13 +173,5 @@ function cleanup() {
   fi
 }
 
-#
-# fail if we are not root. We want to archive as root to preserve the original file ownership.
-#
-function ensure-root() {
-
-  debug "${FUNCNAME[0]}()"
-  [[ $(id -u) != "0" ]] && fail "$(basename $0) is not run as root but as $(id -u)"
-}
 
 main "$@"
