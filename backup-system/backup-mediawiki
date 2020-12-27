@@ -18,6 +18,13 @@ Usage:
 (by default /var/www/mediawiki-<version>). The backup file is placed in the current directory, unless
 -t|--target-dir option is used.
 
+Options:
+
+ -t|--target-dir Optional designation of the target directory. If no option is specified, the current directory
+   is used as target directory.
+
+ -p|--preserve-tmp Optional boolean flag that instructs the program to preserve the temporary directory.
+
 EOF
 }
 
@@ -31,13 +38,13 @@ function main() {
   declare -a ARGS
   declare -A OPTIONS
   OPTIONS["--target-dir"]="string -t"
+  OPTIONS["--preserve-tmp"]="string -p"
   process-options "$@"
   fail-on-unknown-arguments 1
 
   local tmp_dir
   tmp_dir=$(get-tmp-dir) || exit 1
-  # shellcheck disable=SC2064
-  trap "cleanup ${tmp_dir}" EXIT
+  trap "cleanup ${tmp_dir} ${OPTIONS[--preserve-tmp]}" EXIT
 
   backup-mediawiki "${1}" "${tmp_dir}" "${OPTIONS[--target-dir]}"
 }
@@ -115,14 +122,27 @@ function backup-server-files() {
   debug "${FUNCNAME[0]}($*)"
   local mediawiki_dir=$1
   local tmp_dir=$2 # tmp dir is supposed to exist
-  debug "backing up server files in ${target_dir} ..."
+
+  mediawiki_dir=${mediawiki_dir%/}
+  debug "backing up server files from ${mediawiki_dir} in ${target_dir} ..."
+  if cp -R ${mediawiki_dir} ${tmp_dir}; then
+    debug "server directory backup successful"
+  else
+    fail "failed to backup server directory ${mediawiki_dir} in ${tmp_dir}"
+  fi
 }
 
 function cleanup() {
 
   debug "${FUNCNAME[0]}($*)"
   local tmp_dir=$1
-  rm -rf "${tmp_dir}" && debug "removed temporary directory ${tmp_dir}" || warn "failed to remove temporary directory ${tmp_dir}"
+  local preserve_tmp=${2:-false}
+
+  if ${preserve_tmp}; then
+    debug "temporary directory ${tmp_dir} preserved"
+  else
+    rm -rf "${tmp_dir}" && debug "removed temporary directory ${tmp_dir}" || warn "failed to remove temporary directory ${tmp_dir}"
+  fi
 }
 
 #
