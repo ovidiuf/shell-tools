@@ -46,7 +46,7 @@ function main() {
   tmp_dir=$(get-tmp-dir) || exit 1
   trap "cleanup ${tmp_dir} ${OPTIONS[--preserve-tmp]}" EXIT
 
-  backup-mediawiki "${1}" "${tmp_dir}" "${OPTIONS[--target-dir]}"
+  backup-mediawiki "${ARGS[0]}" "${tmp_dir}" "${OPTIONS[--target-dir]}"
 }
 
 function backup-mediawiki() {
