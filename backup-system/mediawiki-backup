@@ -97,8 +97,8 @@ function create-dated-subdir() {
   local parent_dir=$1
   [[ -d ${parent_dir} ]] || fail "parent directory does not exist: ${parent_dir}"
   local dir=${parent_dir}/$(date +'%Y.%m.%d-%H.%M.%S')-mediawiki-backup
-  mkdir ${dir} || fail "failed to create dated subdirectory: ${dir}"
-  echo ${dir}
+  mkdir "${dir}" || fail "failed to create dated subdirectory: ${dir}"
+  echo "${dir}"
 }
 
 #
@@ -166,18 +166,14 @@ function build-backup-archive() {
   debug "${FUNCNAME[0]}($*)"
   local dated_tmp_dir=$1
   local target_dir=$2
-
-  tar -cfpsz -C $(dirname ${dated_tmp_dir})
-
-  mediawiki_dir=${mediawiki_dir%/}
-  debug "backing up server files from ${mediawiki_dir} to ${tmp_dir} ..."
-  if cp --archive "${mediawiki_dir}" "${tmp_dir}"; then
-    info "server directory backup successful: ${mediawiki_dir}"
+  local name=$(basename ${dated_tmp_dir})
+  debug "creating tgz archive from ..."
+  if tar -cpszv "${target_dir}/${name}.tgz" -C $(dirname ${dated_tmp_dir}) "${name}"; then
+    info "backup archive: ${target_dir}/${name}.tgz"
   else
-    fail "failed to backup server directory ${mediawiki_dir} in ${tmp_dir}"
+    fail "failed to tar tar -cpszv ${target_dir}/${name}.tgz -C $(dirname ${dated_tmp_dir}) ${name}"
   fi
 }
-
 
 function cleanup() {
 
