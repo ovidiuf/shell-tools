@@ -95,7 +95,7 @@ function create-dated-subdir() {
   debug "${FUNCNAME[0]}($*)"
   local parent_dir=$1
   [[ -d ${parent_dir} ]] || fail "parent directory does not exist: ${parent_dir}"
-  local dir=${parent_dir}/$(date +'%y.%m.%d-%H.%M.%S')-mediawiki-backup
+  local dir=${parent_dir}/$(date +'%Y.%m.%d-%H.%M.%S')-mediawiki-backup
   mkdir ${dir} || fail "failed to create dated subdirectory: ${dir}"
   echo ${dir}
 }
@@ -136,7 +136,7 @@ function backup-database() {
   local backup_file=${tmp_dir}/database-backup.sql
   debug "backing up database in ${backup_file} ..."
   if mysqldump -h ${database_host} -u ${database_user} --password=${database_password} --default-character-set=binary ${database_name} > ${backup_file}; then
-    debug "database backup successful, backup size $(wc -c ${backup_file} | awk '{print $1}') bytes"
+    info "database backup successful, backup size $(wc -c ${backup_file} | awk '{print $1}') bytes"
   else
     fail "failed to backup database"
   fi
@@ -154,7 +154,7 @@ function backup-server-files() {
   mediawiki_dir=${mediawiki_dir%/}
   debug "backing up server files from ${mediawiki_dir} to ${tmp_dir} ..."
   if cp --archive "${mediawiki_dir}" "${tmp_dir}"; then
-    debug "server directory backup successful to ${tmp_dir}"
+    info "server directory ${mediawiki_dir} backup successful"
   else
     fail "failed to backup server directory ${mediawiki_dir} in ${tmp_dir}"
   fi
