@@ -67,7 +67,7 @@ function backup-mediawiki() {
   dated_tmp_dir=$(create-dated-subdir "${tmp_dir}") || exit 1
   backup-database "${mediawiki_dir}" "${dated_tmp_dir}"
   backup-server-files "${mediawiki_dir}" "${dated_tmp_dir}"
-  build-backup-archive "${dated_tmp_dir}"
+  build-backup-archive "${dated_tmp_dir}" "${target_dir}"
 }
 
 function ensure-valid-mediawiki-dir() {
@@ -167,11 +167,12 @@ function build-backup-archive() {
   local dated_tmp_dir=$1
   local target_dir=$2
   local name=$(basename ${dated_tmp_dir})
-  debug "creating tgz archive from ..."
-  if tar -cpszf "${target_dir}/${name}.tgz" -C $(dirname ${dated_tmp_dir}) "${name}"; then
+  local command="tar -cpszf ${target_dir}/${name}.tgz -C $(dirname ${dated_tmp_dir}) ${name}"
+  debug "executing ${command}"
+  if ${command}; then
     info "backup archive: ${target_dir}/${name}.tgz"
   else
-    fail "failed to tar tar -cpszv ${target_dir}/${name}.tgz -C $(dirname ${dated_tmp_dir}) ${name}"
+    fail "failed to execute ${command}"
   fi
 }
 
