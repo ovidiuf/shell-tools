@@ -67,6 +67,7 @@ function backup-mediawiki() {
   dated_tmp_dir=$(create-dated-subdir "${tmp_dir}") || exit 1
   backup-database "${mediawiki_dir}" "${dated_tmp_dir}"
   backup-server-files "${mediawiki_dir}" "${dated_tmp_dir}"
+  build-backup-archive "${dated_tmp_dir}"
 }
 
 function ensure-valid-mediawiki-dir() {
@@ -154,11 +155,29 @@ function backup-server-files() {
   mediawiki_dir=${mediawiki_dir%/}
   debug "backing up server files from ${mediawiki_dir} to ${tmp_dir} ..."
   if cp --archive "${mediawiki_dir}" "${tmp_dir}"; then
-    info "server directory ${mediawiki_dir} backup successful"
+    info "server directory backup successful: ${mediawiki_dir}"
   else
     fail "failed to backup server directory ${mediawiki_dir} in ${tmp_dir}"
   fi
 }
+
+function build-backup-archive() {
+
+  debug "${FUNCNAME[0]}($*)"
+  local dated_tmp_dir=$1
+  local target_dir=$2
+
+  tar -cfpsz -C $(dirname ${dated_tmp_dir})
+
+  mediawiki_dir=${mediawiki_dir%/}
+  debug "backing up server files from ${mediawiki_dir} to ${tmp_dir} ..."
+  if cp --archive "${mediawiki_dir}" "${tmp_dir}"; then
+    info "server directory backup successful: ${mediawiki_dir}"
+  else
+    fail "failed to backup server directory ${mediawiki_dir} in ${tmp_dir}"
+  fi
+}
+
 
 function cleanup() {
 
