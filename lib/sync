@@ -2,6 +2,8 @@
 #
 # Overwrites target libraries (bash.shlib, json.shlib) with the reference copy, only if necessary.
 #
+# Control the destination worktree by adjusting ~/bash_shlib_copy link
+#
 
 SOURCES="bash.shlib json.shlib"
 
