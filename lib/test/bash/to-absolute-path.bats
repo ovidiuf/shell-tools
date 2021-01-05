@@ -46,10 +46,14 @@ load bash-library
 
 @test "relative path, two leading dots" {
 
+    local current_dir
+    current_dir="$(pwd -P)"
+    current_dir=${current_dir%/*}
+
     run to-absolute-path ../something
 
     [[ ${status} -eq 0 ]]
-    [[ ${output} = "$(pwd -P)/../something" ]]
+    [[ ${output} = "${current_dir}/something" ]]
 }
 
 @test "current directory" {

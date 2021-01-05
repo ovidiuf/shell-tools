@@ -230,30 +230,6 @@ function setup() {
     [[ ${OPTIONS["--shape"]} = "square" ]]
 }
 
-@test "string option: missing value" {
-
-    declare -a ARGS
-    declare -A OPTIONS
-    OPTIONS["--something"]="string"
-
-    run process-options --something
-
-    [[ ${status} -eq 1 ]]
-    [[ ${output} =~ "missing --something string value" ]]
-}
-
-@test "string option: missing value (2)" {
-
-    declare -a ARGS
-    declare -A OPTIONS
-    OPTIONS["--something"]="string"
-
-    run process-options --something -somethingelse
-
-    [[ ${status} -eq 1 ]]
-    [[ ${output} =~ "missing --something string value" ]]
-}
-
 @test "integer option: missing value" {
 
     declare -a ARGS

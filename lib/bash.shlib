@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-BASH_SHLIB_VERSION=1.14.2
+BASH_SHLIB_VERSION=1.14.3
 
 #
 # Generic bash functionality
@@ -142,7 +142,7 @@ function process-common-arguments() {
 #
 function process-options() {
 
-    debug "${FUNCNAME[0]}($@)"
+    debug "${FUNCNAME[0]}($*)"
 
     declare -A | grep -q "declare -A OPTIONS" || { error "${FUNCNAME[0]}(): 'OPTIONS' associative array not declared"; exit 1; }
     [[ ${#OPTIONS[@]} -eq 0 ]] && { error "${FUNCNAME[0]}(): 'OPTIONS' associative array contains no values"; exit 1; }
@@ -325,7 +325,7 @@ function process-options() {
 #
 function fail-on-unknown-arguments() {
 
-    debug "${FUNCNAME[0]}($@)"
+    debug "${FUNCNAME[0]}($*)"
 
     [[ ${#ARGS[@]} -eq 0 ]] && return 0
 
@@ -412,7 +412,7 @@ function info {
 #
 # Recommended pattern to debug function calls:
 #
-#   debug "${FUNCNAME[0]}($@)"
+#   debug "${FUNCNAME[0]}($*)"
 #
 function debug() {
 
@@ -493,7 +493,7 @@ function debug-file() {
 #
 function input() {
 
-    debug "${FUNCNAME[0]}($@)"
+    debug "${FUNCNAME[0]}($*)"
 
     local type=$1
     shift
@@ -557,7 +557,7 @@ function input() {
 #
 function get-tmp-dir() {
 
-    debug "${FUNCNAME[0]}($@)"
+    debug "${FUNCNAME[0]}($*)"
 
     local dir="/tmp/$(get-tmp-file-name)"
     mkdir ${dir} || fail "failed to create temporary directory ${dir}"
@@ -572,7 +572,7 @@ function get-tmp-dir() {
 #
 function get-tmp-file-name() {
 
-    debug "${FUNCNAME[0]}($@)"
+    debug "${FUNCNAME[0]}($*)"
 
     local prefix=$1 # optional
 
@@ -591,12 +591,12 @@ function get-tmp-file-name() {
 #
 function to-absolute-path() {
 
-    debug "${FUNCNAME[0]}($@)"
+    debug "${FUNCNAME[0]}($*)"
 
     local path=$1
     local abs_path
 
-    [[ -z ${path} ]] && fail "${FUNCNAME[0]}($@) 'path' not provided"
+    [[ -z ${path} ]] && fail "${FUNCNAME[0]}($*) 'path' not provided"
 
     if [[ ${path:0:1} = "/" ]]; then
 
@@ -615,11 +615,24 @@ function to-absolute-path() {
     #
     # remove trailing /. and intermediary .
     #
-    abs_path=${abs_path//\/.\///}
-    abs_path=${abs_path%/.}
+    abs_path=$(to-canonical-path "${abs_path}")
     debug "${path} -> ${abs_path}"
-    echo ${abs_path}
+    echo "${abs_path}"
     return 0
+}
+
+#
+# Cleanup path by removing trailing /. and intermediary ., .., etc.
+#
+function to-canonical-path() {
+
+    debug "${FUNCNAME[0]}($*)"
+    local path=$1
+    path=${path//\/.\///}
+    path=${path%/.}
+    # TODO this only works on a single /../, sequences are not handled
+    path=$(echo "${path}" | sed -e 's/\/[^/]*\/\.\.//g')
+    echo "${path}"
 }
 
 #
@@ -633,7 +646,7 @@ function to-absolute-path() {
 #
 function get-the-only-subdir() {
 
-    debug "${FUNCNAME[0]}($@)"
+    debug "${FUNCNAME[0]}($*)"
 
     local parent_dir=$1
     [[ -z ${parent_dir} ]] && fail "'parent_dir' not provided"
@@ -661,7 +674,7 @@ function get-the-only-subdir() {
 #
 function has() {
 
-    debug "${FUNCNAME[0]}($@)"
+    debug "${FUNCNAME[0]}($*)"
 
     type "$1" &>/dev/null
 }
@@ -673,7 +686,7 @@ function has() {
 #
 has-tools() {
 
-    debug "${FUNCNAME[0]}($@)"
+    debug "${FUNCNAME[0]}($*)"
 
     local installed
 
@@ -695,7 +708,7 @@ has-tools() {
 #
 function is-macOS() {
 
-    debug "${FUNCNAME[0]}($@)"
+    debug "${FUNCNAME[0]}($*)"
 
     [[ "$(uname)" = "Darwin" ]]
     return $?
@@ -734,7 +747,7 @@ function check-bash-version() {
 #
 function pull() {
 
-    debug "${FUNCNAME[0]}($@)"
+    debug "${FUNCNAME[0]}($*)"
 
     local url=$1
     local target=$2
@@ -782,7 +795,7 @@ function pull() {
 #
 function execute {
 
-    debug "${FUNCNAME[0]}($@)"
+    debug "${FUNCNAME[0]}($*)"
 
     local command="$1"
     [[ -z ${command} ]] && fail "'command' not provided"
@@ -837,7 +850,7 @@ function execute {
 #
 function is-file-url() {
 
-    debug "${FUNCNAME[0]}($@)"
+    debug "${FUNCNAME[0]}($*)"
 
     local url=$1
     [[ -z ${url} ]] && fail "${FUNCNAME[0]}(): 'url' not provided"
@@ -865,7 +878,7 @@ function is-file-url() {
 #
 function is-http-url() {
 
-    debug "${FUNCNAME[0]}($@)"
+    debug "${FUNCNAME[0]}($*)"
 
     local url=$1
     [[ -z ${url} ]] && fail "${FUNCNAME[0]}(): 'url' not provided"
@@ -888,7 +901,7 @@ function is-http-url() {
 #
 function is-nfs-url() {
 
-    debug "${FUNCNAME[0]}($@)"
+    debug "${FUNCNAME[0]}($*)"
 
     local url=$1
     [[ -z ${url} ]] && fail "${FUNCNAME[0]}(): 'url' not provided"
@@ -917,7 +930,7 @@ function is-nfs-url() {
 #
 function is-s3-url() {
 
-    debug "${FUNCNAME[0]}($@)"
+    debug "${FUNCNAME[0]}($*)"
 
     local url=$1
     [[ -z ${url} ]] && fail "${FUNCNAME[0]}(): 'url' not provided"
@@ -956,7 +969,7 @@ function is-s3-url() {
 #
 function index-of() {
 
-    debug "${FUNCNAME[0]}($@)"
+    debug "${FUNCNAME[0]}($*)"
 
     local array_variable_name=$1
     [[ -z ${array_variable_name} ]] && fail "array name not provided"
@@ -978,7 +991,7 @@ function index-of() {
 #
 function is-yq-2() {
 
-    debug "${FUNCNAME[0]}($@)"
+    debug "${FUNCNAME[0]}($*)"
 
     local output=$(yq --version)
     output=${output#*version }
@@ -993,7 +1006,7 @@ function is-yq-2() {
 #
 function yaml-path-exists() {
 
-    debug "${FUNCNAME[0]}($@)"
+    debug "${FUNCNAME[0]}($*)"
 
     local file=$1
     local path=$2
