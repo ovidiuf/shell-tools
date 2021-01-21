@@ -89,29 +89,28 @@ function select-java-home() {
     local MACOS_JAVA_HOME_POSTFIX=${MACOS_JAVA_HOME_POSTFIX:-Contents/Home}
     local vendor_prefix=${java_vendor}
 
-    [[ -d ${MACOS_JAVA_LIBRARY_DIR} ]] || { echo "MacOS Java library directory not valid: ${MACOS_JAVA_LIBRARY_DIR}" 1>&2; exit 1; }
+    [[ -d ${MACOS_JAVA_LIBRARY_DIR} ]] || { echo "[error]: MacOS Java library directory not valid: ${MACOS_JAVA_LIBRARY_DIR}" 1>&2; exit 1; }
 
     if [[ ${java_vendor} =~ [a|A]mazon ]]; then
       vendor_prefix=amazon-corretto-
     fi
 
     local javas candidate path
-    javas=$(ls -d ${MACOS_JAVA_LIBRARY_DIR}/${vendor_prefix}* 2>/dev/null) || { echo "no ${java_vendor} Java found in ${MACOS_JAVA_LIBRARY_DIR}" 1>&2; exit 1; }
+    javas=$(ls -d ${MACOS_JAVA_LIBRARY_DIR}/${vendor_prefix}* 2>/dev/null) || { echo "[error]: no ${java_vendor} Java found in ${MACOS_JAVA_LIBRARY_DIR}" 1>&2; exit 1; }
     for i in ${javas}; do
       i=${i#${MACOS_JAVA_LIBRARY_DIR}/${vendor_prefix}}
       i=${i%.jdk}
       if [[ ${i} =~ ${java_version} ]]; then
         candidate=${MACOS_JAVA_LIBRARY_DIR}/${vendor_prefix}${i}.jdk/${MACOS_JAVA_HOME_POSTFIX}
-        [[ -n ${path} ]] && { echo "more than one ${java_vendor} Java installation matches version ${java_version}: ${path}, ${candidate}; specify version more precisely" 1>&2; exit 1; }
+        [[ -n ${path} ]] && { echo "[error]: more than one ${java_vendor} Java installation matches version ${java_version}: ${path}, ${candidate}; specify version more precisely" 1>&2; exit 1; }
         path=${candidate}
       fi
     done
-    [[ -z ${path} ]] && { echo "no ${java_vendor} ${java_version} Java found in ${MACOS_JAVA_LIBRARY_DIR}" 1>&2; exit 1; }
-    [[ -d ${path} ]] || { echo "selected ${java_vendor} ${java_version} Java but JAVA_HOME does not seem to be a valid directory: ${path}" 1>&2; exit 1; }
+    [[ -z ${path} ]] && { echo "[error]: no ${java_vendor} ${java_version} Java found in ${MACOS_JAVA_LIBRARY_DIR}" 1>&2; exit 1; }
+    [[ -d ${path} ]] || { echo "[error]: selected ${java_vendor} ${java_version} Java but JAVA_HOME does not seem to be a valid directory: ${path}" 1>&2; exit 1; }
 
     echo "${path}"
   else
-
     #
     # for Linux we currently return the pre-set JAVA_HOME
     #
