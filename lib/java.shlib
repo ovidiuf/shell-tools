@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+JAVA_SHLIB_VERSION=0.2.0
+
 #
 # Functionality related to building and running Java. This collection of function requires that bash.shlib was
 # sourced already. The library contains code (below) that insures that, by looking for the existence of the function
@@ -14,7 +16,7 @@ typeset -F | grep "declare -f debug" > /dev/null 2>&1 || { echo "[failure]: java
 #
 function is-executable-jar() {
 
-    debug "${FUNCNAME[0]}($@)"
+    debug "${FUNCNAME[0]}($*)"
 
     local jar_file=$1
 
@@ -64,6 +66,57 @@ function is-executable-jar() {
     rm -r ${tmp_dir} && debug "deleted temporary directory ${tmp_dir}" || warn "failed to delete temporary directory ${tmp_dir}"
 
     return ${return_code}
+}
+
+#
+# Select and return at stdout JAVA_HOME for a locally installed Java that matches the specified vendor and version.
+# The version is specified as a bash matching pattern (https://www.gnu.org/software/bash/manual/html_node/Pattern-Matching.html)
+# If more than one match is found, the function will fail.
+#
+# Supported vendors: Amazon
+# Version matching pattern examples: 1.8, 1.8*, 1.8.0_221, 11.
+#
+function select-java-home() {
+
+  local java_version=$1
+  local java_vendor=$2
+  [[ -z ${java_version} ]] && { echo "${FUNCNAME[0]}: Java version not provided" 1>&2; exit 1; }
+  [[ -z ${java_vendor} ]] && { echo "${FUNCNAME[0]}: Java vendor not provided" 1>&2; exit 1; }
+
+  if is_macOS; then
+
+    local MACOS_JAVA_LIBRARY_DIR=${MACOS_JAVA_LIBRARY_DIR:-/Library/Java/JavaVirtualMachines}
+    local MACOS_JAVA_HOME_POSTFIX=${MACOS_JAVA_HOME_POSTFIX:-Contents/Home}
+    local vendor_prefix=${java_vendor}
+
+    [[ -d ${MACOS_JAVA_LIBRARY_DIR} ]] || { echo "MacOS Java library directory not valid: ${MACOS_JAVA_LIBRARY_DIR}" 1>&2; exit 1; }
+
+    if [[ ${java_vendor} =~ [a|A]mazon ]]; then
+      vendor_prefix=amazon-corretto-
+    fi
+
+    local javas candidate path
+    javas=$(ls -d ${MACOS_JAVA_LIBRARY_DIR}/${vendor_prefix}* 2>/dev/null) || { echo "no ${java_vendor} Java found in ${MACOS_JAVA_LIBRARY_DIR}" 1>&2; exit 1; }
+    for i in ${javas}; do
+      i=${i#${MACOS_JAVA_LIBRARY_DIR}/${vendor_prefix}}
+      i=${i%.jdk}
+      if [[ ${i} =~ ${java_version} ]]; then
+        candidate=${MACOS_JAVA_LIBRARY_DIR}/${vendor_prefix}${i}.jdk/${MACOS_JAVA_HOME_POSTFIX}
+        [[ -n ${path} ]] && { echo "more than one ${java_vendor} Java installation matches version ${java_version}: ${path}, ${candidate}; specify version more precisely" 1>&2; exit 1; }
+        path=${candidate}
+      fi
+    done
+    [[ -z ${path} ]] && { echo "no ${java_vendor} ${java_version} Java found in ${MACOS_JAVA_LIBRARY_DIR}" 1>&2; exit 1; }
+    [[ -d ${path} ]] || { echo "selected ${java_vendor} ${java_version} Java but JAVA_HOME does not seem to be a valid directory: ${path}" 1>&2; exit 1; }
+
+    echo "${path}"
+  else
+
+    #
+    # for Linux we currently return the pre-set JAVA_HOME
+    #
+    echo ${JAVA_HOME}
+  fi
 }
 
 
