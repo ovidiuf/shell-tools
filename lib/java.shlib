@@ -76,15 +76,21 @@ function is-executable-jar() {
 # Supported vendors: Amazon
 # Version matching pattern examples: 1.8, 1.8*, 1.8.0_221, 11.
 #
+# The function works both on MacOS (where it inspects the Java installations in /Library/Java/JavaVirtualMachines) and
+# Linux, where it uses the alternatives utility to browse and select available Java installations.
+#
 function select-java-home() {
 
   local java_version=$1
   local java_vendor=$2
   [[ -z ${java_version} ]] && { echo "${FUNCNAME[0]}: Java version not provided" 1>&2; exit 1; }
   [[ -z ${java_vendor} ]] && { echo "${FUNCNAME[0]}: Java vendor not provided" 1>&2; exit 1; }
+  local javas java_home candidate source
 
   if is_macOS; then
-
+    #
+    # on MacOS we list /Library/Java/JavaVirtualMachines content
+    #
     local MACOS_JAVA_LIBRARY_DIR=${MACOS_JAVA_LIBRARY_DIR:-/Library/Java/JavaVirtualMachines}
     local MACOS_JAVA_HOME_POSTFIX=${MACOS_JAVA_HOME_POSTFIX:-Contents/Home}
     local vendor_prefix=${java_vendor}
@@ -95,30 +101,45 @@ function select-java-home() {
       vendor_prefix=amazon-corretto-
     fi
 
-    local javas candidate path
     javas=$(ls -d ${MACOS_JAVA_LIBRARY_DIR}/${vendor_prefix}* 2>/dev/null) || { echo "[error]: no ${java_vendor} Java found in ${MACOS_JAVA_LIBRARY_DIR}" 1>&2; exit 1; }
     for i in ${javas}; do
       i=${i#${MACOS_JAVA_LIBRARY_DIR}/${vendor_prefix}}
       i=${i%.jdk}
       if [[ ${i} =~ ${java_version} ]]; then
         candidate=${MACOS_JAVA_LIBRARY_DIR}/${vendor_prefix}${i}.jdk/${MACOS_JAVA_HOME_POSTFIX}
-        [[ -n ${path} ]] && { echo "[error]: more than one ${java_vendor} Java installation matches version ${java_version}: ${path}, ${candidate}; specify version more precisely" 1>&2; exit 1; }
-        path=${candidate}
+        [[ -n ${java_home} ]] && { echo "[error]: more than one ${java_vendor} Java installation matches version ${java_version}: ${java_home}, ${candidate}; specify version more precisely" 1>&2; exit 1; }
+        java_home=${candidate}
       fi
     done
-    [[ -z ${path} ]] && { echo "[error]: no ${java_vendor} ${java_version} Java found in ${MACOS_JAVA_LIBRARY_DIR}" 1>&2; exit 1; }
-    [[ -d ${path} ]] || { echo "[error]: selected ${java_vendor} ${java_version} Java but JAVA_HOME does not seem to be a valid directory: ${path}" 1>&2; exit 1; }
-
-    echo "${path}"
+    source="in ${MACOS_JAVA_LIBRARY_DIR}"
   else
     #
-    # for Linux we currently return the pre-set JAVA_HOME
+    # for Linux we query alternatives
     #
-    echo ${JAVA_HOME}
+    (alternatives --version 1>/dev/null 2>&1) || { echo "alternatives utility failed or it is not available on the system"; exit 2; }
+
+    local vendor_suffix=${java_vendor}
+    if [[ ${java_vendor} =~ [a|A]mazon ]]; then
+      vendor_suffix=amazon-corretto
+    fi
+
+    javas=$(alternatives --display java 2>/dev/null | grep "priority" | grep "${vendor_suffix}" | sed -e 's/ .*//')
+    [[ -z ${javas} ]] && { echo "[error]: no Java installations returned by alternatives"; exit 2; }
+
+    local version
+    for i in ${javas}; do
+      version=${i/${vendor_suffix}*/}
+      version=${version%-}
+      version=${version##*-}
+      if [[ ${version} =~ ${java_version} ]]; then
+        candidate=${i%/bin/java}
+        [[ -n ${java_home} ]] && { echo "[error]: more than one ${java_vendor} Java installation matches version ${java_version}: ${java_home}, ${candidate}; specify version more precisely" 1>&2; exit 1; }
+        java_home=${candidate}
+      fi
+    done
+    source="by running the alternatives utility"
   fi
+  [[ -z ${java_home} ]] && { echo "[error]: no ${java_vendor} ${java_version} Java found ${source}" 1>&2; exit 1; }
+  [[ -d ${java_home} ]] || { echo "[error]: selected ${java_vendor} ${java_version} Java but JAVA_HOME does not seem to be a valid directory: ${java_home}" 1>&2; exit 1; }
+  echo "${java_home}"
 }
-
-
-
-
-
