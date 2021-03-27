@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+
+#
+# Download the source zip from GitHub and place it in a staging directory gradle-6.8.3.zip.
+#
+# Run:
+#
+#        package-gradle-sources .../gradle-6.8.3.zip
+#
+#
+
+function main() {
+
+  local source_zip=$1
+  [[ -z ${source_zip} ]] && { echo "[error]: provide the path to the Gradle source zip as downloaded from GitHub" 1>&2; exit 1; }
+  [[ ! -f ${source_zip} ]] && { echo "[error]: not a file: ${source_zip}" 1>&2; exit 1; }
+  local extension=${source_zip##*.}
+  [[ ${extension} != zip ]] && { echo "[error]: not a zip file: ${source_zip}" 1>&2; exit 1; }
+
+  local tmp_dir expanded_dir_name source_dir target_jar
+  tmp_dir=$(mktemp -d)
+  unzip -q ${source_zip} -d ${tmp_dir}
+  expanded_dir_name=$(ls ${tmp_dir})
+  source_dir=${tmp_dir}/${expanded_dir_name}
+  [[ -d ${source_dir} ]] || { echo "[error]: unzip failed, no source directory: ${source_dir}" 1>&2; exit 1; }
+  target_jar=$(dirname ${source_zip})/${expanded_dir_name}-sources.jar
+  for i in $(find ${source_dir} -name java -type d); do
+    [[ ! ${i} =~ src/main/java ]] && continue
+    [[ ${i} =~ subprojects/smoke-test ]] && continue
+    [[ ${i} =~ subprojects/docs ]] && continue
+    [[ ${i} =~ src/integTest ]] && continue
+    [[ ${i} =~ src/testFixtures ]] && continue
+    #echo "source: ${i}"
+    if [[ ! -f ${target_jar} ]]; then
+      jar cfv ${target_jar} -C ${i} .
+    else
+      jar ufv ${target_jar} -C ${i} .
+    fi
+  done
+  echo "${target_jar} ready"
+  rm -r ${tmp_dir}
+  return
+}
+
+main "$@"
