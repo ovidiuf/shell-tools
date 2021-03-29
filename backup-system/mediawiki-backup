@@ -67,6 +67,7 @@ function backup-mediawiki() {
   dated_tmp_dir=$(create-dated-subdir "${tmp_dir}") || exit 1
   backup-database "${mediawiki_dir}" "${dated_tmp_dir}"
   backup-server-files "${mediawiki_dir}" "${dated_tmp_dir}"
+  backup-certificates
   build-backup-archive "${dated_tmp_dir}" "${target_dir}"
 }
 
@@ -160,6 +161,15 @@ function backup-server-files() {
   else
     fail "failed to backup server directory ${mediawiki_dir} in ${tmp_dir}"
   fi
+}
+
+function backup-certificates {
+
+  debug "${FUNCNAME[0]}()"
+
+  warn ""
+  warn " TO DO: Implement Certificate Backup"
+  warn ""
 }
 
 function build-backup-archive() {
