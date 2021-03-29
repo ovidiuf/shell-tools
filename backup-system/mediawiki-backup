@@ -188,10 +188,10 @@ function backup-certificates {
   local src_dir="/etc/pki/tls/certs"
   local target_dir=${tmp_dir}${src_dir}
   mkdir -p "${target_dir}"
-  if cp ${src_dir}/* ${target_dir}; then
-    info "${src_dir} TLS certificate backup successful"
+  if cp ${src_dir}/*.crt ${target_dir}; then
+    info "${src_dir}*.crt TLS certificate backup successful"
   else
-    fail "failed to backup TLS certificates from ${src_dir}"
+    fail "failed to backup TLS certificates *.crt from ${src_dir}"
   fi
 
   src_dir="/etc/pki/tls/private"
