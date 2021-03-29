@@ -67,7 +67,7 @@ function backup-mediawiki() {
   dated_tmp_dir=$(create-dated-subdir "${tmp_dir}") || exit 1
   backup-database "${mediawiki_dir}" "${dated_tmp_dir}"
   backup-server-files "${mediawiki_dir}" "${dated_tmp_dir}"
-  backup-certificates
+  backup-httpd-configuration "${dated_tmp_dir}"
   build-backup-archive "${dated_tmp_dir}" "${target_dir}"
 }
 
@@ -163,13 +163,19 @@ function backup-server-files() {
   fi
 }
 
-function backup-certificates {
+function backup-httpd-configuration {
 
-  debug "${FUNCNAME[0]}()"
+  debug "${FUNCNAME[0]}($*)"
+  local tmp_dir=$1 # tmp dir is supposed to exist
+  debug "backing up httpd configuration to ${tmp_dir} ..."
 
-  warn ""
-  warn " TO DO: Implement Certificate Backup"
-  warn ""
+  local target_dir=${tmp_dir}/etc/httpd
+  mkdir -p "${target_dir}"
+  if cp -r /etc/httpd/conf /etc/httpd/conf.d /etc/httpd/conf.modules.d ${target_dir}; then
+    info "httpd configuration backup successful"
+  else
+    fail "failed to backup httpd configuration"
+  fi
 }
 
 function build-backup-archive() {
