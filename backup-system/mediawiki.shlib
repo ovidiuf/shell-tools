@@ -31,6 +31,7 @@ function ensure-valid-mediawiki-dir() {
   done
   [[ -z ${mediawiki_dir} ]] && fail "no MediaWiki directory specified"
   [[ ! -d ${mediawiki_dir} ]] && fail "not a directory: ${mediawiki_dir}"
+  [[ ! -f ${mediawiki_dir}/resources/assets/mediawiki.png ]] && fail "not a mediawiki directory, missing resources/assets/mediawiki.png: ${mediawiki_dir}"
   ${expect_LocalSettings} && [[ ! -f ${mediawiki_dir}/LocalSettings.php ]] && fail "not a mediawiki directory, missing LocalSettings.php: ${mediawiki_dir}"
 }
 
