@@ -3,6 +3,8 @@
 DATABASE_BACKUP_DIR_NAME=database
 DATABASE_BACKUP_FILE=${DATABASE_BACKUP_DIR_NAME}/database-backup.sql
 DATABASE_METADATA_FILE=${DATABASE_BACKUP_DIR_NAME}/database.conf
+APACHE_USER=apache
+APACHE_GROUP=apache
 
 #
 # fail if we are not root. We want to archive as root to preserve the original file ownership.
@@ -33,6 +35,30 @@ function ensure-valid-mediawiki-dir() {
   [[ ! -d ${mediawiki_dir} ]] && fail "not a directory: ${mediawiki_dir}"
   [[ ! -f ${mediawiki_dir}/resources/assets/mediawiki.png ]] && fail "not a mediawiki directory, missing resources/assets/mediawiki.png: ${mediawiki_dir}"
   ${expect_LocalSettings} && [[ ! -f ${mediawiki_dir}/LocalSettings.php ]] && fail "not a mediawiki directory, missing LocalSettings.php: ${mediawiki_dir}"
+}
+
+#
+# Get the expanded backup directory and extract the subdirectory that contains the file backup. Return the directory
+# at stdout
+#
+function backup-dir-to-mediawiki-dir() {
+
+  debug "${FUNCNAME[0]}($*)"
+  local backup_dir=$1
+  [[ -z ${backup_dir} ]] && fail "'backup_dir' not provided"
+  [[ -d ${backup_dir} ]] || fail "not a backup directory: ${backup_dir}"
+  backup_dir=${backup_dir%/}
+  local candidate
+  for i in ${backup_dir}/*; do
+    local n=${i##*/}
+    if [[ ${n} =~ mediawiki- ]]; then
+        [[ -n ${candidate} ]] && fail "more than one mediawiki file backup directory found in ${backup_dir}: ${candidate}, ${n}"
+        candidate=${n}
+    fi
+  done
+  [[ -z ${candidate} ]] && fail "no mediawiki file backup directory found in ${backup_dir}. Looking for mediawiki-* and didn't find any ..."
+  [[ -d "${backup_dir}/${candidate}" ]] || fail "not a mediawiki file backup directory: ${backup_dir}/${candidate}"
+  echo "${backup_dir}/${candidate}"
 }
 
 function mediawiki-cleanup() {

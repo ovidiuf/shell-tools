@@ -65,7 +65,6 @@ function restore-mediawiki() {
 
   ensure-root
   ensure-valid-mediawiki-dir "${target_mediawiki_dir}"
-  exit 0
 
   local database_root_password
   database_root_password=$(read-database-root-password)
@@ -74,8 +73,8 @@ function restore-mediawiki() {
   backup_dir=$(expand-backup "${backup_file}" "${tmp_dir}") || exit 1
   debug "backup_dir: ${backup_dir}"
   restore-database "${backup_dir}" "${database_root_password}"
-  restore-local-settings "${backup_dir}"
-  restore-image-files "${backup_dir}"
+  restore-local-settings "${backup_dir}" "${target_mediawiki_dir}"
+  restore-image-files "${backup_dir}" "${target_mediawiki_dir}"
   manual-post-install-warning
 }
 
@@ -140,17 +139,15 @@ function restore-database() {
   debug "database_password: ${database_password}"
   debug "database_name: ${database_name}"
 
-  create-database \
-    "${backup_dir}" \
-    "${database_host}" \
-    "${database_user}" \
-    "${database_password}" \
-    "${database_name}" \
-    "${database_root_password}"
-
-  restore-database-content "${backup_dir}" "${database_user}" "${database_password}" "${database_name}"
+  if create-database "${backup_dir}" "${database_host}" "${database_user}" \
+                     "${database_password}" "${database_name}" "${database_root_password}"; then
+      restore-database-content "${backup_dir}" "${database_user}" "${database_password}" "${database_name}"
+  fi
 }
 
+#
+# Returns 0 if the database was created, 1 if the database already exists. Fails on database creation failure.
+#
 function create-database() {
 
   debug "${FUNCNAME[0]}($*)"
@@ -167,6 +164,13 @@ function create-database() {
   [[ -z ${database_name} ]] && fail "'database_name' not provided"
   [[ -z ${database_root_password} ]] && fail "'database_root_password' not provided"
 
+  local result
+  result=$(mysql -u root -p${database_root_password} -e "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME='${database_name}'")
+  if [[ -n ${result} ]]; then
+    info "database ${database_name} already exists, will not create and will not restore content; delete the database if you want to restore content"
+    return 1
+  fi
+
 cat <<EOF > ${backup_dir}/database-creation-statements.sql
 CREATE USER '${database_user}'@'${database_host}' IDENTIFIED BY '${database_password}';
 CREATE DATABASE ${database_name};
@@ -178,6 +182,7 @@ EOF
   info "creating database ${database_name} ..."
   if mysql -u root -p${database_root_password} < ${backup_dir}/database-creation-statements.sql; then
     info "database ${database_name} and user ${database_user} successfully created"
+    return 0
   else
     fail "failed to create database ${database_name} and/or user ${database_user}"
   fi
@@ -207,6 +212,28 @@ function restore-database-content() {
   fi
 }
 
+function restore-local-settings() {
+
+  debug "${FUNCNAME[0]}($*)"
+  local backup_dir=$1
+  local target_mediawiki_dir=$2
+  [[ -z ${backup_dir} ]] && fail "'backup_dir' not provided"
+  [[ -z ${target_mediawiki_dir} ]] && fail "'target_mediawiki_dir' not provided"
+  local source_mediawiki_dir
+  source_mediawiki_dir=$(backup-dir-to-mediawiki-dir "${backup_dir}")
+  local source_local_settings_file=${source_mediawiki_dir}/LocalSettings.php
+  [[ -f ${source_local_settings_file} ]] || fail "no LocalSettings.php found in ${source_mediawiki_dir}"
+  cp ${source_local_settings_file} ${target_mediawiki_dir} || fail "failed to copy ${source_local_settings_file} to ${target_mediawiki_dir}"
+  local target_local_settings_file=${target_mediawiki_dir}/LocalSettings.php
+  chown ${APACHE_USER}:${APACHE_GROUP} ${target_local_settings_file} || fail "failed to chown ${APACHE_USER}:${APACHE_GROUP}: ${target_local_settings_file}"
+  chmod go-rwx ${target_local_settings_file} || fail "failed to chmod: ${target_local_settings_file}"
+  info "$(basename ${target_local_settings_file}) restored"
+}
+
+function restore-image-files() {
+  fail "return here"
+}
+
 function manual-post-install-warning() {
 
   warn ""
@@ -217,4 +244,5 @@ function manual-post-install-warning() {
 }
 
 #VERBOSE=true
+#backup-dir-to-mediawiki-dir $1
 main "$@"
