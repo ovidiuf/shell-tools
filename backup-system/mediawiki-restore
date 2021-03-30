@@ -69,6 +69,7 @@ function expand-backup() {
   debug "${FUNCNAME[0]}($*)"
   local backup_file=$1
   local tmp_dir=$2
+  [[ -f ${backup_file} ]] || fail "no such backup file: ${backup_file}"
 #  [[ -z ${mediawiki_dir} ]] && fail "no mediawiki directory specified"
 #  [[ ! -d ${mediawiki_dir} ]] && fail "not a directory: ${mediawiki_dir}"
 #  [[ ! -f ${mediawiki_dir}/LocalSettings.php ]] && fail "not a mediawiki directory, missing LocalSettings.php: ${mediawiki_dir}"
