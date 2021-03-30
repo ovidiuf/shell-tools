@@ -242,12 +242,16 @@ function restore-skins() {
   local source_mediawiki_dir
   source_mediawiki_dir=$(backup-dir-to-mediawiki-dir "${backup_dir}")
 
-  local source_skin_dir=${source_mediawiki_dir}/skins/CologneBlue
-  [[ -d ${source_skin_dir} ]] || fail "no skin directory found in ${source_mediawiki_dir}"
-  cp -r ${source_skin_dir} ${target_mediawiki_dir}/skins || fail "failed to copy ${source_skin_dir} to ${target_mediawiki_dir}/skins"
-  local target_skin_dir=${target_mediawiki_dir}/skins/CologneBlue
-  chown -R ${APACHE_USER}:${APACHE_GROUP} ${target_skin_dir} || fail "failed to chown ${APACHE_USER}:${APACHE_GROUP} ${target_skin_dir}"
-  info "$(basename ${target_skin_dir}) skin restored"
+  local skins="CologneBlue Modern"
+
+  for s in ${skins}; do
+    local source_skin_dir=${source_mediawiki_dir}/skins/${s}
+    [[ -d ${source_skin_dir} ]] || fail "no skin directory found in ${source_mediawiki_dir}"
+    cp -r ${source_skin_dir} ${target_mediawiki_dir}/skins || fail "failed to copy ${source_skin_dir} to ${target_mediawiki_dir}/skins"
+    local target_skin_dir=${target_mediawiki_dir}/skins/${s}
+    chown -R ${APACHE_USER}:${APACHE_GROUP} ${target_skin_dir} || fail "failed to chown ${APACHE_USER}:${APACHE_GROUP} ${target_skin_dir}"
+    info "$(basename ${target_skin_dir}) skin restored"
+  done
 }
 
 function restore-certificates-and-keys() {
