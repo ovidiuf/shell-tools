@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+DATABASE_BACKUP_DIR_NAME=database
+DATABASE_BACKUP_FILE=${DATABASE_BACKUP_DIR_NAME}/database-backup.sql
+DATABASE_METADATA_FILE=${DATABASE_BACKUP_DIR_NAME}/database.conf
+
 #
 # fail if we are not root. We want to archive as root to preserve the original file ownership.
 #

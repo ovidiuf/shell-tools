@@ -85,11 +85,10 @@ function restore-database() {
 
   debug "${FUNCNAME[0]}($*)"
   local backup_dir=$1
-#  [[ -d ${parent_dir} ]] || fail "parent directory does not exist: ${parent_dir}"
-#  local dir
-#  dir=${parent_dir}/$(date +'%Y.%m.%d-%H.%M.%S')-mediawiki-backup
-#  mkdir "${dir}" || fail "failed to create dated subdirectory: ${dir}"
-#  echo "${dir}"
+  [[ -z ${backup_dir} ]] && fail "'backup_dir' not provided"
+  [[ -d ${backup_dir} ]] || fail "no such backup directory: ${backup_dir}"
+  local database_metadata_file=${backup_dir}/${DATABASE_METADATA_FILE}
+  [[ -f ${database_metadata_file} ]] || fail "no database metadata file found in backup: ${database_metadata_file}"
 }
 
 main "$@"

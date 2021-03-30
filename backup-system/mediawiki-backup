@@ -129,10 +129,10 @@ function backup-database() {
   debug "database_password: ${database_password}"
   debug "database_name: ${database_name}"
 
-  local database_backup_dir=${tmp_dir}/database
+  local database_backup_dir=${tmp_dir}/${DATABASE_BACKUP_DIR_NAME}
   mkdir ${database_backup_dir} || fail "failed to create database backup directory: ${database_backup_dir}"
 
-  local backup_file=${database_backup_dir}/database-backup.sql
+  local backup_file=${tmp_dir}/${DATABASE_BACKUP_FILE}
   debug "backing up database in ${backup_file} ..."
   if mysqldump -h ${database_host} -u ${database_user} --password=${database_password} --default-character-set=binary ${database_name} > ${backup_file}; then
     info "database backup successful, backup size $(wc -c ${backup_file} | awk '{print $1}') bytes"
@@ -140,7 +140,7 @@ function backup-database() {
     fail "failed to backup database"
   fi
 
-  cat <<EOF > ${database_backup_dir}/database.conf
+  cat <<EOF > ${tmp_dir}/${DATABASE_METADATA_FILE}
 #
 # Database metadata collected on $(date) from host $(uname -a)
 #
@@ -150,6 +150,8 @@ database_password=${database_password}
 database_name=${database_name}
 
 EOF
+
+  debug "database metadata saved to ${tmp_dir}/${DATABASE_METADATA_FILE}"
 }
 
 #
