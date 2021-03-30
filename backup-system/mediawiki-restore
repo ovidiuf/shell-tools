@@ -76,6 +76,7 @@ function restore-mediawiki() {
   restore-local-settings "${backup_dir}" "${target_mediawiki_dir}"
   restore-image-files "${backup_dir}" "${target_mediawiki_dir}"
   restore-skins "${backup_dir}" "${target_mediawiki_dir}"
+  restore-extensions "${backup_dir}" "${target_mediawiki_dir}"
   restore-certificates-and-keys "${backup_dir}"
   manual-post-install-warning "${backup_dir}"
 }
@@ -251,6 +252,28 @@ function restore-skins() {
     local target_skin_dir=${target_mediawiki_dir}/skins/${s}
     chown -R ${APACHE_USER}:${APACHE_GROUP} ${target_skin_dir} || fail "failed to chown ${APACHE_USER}:${APACHE_GROUP} ${target_skin_dir}"
     info "$(basename ${target_skin_dir}) skin restored"
+  done
+}
+
+function restore-extensions() {
+
+  debug "${FUNCNAME[0]}($*)"
+  local backup_dir=$1
+  local target_mediawiki_dir=$2
+  [[ -z ${backup_dir} ]] && fail "'backup_dir' not provided"
+  [[ -z ${target_mediawiki_dir} ]] && fail "'target_mediawiki_dir' not provided"
+  local source_mediawiki_dir
+  source_mediawiki_dir=$(backup-dir-to-mediawiki-dir "${backup_dir}")
+
+  local extensions="BreadCrumbs"
+
+  for e in ${extensions}; do
+    local source_extension_dir=${source_mediawiki_dir}/extensions/${e}
+    [[ -d ${source_extension_dir} ]] || fail "no extension directory found: ${source_extension_dir}"
+    cp -r ${source_extension_dir} ${target_mediawiki_dir}/extensions || fail "failed to copy ${source_extension_dir} to ${target_mediawiki_dir}/extensions"
+    local target_extension_dir=${target_mediawiki_dir}/extensions/${e}
+    chown -R ${APACHE_USER}:${APACHE_GROUP} ${target_extension_dir} || fail "failed to chown ${APACHE_USER}:${APACHE_GROUP} ${target_extension_dir}"
+    info "$(basename ${target_extension_dir}) extension restored"
   done
 }
 
