@@ -64,7 +64,7 @@ function restore-mediawiki() {
   debug "tmp_dir: ${tmp_dir}"
 
   ensure-root
-  ensure-valid-mediawiki-dir "${target_mediawiki_dir}" --expect-LocalSettings
+  ensure-valid-mediawiki-dir "${target_mediawiki_dir}"
   exit 0
 
   local database_root_password
