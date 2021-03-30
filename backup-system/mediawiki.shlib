@@ -13,6 +13,27 @@ function ensure-root() {
   [[ $(id -u) != "0" ]] && fail "$(basename $0) is not run as root but as $(id -u)"
 }
 
+#
+# Options:
+#  --expect-LocalSettings
+#
+function ensure-valid-mediawiki-dir() {
+
+  debug "${FUNCNAME[0]}($*)"
+  local mediawiki_dir=$1
+  shift
+  local expect_LocalSettings=false
+  while [[ -n $1 ]]; do
+      if [[ $1 = "--expect-LocalSettings" ]]; then
+        expect_LocalSettings=true
+      fi
+      shift
+  done
+  [[ -z ${mediawiki_dir} ]] && fail "no mediawiki directory specified"
+  [[ ! -d ${mediawiki_dir} ]] && fail "not a directory: ${mediawiki_dir}"
+  ${expect_LocalSettings} && [[ ! -f ${mediawiki_dir}/LocalSettings.php ]] && fail "not a mediawiki directory, missing LocalSettings.php: ${mediawiki_dir}"
+}
+
 function mediawiki-cleanup() {
 
   debug "${FUNCNAME[0]}($*)"

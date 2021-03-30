@@ -15,9 +15,11 @@ Usage:
 
   $(basename $0) <mediawiki-installation-dir> [-t|--target-dir <dir>]
 
-<mediawiki-installation-dir> is the local file system directory where the mediawiki instance is installed
-(by default /var/www/mediawiki-<version>). The backup file is placed in the current directory, unless
--t|--target-dir option is used.
+Arguments:
+
+  <mediawiki-installation-dir> is the local file system directory where the mediawiki instance is installed (by default
+    /var/www/mediawiki-<version>). The backup file is placed in the current directory, unless -t|--target-dir option is
+    used.
 
 Options:
 
@@ -61,7 +63,7 @@ function backup-mediawiki() {
   debug "tmp_dir: ${tmp_dir}"
   debug "target_dir: ${target_dir}"
 
-  ensure-valid-mediawiki-dir "${mediawiki_dir}"
+  ensure-valid-mediawiki-dir "${mediawiki_dir}" --expect-LocalSettings
   ensure-root
 
   local dated_tmp_dir
@@ -71,15 +73,6 @@ function backup-mediawiki() {
   backup-httpd-configuration "${dated_tmp_dir}"
   backup-certificates "${dated_tmp_dir}"
   build-backup-archive "${dated_tmp_dir}" "${target_dir}"
-}
-
-function ensure-valid-mediawiki-dir() {
-
-  debug "${FUNCNAME[0]}($*)"
-  local mediawiki_dir=$1
-  [[ -z ${mediawiki_dir} ]] && fail "no mediawiki directory specified"
-  [[ ! -d ${mediawiki_dir} ]] && fail "not a directory: ${mediawiki_dir}"
-  [[ ! -f ${mediawiki_dir}/LocalSettings.php ]] && fail "not a mediawiki directory, missing LocalSettings.php: ${mediawiki_dir}"
 }
 
 #
