@@ -207,13 +207,27 @@ function restore-local-settings() {
   [[ -f ${source_local_settings_file} ]] || fail "no LocalSettings.php found in ${source_mediawiki_dir}"
   cp ${source_local_settings_file} ${target_mediawiki_dir} || fail "failed to copy ${source_local_settings_file} to ${target_mediawiki_dir}"
   local target_local_settings_file=${target_mediawiki_dir}/LocalSettings.php
-  chown ${APACHE_USER}:${APACHE_GROUP} ${target_local_settings_file} || fail "failed to chown ${APACHE_USER}:${APACHE_GROUP}: ${target_local_settings_file}"
-  chmod go-rwx ${target_local_settings_file} || fail "failed to chmod: ${target_local_settings_file}"
+  chown ${APACHE_USER}:${APACHE_GROUP} ${target_local_settings_file} || fail "failed to chown ${APACHE_USER}:${APACHE_GROUP} ${target_local_settings_file}"
+  chmod go-rwx ${target_local_settings_file} || fail "failed to chmod ${target_local_settings_file}"
   info "$(basename ${target_local_settings_file}) restored"
 }
 
 function restore-image-files() {
-  fail "return here"
+
+  debug "${FUNCNAME[0]}($*)"
+  local backup_dir=$1
+  local target_mediawiki_dir=$2
+  [[ -z ${backup_dir} ]] && fail "'backup_dir' not provided"
+  [[ -z ${target_mediawiki_dir} ]] && fail "'target_mediawiki_dir' not provided"
+  local source_mediawiki_dir
+  source_mediawiki_dir=$(backup-dir-to-mediawiki-dir "${backup_dir}")
+
+  local source_image_dir=${source_mediawiki_dir}/images
+  [[ -d ${source_image_dir} ]] || fail "no image directory found in ${source_mediawiki_dir}"
+  cp -r ${source_image_dir} ${target_mediawiki_dir} || fail "failed to copy ${source_image_dir} to ${target_mediawiki_dir}"
+  local target_image_dir=${target_mediawiki_dir}/images
+  chown -R ${APACHE_USER}:${APACHE_GROUP} ${target_image_dir} || fail "failed to chown ${APACHE_USER}:${APACHE_GROUP} ${target_image_dir}"
+  info "$(basename ${target_image_dir}) directory restored"
 }
 
 function manual-post-install-warning() {
