@@ -75,6 +75,7 @@ function restore-mediawiki() {
   restore-database "${backup_dir}" "${database_root_password}"
   restore-local-settings "${backup_dir}" "${target_mediawiki_dir}"
   restore-image-files "${backup_dir}" "${target_mediawiki_dir}"
+  restore-skins "${backup_dir}" "${target_mediawiki_dir}"
   restore-certificates-and-keys "${backup_dir}"
   manual-post-install-warning "${backup_dir}"
 }
@@ -231,6 +232,24 @@ function restore-image-files() {
   info "$(basename ${target_image_dir}) directory restored"
 }
 
+function restore-skins() {
+
+  debug "${FUNCNAME[0]}($*)"
+  local backup_dir=$1
+  local target_mediawiki_dir=$2
+  [[ -z ${backup_dir} ]] && fail "'backup_dir' not provided"
+  [[ -z ${target_mediawiki_dir} ]] && fail "'target_mediawiki_dir' not provided"
+  local source_mediawiki_dir
+  source_mediawiki_dir=$(backup-dir-to-mediawiki-dir "${backup_dir}")
+
+  local source_skin_dir=${source_mediawiki_dir}/skins/CologneBlue
+  [[ -d ${source_skin_dir} ]] || fail "no skin directory found in ${source_mediawiki_dir}"
+  cp -r ${source_skin_dir} ${target_mediawiki_dir}/skins || fail "failed to copy ${source_skin_dir} to ${target_mediawiki_dir}/skins"
+  local target_skin_dir=${target_mediawiki_dir}/skins/CologneBlue
+  chown -R ${APACHE_USER}:${APACHE_GROUP} ${target_skin_dir} || fail "failed to chown ${APACHE_USER}:${APACHE_GROUP} ${target_skin_dir}"
+  info "$(basename ${target_skin_dir}) skin restored"
+}
+
 function restore-certificates-and-keys() {
 
   debug "${FUNCNAME[0]}($*)"
@@ -260,7 +279,7 @@ function manual-post-install-warning() {
 
   warn ""
   warn "continue with manual post-restore steps:"
-  warn " - if this was an upgrade to a newer MediaWiki version, run php update."
+  warn " - if this was an upgrade to a newer MediaWiki version, run php update in /var/www/mediawiki-*/maintenance"
   warn " - configure the Listen directive and the virtual host (./ssl.conf) in /etc/httpd/conf.d/ssl.conf"
   warn ""
 }
