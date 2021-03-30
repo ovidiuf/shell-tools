@@ -12,6 +12,8 @@ everything is needed to fully restore the instance) from a backup file created b
 $(basename $0) reads the backup file and restores the state of the old instance, given a new pre-installed but empty
 new instance.
 
+The script will interactively request the MySQL root account password.
+
 Usage:
 
   $(basename $0) <backup-file>
@@ -56,10 +58,31 @@ function restore-mediawiki() {
 
   ensure-root
 
+  local database_root_password
+  database_root_password=$(read-database-root-password)
+
   local backup_dir
   backup_dir=$(expand-backup "${backup_file}" "${tmp_dir}") || exit 1
   debug "backup_dir: ${backup_dir}"
-  restore-database "${backup_dir}"
+  restore-database "${backup_dir}" "${database_root_password}"
+}
+
+#
+# The password will be requested twice, for verification.
+#
+# Once a match is confirmed, the value will be returned to stdout.
+#
+function read-database-root-password() {
+
+  debug "${FUNCNAME[0]}()"
+  local password
+  read -r -s -p "database root password: " password
+  echo ""
+  local password2
+  read -r -s -p "repeat database root password: " password2
+  echo ""
+  [[ ${password} != "${password2}" ]] && fail "passwords do not match"
+  echo ${password}
 }
 
 #
@@ -85,10 +108,91 @@ function restore-database() {
 
   debug "${FUNCNAME[0]}($*)"
   local backup_dir=$1
+  local database_root_password=$2
   [[ -z ${backup_dir} ]] && fail "'backup_dir' not provided"
   [[ -d ${backup_dir} ]] || fail "no such backup directory: ${backup_dir}"
+  [[ -z ${database_root_password} ]] && fail "'database_root_password' not provided"
   local database_metadata_file=${backup_dir}/${DATABASE_METADATA_FILE}
   [[ -f ${database_metadata_file} ]] || fail "no database metadata file found in backup: ${database_metadata_file}"
+
+  local database_host database_user database_password database_name
+
+  database_host=$(cat ${database_metadata_file} | grep "database_host=" | sed -e 's/^.*=\([^ ]*\) *$/\1/') || exit 1
+  database_user=$(cat ${database_metadata_file} | grep "database_user=" | sed -e 's/^.*=\([^ ]*\) *$/\1/') || exit 1
+  database_password=$(cat ${database_metadata_file} | grep "database_password=" | sed -e 's/^.*=\([^ ]*\) *$/\1/') || exit 1
+  database_name=$(cat ${database_metadata_file} | grep "database_name=" | sed -e 's/^.*=\([^ ]*\) *$/\1/') || exit 1
+
+  debug "database_host: ${database_host}"
+  debug "database_user: ${database_user}"
+  debug "database_password: ${database_password}"
+  debug "database_name: ${database_name}"
+
+  create-database \
+    "${backup_dir}" \
+    "${database_host}" \
+    "${database_user}" \
+    "${database_password}" \
+    "${database_name}" \
+    "${database_root_password}"
+
+  restore-database-content "${backup_dir}" "${database_user}" "${database_password}" "${database_name}"
 }
 
+function create-database() {
+
+  debug "${FUNCNAME[0]}($*)"
+  local backup_dir=$1
+  local database_host=$2
+  local database_user=$3
+  local database_password=$4
+  local database_name=$5
+  local database_root_password=$6
+  [[ -z ${backup_dir} ]] && fail "'backup_dir' not provided"
+  [[ -z ${database_host} ]] && fail "'database_host' not provided"
+  [[ -z ${database_user} ]] && fail "'database_user' not provided"
+  [[ -z ${database_password} ]] && fail "'database_password' not provided"
+  [[ -z ${database_name} ]] && fail "'database_name' not provided"
+  [[ -z ${database_root_password} ]] && fail "'database_root_password' not provided"
+
+cat <<EOF > ${backup_dir}/database-creation-statements.sql
+CREATE USER '${database_user}'@'${database_host}' IDENTIFIED BY '${database_password}';
+CREATE DATABASE ${database_name};
+GRANT ALL PRIVILEGES ON ${database_name}.* TO '${database_user}'@'${database_host}';
+FLUSH PRIVILEGES;
+COMMIT;
+SHOW DATABASES;
+SHOW GRANTS FOR '${database_user}'@'${database_host}';
+exit
+EOF
+  if mysql -u root -p${database_root_password} < ${backup_dir}/database-creation-statements.sql; then
+    info "database ${database_name} and user ${database_user} successfully created"
+  else
+    fail "failed to create database ${database_name} and/or user ${database_user}"
+  fi
+}
+
+function load-database-content() {
+
+  debug "${FUNCNAME[0]}($*)"
+  local backup_dir=$1
+  local database_user=$2
+  local database_password=$3
+  local database_name=$4
+  [[ -z ${backup_dir} ]] && fail "'backup_dir' not provided"
+  [[ -z ${database_user} ]] && fail "'database_user' not provided"
+  [[ -z ${database_password} ]] && fail "'database_password' not provided"
+  [[ -z ${database_name} ]] && fail "'database_name' not provided"
+
+  # shellcheck disable=SC2153
+  local database_backup_file=${backup_dir}/${DATABASE_BACKUP_FILE}
+  [[ -f ${database_backup_file} ]] || fail "database backup file not found: ${database_backup_file}"
+
+  if mysql -u ${database_user} -p${database_password} < ${database_backup_file}; then
+    info "database ${database_name} successfully restored"
+  else
+    fail "failed to restore database ${database_name}"
+  fi
+}
+
+#VERBOSE=true
 main "$@"
