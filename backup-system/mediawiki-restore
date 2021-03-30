@@ -256,10 +256,12 @@ function manual-post-install-warning() {
   local backup_dir=$1
   [[ -z ${backup_dir} ]] && fail "'backup_dir' not provided"
 
+  cp ${backup_dir}/etc/httpd/conf.d/ssl.conf .
+
   warn ""
   warn "continue with manual post-restore steps:"
   warn " - if this was an upgrade to a newer MediaWiki version, run php update."
-  warn " - configure the Listen directive and virtual host declared in ${backup_dir}/etc/httpd/conf.d/ssl.conf in /etc/httpd/conf.d/ssl.conf"
+  warn " - configure the Listen directive and the virtual host (./ssl.conf) in /etc/httpd/conf.d/ssl.conf"
   warn ""
 }
 
