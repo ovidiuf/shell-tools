@@ -187,7 +187,7 @@ function restore-database-content() {
   [[ -f ${database_backup_file} ]] || fail "database backup file not found: ${database_backup_file}"
 
   info "restoring content for database ${database_name} ..."
-  if mysql -u ${database_user} -p${database_password} < ${database_backup_file}; then
+  if mysql -u ${database_user} -p${database_password} ${database_name} < ${database_backup_file}; then
     info "database ${database_name} successfully restored"
   else
     fail "failed to restore database ${database_name}"
