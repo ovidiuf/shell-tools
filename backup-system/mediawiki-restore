@@ -58,6 +58,7 @@ function restore-mediawiki() {
 
   local backup_dir
   backup_dir=$(expand-backup "${backup_file}" "${tmp_dir}") || exit 1
+  debug "backup_dir: ${backup_dir}"
   restore-database "${backup_dir}"
 }
 
@@ -68,12 +69,16 @@ function restore-mediawiki() {
 function expand-backup() {
 
   debug "${FUNCNAME[0]}($*)"
+
   local backup_file=$1
   local tmp_dir=$2
   [[ -f ${backup_file} ]] || fail "no such backup file: ${backup_file}"
-#  [[ -z ${mediawiki_dir} ]] && fail "no mediawiki directory specified"
-#  [[ ! -d ${mediawiki_dir} ]] && fail "not a directory: ${mediawiki_dir}"
-#  [[ ! -f ${mediawiki_dir}/LocalSettings.php ]] && fail "not a mediawiki directory, missing LocalSettings.php: ${mediawiki_dir}"
+  tar xfz ${backup_file} -C ${tmp_dir} || fail "failed to extract backup file ${backup_file} in ${tmp_dir}"
+  local backup_dir_name
+  backup_dir_name=$(ls ${tmp_dir})
+  local backup_dir=${tmp_dir}/${backup_dir_name}
+  [[ -d ${backup_dir} ]] || fail "the backed up content directory does not exist: ${backup_dir}"
+  echo ${backup_dir}
 }
 
 function restore-database() {
