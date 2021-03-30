@@ -76,7 +76,7 @@ function restore-mediawiki() {
   restore-local-settings "${backup_dir}" "${target_mediawiki_dir}"
   restore-image-files "${backup_dir}" "${target_mediawiki_dir}"
   restore-certificates-and-keys "${backup_dir}"
-  manual-post-install-warning
+  manual-post-install-warning "${backup_dir}"
 }
 
 #
@@ -252,10 +252,14 @@ function restore-certificates-and-keys() {
 
 function manual-post-install-warning() {
 
+  debug "${FUNCNAME[0]}($*)"
+  local backup_dir=$1
+  [[ -z ${backup_dir} ]] && fail "'backup_dir' not provided"
+
   warn ""
   warn "continue with manual post-restore steps:"
   warn " - if this was an upgrade to a newer MediaWiki version, run php update."
-  warn " - configure the virtual host in ssl.conf."
+  warn " - configure the Listen directive and virtual host declared in ${backup_dir}/etc/httpd/conf.d/ssl.conf in /etc/httpd/conf.d/ssl.conf"
   warn ""
 }
 
