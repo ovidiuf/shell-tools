@@ -160,10 +160,9 @@ CREATE DATABASE ${database_name};
 GRANT ALL PRIVILEGES ON ${database_name}.* TO '${database_user}'@'${database_host}';
 FLUSH PRIVILEGES;
 COMMIT;
-SHOW DATABASES;
-SHOW GRANTS FOR '${database_user}'@'${database_host}';
 exit
 EOF
+  info "creating database ${database_name} ..."
   if mysql -u root -p${database_root_password} < ${backup_dir}/database-creation-statements.sql; then
     info "database ${database_name} and user ${database_user} successfully created"
   else
@@ -171,7 +170,7 @@ EOF
   fi
 }
 
-function load-database-content() {
+function restore-database-content() {
 
   debug "${FUNCNAME[0]}($*)"
   local backup_dir=$1
@@ -187,6 +186,7 @@ function load-database-content() {
   local database_backup_file=${backup_dir}/${DATABASE_BACKUP_FILE}
   [[ -f ${database_backup_file} ]] || fail "database backup file not found: ${database_backup_file}"
 
+  info "restoring content for database ${database_name} ..."
   if mysql -u ${database_user} -p${database_password} < ${database_backup_file}; then
     info "database ${database_name} successfully restored"
   else
