@@ -137,13 +137,27 @@ function backup-database() {
   debug "database_password: ${database_password}"
   debug "database_name: ${database_name}"
 
-  local backup_file=${tmp_dir}/database-backup.sql
+  local database_backup_dir=${tmp_dir}/database
+  mkdir ${database_backup_dir} || fail "failed to create database backup directory: ${database_backup_dir}"
+
+  local backup_file=${database_backup_dir}/database-backup.sql
   debug "backing up database in ${backup_file} ..."
   if mysqldump -h ${database_host} -u ${database_user} --password=${database_password} --default-character-set=binary ${database_name} > ${backup_file}; then
     info "database backup successful, backup size $(wc -c ${backup_file} | awk '{print $1}') bytes"
   else
     fail "failed to backup database"
   fi
+
+  cat <<EOF > ${database_backup_dir}/database.conf
+#
+# Database metadata collected on $(date) from host $(uname -a)
+#
+database_host=${database_host}
+database_user=${database_user}
+database_password=${database_password}
+database_name=${database_name}
+
+EOF
 }
 
 #
@@ -194,6 +208,13 @@ function backup-certificates {
     fail "failed to backup TLS certificates *.crt from ${src_dir}"
   fi
 
+  #
+  # remove some generic files to eliminate confusion
+  #
+  rm -f ${target_dir}/ca-bundle.crt
+  rm -f ${target_dir}/ca-bundle.trust.crt
+  rm -f ${target_dir}/localhost.crt
+
   src_dir="/etc/pki/tls/private"
   target_dir=${tmp_dir}${src_dir}
   mkdir -p "${target_dir}"
@@ -202,6 +223,11 @@ function backup-certificates {
   else
     fail "failed to backup private key from ${src_dir}"
   fi
+
+  #
+  # remove some generic files to eliminate confusion
+  #
+  rm -f ${target_dir}/localhost.key
 }
 
 function build-backup-archive() {
