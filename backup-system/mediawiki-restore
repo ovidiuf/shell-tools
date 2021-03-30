@@ -79,24 +79,6 @@ function restore-mediawiki() {
 }
 
 #
-# The password will be requested twice, for verification.
-#
-# Once a match is confirmed, the value will be returned to stdout.
-#
-function read-database-root-password() {
-
-  debug "${FUNCNAME[0]}()"
-  local password
-  read -r -s -p "database root password: " password
-  echo "" 1>&2
-  local password2
-  read -r -s -p "repeat database root password: " password2
-  echo "" 1>&2
-  [[ ${password} != "${password2}" ]] && fail "passwords do not match"
-  echo ${password}
-}
-
-#
 # Expand the backup file and ensure it is a valid mediawiki backup.
 # Return the backup directory at stdout.
 #

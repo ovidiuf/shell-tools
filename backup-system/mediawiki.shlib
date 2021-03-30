@@ -61,6 +61,32 @@ function backup-dir-to-mediawiki-dir() {
   echo "${backup_dir}/${candidate}"
 }
 
+#
+# If --ask-for-confirmation is among arguments, the password will be requested twice, for verification.
+# Once a match is confirmed, the value will be returned to stdout.
+# TODO: move to bash.shlib
+function read-database-root-password() {
+
+  debug "${FUNCNAME[0]}()"
+  local ask_for_confirmation=false
+  while [[ -n $1 ]]; do
+    if [[ $1 = "--ask-for-confirmation" ]]; then
+      ask_for_confirmation=true
+    fi
+    shift
+  done
+  local password
+  read -r -s -p "database root password: " password
+  echo "" 1>&2
+  if ${ask_for_confirmation}; then
+    local password2
+    read -r -s -p "repeat database root password: " password2
+    echo "" 1>&2
+    [[ ${password} != "${password2}" ]] && fail "passwords do not match"
+  fi
+  echo ${password}
+}
+
 function mediawiki-cleanup() {
 
   debug "${FUNCNAME[0]}($*)"
