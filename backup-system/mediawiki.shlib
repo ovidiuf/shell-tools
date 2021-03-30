@@ -29,7 +29,7 @@ function ensure-valid-mediawiki-dir() {
       fi
       shift
   done
-  [[ -z ${mediawiki_dir} ]] && fail "no mediawiki directory specified"
+  [[ -z ${mediawiki_dir} ]] && fail "no MediaWiki directory specified"
   [[ ! -d ${mediawiki_dir} ]] && fail "not a directory: ${mediawiki_dir}"
   ${expect_LocalSettings} && [[ ! -f ${mediawiki_dir}/LocalSettings.php ]] && fail "not a mediawiki directory, missing LocalSettings.php: ${mediawiki_dir}"
 }
