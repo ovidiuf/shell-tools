@@ -75,6 +75,7 @@ function restore-mediawiki() {
   restore-database "${backup_dir}" "${database_root_password}"
   restore-local-settings "${backup_dir}" "${target_mediawiki_dir}"
   restore-image-files "${backup_dir}" "${target_mediawiki_dir}"
+  restore-certificates-and-keys "${backup_dir}"
   manual-post-install-warning
 }
 
@@ -228,6 +229,25 @@ function restore-image-files() {
   local target_image_dir=${target_mediawiki_dir}/images
   chown -R ${APACHE_USER}:${APACHE_GROUP} ${target_image_dir} || fail "failed to chown ${APACHE_USER}:${APACHE_GROUP} ${target_image_dir}"
   info "$(basename ${target_image_dir}) directory restored"
+}
+
+function restore-certificates-and-keys() {
+
+  debug "${FUNCNAME[0]}($*)"
+  local backup_dir=$1
+  [[ -z ${backup_dir} ]] && fail "'backup_dir' not provided"
+
+  local source_dir=${backup_dir}/etc/pki/tls/certs
+  [[ -d ${source_dir} ]] || fail "no certificate directory found in ${backup_dir}: ${source_dir}"
+  cp ${source_dir}/*.crt /etc/pki/tls/certs || fail "failed to copy ${source_dir}/*.crt to /etc/pki/tls/certs"
+
+  local source_dir=${backup_dir}/etc/pki/tls/private
+  [[ -d ${source_dir} ]] || fail "no key directory found in ${backup_dir}: ${source_dir}"
+  for i in ${source_dir}/*.key; do
+    cp ${i} /etc/pki/tls/private || fail "failed to copy ${i} to /etc/pki/tls/private"
+    chmod go-rwx /etc/pki/tls/private/$(basename ${i}) || fail "failed to chmod /etc/pki/tls/private/$(basename ${i})"
+  done
+  info "certificates and private keys restored in /etc/pki/tls"
 }
 
 function manual-post-install-warning() {
