@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+
+[[ -f $(dirname "$0")/../lib/bash.shlib ]] && . $(dirname $0)/../lib/bash.shlib || { echo "$(dirname $0)/../lib/bash.shlib not found" 1>&2; exit 1; }
+
+function usage() {
+
+cat <<EOF
+
+$(basename $0) is a tool to restore a mediawiki instance (database content, files, extensions, configuration and
+everything is needed to fully restore the instance) from a backup file created by mediawiki-backup script.
+$(basename $0) reads the backup file and restores the state of the old instance, given a new pre-installed but empty
+new instance.
+
+Usage:
+
+  $(basename $0) <backup-file>
+
+<backup-file> is the backup file produced by the peer mediawiki-backup script.
+
+Options:
+
+ -p|--preserve-tmp Optional boolean flag that instructs the program to preserve the temporary directory.
+
+EOF
+}
+
+function main() {
+
+  process-common-arguments "$@" && set -- "${ARGS[@]}" || fail "failed to process common arguments"
+
+  ${HELP} || [[ -z $1 ]] && { usage; exit 0; }
+
+  unset ARGS
+  declare -a ARGS
+  declare -A OPTIONS
+  OPTIONS["--preserve-tmp"]="boolean -p"
+  process-options "$@"
+  fail-on-unknown-arguments 1
+
+  local tmp_dir
+  tmp_dir=$(get-tmp-dir) || exit 1
+  trap "mediawiki-cleanup ${tmp_dir} ${OPTIONS[--preserve-tmp]}" EXIT
+
+  restore-mediawiki "${ARGS[0]}" "${tmp_dir}"
+}
+
+function restore-mediawiki() {
+
+  debug "${FUNCNAME[0]}($*)"
+  local backup_file=$1
+  local tmp_dir=$2
+
+  debug "backup_file: ${backup_file}"
+  debug "tmp_dir: ${tmp_dir}"
+
+  ensure-root
+
+  local backup_dir
+  backup_dir=$(expand-backup "${backup_file}" "${tmp_dir}") || exit 1
+  restore-database "${backup_dir}"
+}
+
+#
+# Expand the backup file and ensure it is a valid mediawiki backup.
+# Return the backup directory at stdout.
+#
+function expand-backup() {
+
+  debug "${FUNCNAME[0]}($*)"
+  local backup_file=$1
+  local tmp_dir=$2
+#  [[ -z ${mediawiki_dir} ]] && fail "no mediawiki directory specified"
+#  [[ ! -d ${mediawiki_dir} ]] && fail "not a directory: ${mediawiki_dir}"
+#  [[ ! -f ${mediawiki_dir}/LocalSettings.php ]] && fail "not a mediawiki directory, missing LocalSettings.php: ${mediawiki_dir}"
+}
+
+function restore-database() {
+
+  debug "${FUNCNAME[0]}($*)"
+  local backup_dir=$1
+#  [[ -d ${parent_dir} ]] || fail "parent directory does not exist: ${parent_dir}"
+#  local dir
+#  dir=${parent_dir}/$(date +'%Y.%m.%d-%H.%M.%S')-mediawiki-backup
+#  mkdir "${dir}" || fail "failed to create dated subdirectory: ${dir}"
+#  echo "${dir}"
+}
+
+main "$@"

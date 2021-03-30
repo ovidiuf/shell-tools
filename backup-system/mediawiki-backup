@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 [[ -f $(dirname "$0")/../lib/bash.shlib ]] && . $(dirname $0)/../lib/bash.shlib || { echo "$(dirname $0)/../lib/bash.shlib not found" 1>&2; exit 1; }
+[[ -f $(dirname "$0")/mediawiki.shlib ]] && . $(dirname "$0")/mediawiki.shlib || { echo "$(dirname "$0")/mediawiki.shlib not found" 1>&2; exit 1; }
 
 function usage() {
 
@@ -44,7 +45,7 @@ function main() {
 
   local tmp_dir
   tmp_dir=$(get-tmp-dir) || exit 1
-  trap "cleanup ${tmp_dir} ${OPTIONS[--preserve-tmp]}" EXIT
+  trap "mediawiki-cleanup ${tmp_dir} ${OPTIONS[--preserve-tmp]}" EXIT
 
   backup-mediawiki "${ARGS[0]}" "${tmp_dir}" "${OPTIONS[--target-dir]}"
 }
@@ -79,15 +80,6 @@ function ensure-valid-mediawiki-dir() {
   [[ -z ${mediawiki_dir} ]] && fail "no mediawiki directory specified"
   [[ ! -d ${mediawiki_dir} ]] && fail "not a directory: ${mediawiki_dir}"
   [[ ! -f ${mediawiki_dir}/LocalSettings.php ]] && fail "not a mediawiki directory, missing LocalSettings.php: ${mediawiki_dir}"
-}
-
-#
-# fail if we are not root. We want to archive as root to preserve the original file ownership.
-#
-function ensure-root() {
-
-  debug "${FUNCNAME[0]}()"
-  [[ $(id -u) != "0" ]] && fail "$(basename $0) is not run as root but as $(id -u)"
 }
 
 #
@@ -244,19 +236,6 @@ function build-backup-archive() {
     info "backup archive: ${target_dir}/${name}.tgz"
   else
     fail "failed to execute ${command}"
-  fi
-}
-
-function cleanup() {
-
-  debug "${FUNCNAME[0]}($*)"
-  local tmp_dir=$1
-  local preserve_tmp=${2:-false}
-
-  if ${preserve_tmp}; then
-    debug "temporary directory ${tmp_dir} preserved"
-  else
-    rm -rf "${tmp_dir}" && debug "removed temporary directory ${tmp_dir}" || warn "failed to remove temporary directory ${tmp_dir}"
   fi
 }
 

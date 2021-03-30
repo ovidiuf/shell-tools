@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+
+#
+# fail if we are not root. We want to archive as root to preserve the original file ownership.
+#
+function ensure-root() {
+
+  debug "${FUNCNAME[0]}()"
+  [[ $(id -u) != "0" ]] && fail "$(basename $0) is not run as root but as $(id -u)"
+}
+
+function mediawiki-cleanup() {
+
+  debug "${FUNCNAME[0]}($*)"
+  local tmp_dir=$1
+  local preserve_tmp=${2:-false}
+
+  if ${preserve_tmp}; then
+    debug "temporary directory ${tmp_dir} preserved"
+  else
+    rm -rf "${tmp_dir}" && debug "removed temporary directory ${tmp_dir}" || warn "failed to remove temporary directory ${tmp_dir}"
+  fi
+}
+
