@@ -360,6 +360,6 @@ function manual-post-install-warning() {
   warn ""
 }
 
-VERBOSE=true
-filter-obsolete-skins "$@"
-#main "$@"
+#VERBOSE=true
+#filter-obsolete-skins "$@"
+main "$@"
