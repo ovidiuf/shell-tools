@@ -71,13 +71,11 @@ function restore-mediawiki() {
   local database_root_password
   database_root_password=$(read-database-root-password)
 
-  local backup_dir dropped_skins_SEPARATOR_dropped_extensions s
+  local backup_dir dropped_skins_SEPARATOR_dropped_extensions
   backup_dir=$(expand-backup "${backup_file}" "${tmp_dir}") || exit 1
   debug "backup_dir: ${backup_dir}"
   restore-database "${backup_dir}" "${database_root_password}"
   dropped_skins_SEPARATOR_dropped_extensions=$(restore-local-settings "${backup_dir}" "${target_mediawiki_dir}") || exit 1
-  s=$(filter-locally-absent-extensions "${backup_dir}" "${target_mediawiki_dir}") || exit 1
-  dropped_skins_SEPARATOR_dropped_extensions="${dropped_skins_SEPARATOR_dropped_extensions}${SEPARATOR}${s}"
   restore-image-files "${backup_dir}" "${target_mediawiki_dir}"
   restore-certificates-and-keys "${backup_dir}"
   manual-post-install-warning "${backup_dir}" "${dropped_skins_SEPARATOR_dropped_extensions}"
@@ -212,13 +210,14 @@ function restore-local-settings() {
   [[ -z ${backup_dir} ]] && fail "'backup_dir' not provided"
   [[ -z ${target_mediawiki_dir} ]] && fail "'target_mediawiki_dir' not provided"
 
-  local source_mediawiki_dir source_local_settings_file dropped_skins target_local_settings_file
+  local source_mediawiki_dir source_local_settings_file dropped_skins dropped_extensions target_local_settings_file
 
   source_mediawiki_dir=$(backup-dir-to-mediawiki-dir "${backup_dir}")
   source_local_settings_file=${source_mediawiki_dir}/LocalSettings.php
   [[ -f ${source_local_settings_file} ]] || fail "no LocalSettings.php found in ${source_mediawiki_dir}"
 
   dropped_skins=$(filter-obsolete-skins "${source_local_settings_file}" "${target_mediawiki_dir}")
+  dropped_extensions=$(filter-locally-absent-extensions "${source_local_settings_file}" "${target_mediawiki_dir}")
 
   cp ${source_local_settings_file} ${target_mediawiki_dir} || fail "failed to copy ${source_local_settings_file} to ${target_mediawiki_dir}"
   target_local_settings_file=${target_mediawiki_dir}/LocalSettings.php
@@ -226,7 +225,7 @@ function restore-local-settings() {
   chmod go-rwx ${target_local_settings_file} || fail "failed to chmod ${target_local_settings_file}"
   info "$(basename ${target_local_settings_file}) restored"
 
-  echo "${dropped_skins}${SEPARATOR}"
+  echo "${dropped_skins}${SEPARATOR}${dropped_extensions}"
 }
 
 #
