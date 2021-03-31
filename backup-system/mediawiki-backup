@@ -74,6 +74,7 @@ function backup-mediawiki() {
   backup-server-files "${mediawiki_dir}" "${dated_tmp_dir}"
   backup-httpd-configuration "${dated_tmp_dir}"
   backup-certificates "${dated_tmp_dir}"
+  backup-php-configuration "${dated_tmp_dir}"
   build-backup-archive "${dated_tmp_dir}" "${target_dir}"
 }
 
@@ -188,6 +189,25 @@ function backup-certificates {
   # remove some generic files to eliminate confusion
   #
   rm -f ${target_dir}/localhost.key
+}
+
+function backup-php-configuration {
+
+  debug "${FUNCNAME[0]}($*)"
+  local tmp_dir=$1 # tmp dir is supposed to exist
+
+  #
+  # We rely on the fact that usually the php configuration resides in /etc/php.ini.*. Better logic can be implemented.
+  #
+  debug "backing up PHP configuration to ${tmp_dir} ..."
+  local src_dir="/etc"
+  local target_dir=${tmp_dir}${src_dir}
+  [[ ! -d ${target_dir} ]] && mkdir -p "${target_dir}"
+  if cp ${src_dir}/php.ini* ${target_dir}; then
+    info "PHP configuration backup successful"
+  else
+    fail "failed to backup PHP configuration"
+  fi
 }
 
 function build-backup-archive() {
