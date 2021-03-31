@@ -71,14 +71,14 @@ function restore-mediawiki() {
   local database_root_password
   database_root_password=$(read-database-root-password)
 
-  local backup_dir
+  local backup_dir dropped_skins_SEPARATOR_uninstalled_modules
   backup_dir=$(expand-backup "${backup_file}" "${tmp_dir}") || exit 1
   debug "backup_dir: ${backup_dir}"
   restore-database "${backup_dir}" "${database_root_password}"
-  restore-local-settings "${backup_dir}" "${target_mediawiki_dir}"
+  dropped_skins_SEPARATOR_uninstalled_modules=$(restore-local-settings "${backup_dir}" "${target_mediawiki_dir}") || exit 1
   restore-image-files "${backup_dir}" "${target_mediawiki_dir}"
   restore-certificates-and-keys "${backup_dir}"
-  manual-post-install-warning "${backup_dir}"
+  manual-post-install-warning "${backup_dir}" "${dropped_skins_SEPARATOR_uninstalled_modules}"
 }
 
 #
@@ -198,6 +198,10 @@ function restore-database-content() {
   fi
 }
 
+#
+# Return at stdout the comma-separated list of dropped skins (may be empty), followed by SEPARATOR, followed by the
+# comma-separated list of ...
+#
 function restore-local-settings() {
 
   debug "${FUNCNAME[0]}($*)"
@@ -205,20 +209,22 @@ function restore-local-settings() {
   local target_mediawiki_dir=$2
   [[ -z ${backup_dir} ]] && fail "'backup_dir' not provided"
   [[ -z ${target_mediawiki_dir} ]] && fail "'target_mediawiki_dir' not provided"
-  local source_mediawiki_dir
+
+  local source_mediawiki_dir source_local_settings_file dropped_skins target_local_settings_file
+
   source_mediawiki_dir=$(backup-dir-to-mediawiki-dir "${backup_dir}")
-  local source_local_settings_file=${source_mediawiki_dir}/LocalSettings.php
+  source_local_settings_file=${source_mediawiki_dir}/LocalSettings.php
   [[ -f ${source_local_settings_file} ]] || fail "no LocalSettings.php found in ${source_mediawiki_dir}"
 
-  local dropped_skins
-  dropped_skins=$(filter-obsolete-skins "${source_local_settings_file}")
-
+  dropped_skins=$(filter-obsolete-skins "${source_local_settings_file}" "${target_mediawiki_dir}")
 
   cp ${source_local_settings_file} ${target_mediawiki_dir} || fail "failed to copy ${source_local_settings_file} to ${target_mediawiki_dir}"
-  local target_local_settings_file=${target_mediawiki_dir}/LocalSettings.php
+  target_local_settings_file=${target_mediawiki_dir}/LocalSettings.php
   chown ${APACHE_USER}:${APACHE_GROUP} ${target_local_settings_file} || fail "failed to chown ${APACHE_USER}:${APACHE_GROUP} ${target_local_settings_file}"
   chmod go-rwx ${target_local_settings_file} || fail "failed to chmod ${target_local_settings_file}"
   info "$(basename ${target_local_settings_file}) restored"
+
+  echo "${dropped_skins}${SEPARATOR}"
 }
 
 #
@@ -348,9 +354,11 @@ function manual-post-install-warning() {
 
   debug "${FUNCNAME[0]}($*)"
   local backup_dir=$1
+  local dropped_skins_SEPARATOR_uninstalled_modules=$2
   [[ -z ${backup_dir} ]] && fail "'backup_dir' not provided"
 
-  cp ${backup_dir}/etc/httpd/conf.d/ssl.conf .
+  local dropped_skins=${dropped_skins_SEPARATOR_uninstalled_modules%${SEPARATOR}*}
+  [[ -n ${dropped_skins} ]] && info "dropped skins: ${dropped_skins}"
 
   warn ""
   warn "continue with manual post-restore steps:"
