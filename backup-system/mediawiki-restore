@@ -200,7 +200,7 @@ function restore-database-content() {
 
 #
 # Return at stdout the comma-separated list of dropped skins (may be empty), followed by SEPARATOR, followed by the
-# comma-separated list of ...
+# comma-separated list of extensions that were not found installed locally (they will have to be installed manually)
 #
 function restore-local-settings() {
 
@@ -228,8 +228,8 @@ function restore-local-settings() {
 }
 
 #
-# Update source LocalSettings.php in-place, dropping obsolete skins. Return the comma separated list of dropped skins
-# at stdout, or empty string if none was dropped.
+# Update source LocalSettings.php in-place, dropping obsolete skins. Return at stdout a comma separated list of dropped
+# skins, or empty string if none was dropped.
 #
 function filter-obsolete-skins() {
 
@@ -259,6 +259,7 @@ function filter-obsolete-skins() {
       info "skin ${s} removed from $(basename ${source_local_settings_file})" || \
       fail "failed to remove skin ${s} from ${source_local_settings_file}"
   done
+  echo "${skins_to_remove}"
 }
 
 function restore-image-files() {
