@@ -125,9 +125,6 @@ function restore-database() {
   debug "database_password: ${database_password}"
   debug "database_name: ${database_name}"
 
-  echo "database_host: ${database_host}, database_user: ${database_user}, database_password: ${database_password}, database_name: ${database_name}"
-  exit 0
-
   if create-database "${backup_dir}" "${database_host}" "${database_user}" \
                      "${database_password}" "${database_name}" "${database_root_password}"; then
       restore-database-content "${backup_dir}" "${database_user}" "${database_password}" "${database_name}"
