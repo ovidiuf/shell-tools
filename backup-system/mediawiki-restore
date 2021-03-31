@@ -71,14 +71,16 @@ function restore-mediawiki() {
   local database_root_password
   database_root_password=$(read-database-root-password)
 
-  local backup_dir dropped_skins_SEPARATOR_uninstalled_modules
+  local backup_dir dropped_skins_SEPARATOR_dropped_extensions s
   backup_dir=$(expand-backup "${backup_file}" "${tmp_dir}") || exit 1
   debug "backup_dir: ${backup_dir}"
   restore-database "${backup_dir}" "${database_root_password}"
-  dropped_skins_SEPARATOR_uninstalled_modules=$(restore-local-settings "${backup_dir}" "${target_mediawiki_dir}") || exit 1
+  dropped_skins_SEPARATOR_dropped_extensions=$(restore-local-settings "${backup_dir}" "${target_mediawiki_dir}") || exit 1
+  s=$(filter-locally-absent-extensions "${backup_dir}" "${target_mediawiki_dir}") || exit 1
+  dropped_skins_SEPARATOR_dropped_extensions="${dropped_skins_SEPARATOR_dropped_extensions}${SEPARATOR}${s}"
   restore-image-files "${backup_dir}" "${target_mediawiki_dir}"
   restore-certificates-and-keys "${backup_dir}"
-  manual-post-install-warning "${backup_dir}" "${dropped_skins_SEPARATOR_uninstalled_modules}"
+  manual-post-install-warning "${backup_dir}" "${dropped_skins_SEPARATOR_dropped_extensions}"
 }
 
 #
@@ -262,6 +264,43 @@ function filter-obsolete-skins() {
   echo "${skins_to_remove}"
 }
 
+#
+# Update source LocalSettings.php in-place, dropping extensions that are not found locally in the target MediaWiki
+# directory. Since we're upgrading, the old extensions are most likely obsolete and will have to be installed manually.
+# Return at stdout a comma separated list of extensions, or empty string if none was dropped.
+#
+function filter-locally-absent-extensions() {
+
+  debug "${FUNCNAME[0]}($*)"
+  local source_local_settings_file=$1
+  local target_mediawiki_dir=$2
+  [[ -z ${source_local_settings_file} ]] && fail "'source_local_settings_file' not provided"
+  [[ -z ${target_mediawiki_dir} ]] && fail "'target_mediawiki_dir' not provided"
+  local source_extensions=""
+  for e in $(cat ${source_local_settings_file} | grep "wfLoadExtension(.*)" | sed -e 's/^.*wfLoadExtension( *.\(.*\)[^ ] *).*$/\1/'); do
+      [[ -z ${source_extensions} ]] && source_extensions=${e} || source_extensions="${source_extensions} ${e}"
+  done
+  [[ -z ${source_extensions} ]] && { warn "no extensions defined in ${source_local_settings_file}"; return 0; }
+  local extensions_to_remove
+  for e in ${source_extensions}; do
+    if [[ ! -d ${target_mediawiki_dir}/extensions/${e} ]]; then
+        #
+        # the extension does not exist in the target MediaWiki installation, remove it from LocalSettings.php
+        #
+        debug "extension ${e} does not exist in the target MediaWiki installation"
+        [[ -z ${extensions_to_remove} ]] && extensions_to_remove=${e} || extensions_to_remove="${extensions_to_remove} ${e}"
+    fi
+  done
+  [[ -z ${extensions_to_remove} ]] && { info "no missing extensions found"; return 0; }
+  for e in ${extensions_to_remove}; do
+    sed -i -e '/^.*wfLoadExtension( *.'${e}'[^ ] *).*$/d' ${source_local_settings_file} && \
+      info "extension ${e} removed from $(basename ${source_local_settings_file})" || \
+      fail "failed to remove extension ${e} from ${source_local_settings_file}"
+  done
+  echo "${extensions_to_remove}"
+}
+
+
 function restore-image-files() {
 
   debug "${FUNCNAME[0]}($*)"
@@ -355,14 +394,16 @@ function manual-post-install-warning() {
 
   debug "${FUNCNAME[0]}($*)"
   local backup_dir=$1
-  local dropped_skins_SEPARATOR_uninstalled_modules=$2
+  local dropped_skins_SEPARATOR_dropped_extensions=$2
   [[ -z ${backup_dir} ]] && fail "'backup_dir' not provided"
 
   info ""
   info ""
 
-  local dropped_skins=${dropped_skins_SEPARATOR_uninstalled_modules%${SEPARATOR}*}
+  local dropped_skins=${dropped_skins_SEPARATOR_dropped_extensions%${SEPARATOR}*}
   [[ -n ${dropped_skins} ]] && info "dropped skins: ${dropped_skins}" || info "no skins were dropped"
+  local dropped_extensions=${dropped_skins_SEPARATOR_dropped_extensions#*${SEPARATOR}}
+  [[ -n ${dropped_extensions} ]] && info "dropped extensions: ${dropped_extensions}" || info "no extensions were dropped"
 
   warn ""
   warn "continue with manual post-restore steps:"
