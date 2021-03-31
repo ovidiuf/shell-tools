@@ -256,7 +256,7 @@ function filter-obsolete-skins() {
   done
   [[ -z ${skins_to_remove} ]] && { info "no obsolete skins found"; return 0; }
   for s in ${skins_to_remove}; do
-    sed -i -e '/^.*wfLoadSkin( *.'${s}'[^ ] *).*$/d' ${source_local_settings_file} && \
+    sed -i -e 's/^\(.*wfLoadSkin( *.'${s}'[^ ] *).*\)$/\/\/ \1/' ${source_local_settings_file} && \
       info "skin ${s} removed from $(basename ${source_local_settings_file})" || \
       fail "failed to remove skin ${s} from ${source_local_settings_file}"
   done
@@ -292,7 +292,7 @@ function filter-locally-absent-extensions() {
   done
   [[ -z ${extensions_to_remove} ]] && { info "no missing extensions found"; return 0; }
   for e in ${extensions_to_remove}; do
-    sed -i -e '/^.*wfLoadExtension( *.'${e}'[^ ] *).*$/d' ${source_local_settings_file} && \
+    sed -i -e 's/^\(.*wfLoadExtension( *.'${e}'[^ ] *).*\)$/\/\/ \1/' ${source_local_settings_file} && \
       info "extension ${e} removed from $(basename ${source_local_settings_file})" || \
       fail "failed to remove extension ${e} from ${source_local_settings_file}"
   done
@@ -404,12 +404,13 @@ function manual-post-install-warning() {
   local dropped_extensions=${dropped_skins_SEPARATOR_dropped_extensions#*${SEPARATOR}}
   [[ -n ${dropped_extensions} ]] && info "dropped extensions: ${dropped_extensions}" || info "no extensions were dropped"
 
-  warn ""
+  info ""
+  info ""
+
   warn "continue with manual post-restore steps:"
   warn " - if this was an upgrade to a newer MediaWiki version, run php update in /var/www/mediawiki-*/maintenance"
   warn " - configure the Listen directive and the virtual host (./ssl.conf) in /etc/httpd/conf.d/ssl.conf"
   warn " - re-install the following extensions: TODO"
-  warn ""
 }
 
 #VERBOSE=true
