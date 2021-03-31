@@ -358,6 +358,9 @@ function manual-post-install-warning() {
   local dropped_skins_SEPARATOR_uninstalled_modules=$2
   [[ -z ${backup_dir} ]] && fail "'backup_dir' not provided"
 
+  info ""
+  info ""
+
   local dropped_skins=${dropped_skins_SEPARATOR_uninstalled_modules%${SEPARATOR}*}
   [[ -n ${dropped_skins} ]] && info "dropped skins: ${dropped_skins}" || info "no skins were dropped"
 
