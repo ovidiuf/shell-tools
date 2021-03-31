@@ -86,6 +86,22 @@ function read-database-root-password() {
   echo ${password}
 }
 
+#
+# Second argument is the variable name (wgDBserver for database server name, etc.)
+# Fail is no file or no corresponding value is found.
+#
+function get-php-defined-value() {
+
+    debug "${FUNCNAME[0]}($*)"
+    local f=$1
+    local name=$2
+    [[ -f ${f} ]] || fail "no such file: ${f}"
+    local value
+    value=$(cat ${f} | grep "\$${name} *= *" | sed -e 's/^.* *= *"\(.*\)".*$/\1/')
+    [[ -z ${value} ]] && fail "\$${name}  not defined in ${f}"
+    echo "${value}"
+}
+
 function mediawiki-cleanup() {
 
   debug "${FUNCNAME[0]}($*)"
