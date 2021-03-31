@@ -410,6 +410,7 @@ function manual-post-install-warning() {
   warn ""
   warn " - if this was an upgrade to a newer MediaWiki version, run php update in ${target_mediawiki_dir}/maintenance"
   warn " - configure the Listen directive and the virtual host in /etc/httpd/conf.d/ssl.conf"
+  warn " - update custom configurations from the backup php.ini into /etc/php.ini"
   [[ -n ${dropped_extensions} ]] && warn " - re-install the following extensions: ${dropped_extensions}"
   info ""
 }
