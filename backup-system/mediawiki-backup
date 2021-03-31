@@ -134,19 +134,6 @@ function backup-database() {
   else
     fail "failed to backup database"
   fi
-
-  cat <<EOF > ${tmp_dir}/${DATABASE_METADATA_FILE}
-#
-# Database metadata collected on $(date) from host $(uname -a)
-#
-database_host=${database_host}
-database_user=${database_user}
-database_password=${database_password}
-database_name=${database_name}
-
-EOF
-
-  debug "database metadata saved to ${tmp_dir}/${DATABASE_METADATA_FILE}"
 }
 
 #

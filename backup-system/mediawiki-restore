@@ -109,20 +109,24 @@ function restore-database() {
   [[ -z ${backup_dir} ]] && fail "'backup_dir' not provided"
   [[ -d ${backup_dir} ]] || fail "no such backup directory: ${backup_dir}"
   [[ -z ${database_root_password} ]] && fail "'database_root_password' not provided"
-  local database_metadata_file=${backup_dir}/${DATABASE_METADATA_FILE}
-  [[ -f ${database_metadata_file} ]] || fail "no database metadata file found in backup: ${database_metadata_file}"
 
-  local database_host database_user database_password database_name
+  local source_mediawiki_dir source_local_settings_file database_host database_user database_password database_name
+  source_mediawiki_dir=$(backup-dir-to-mediawiki-dir "${backup_dir}")
+  local source_local_settings_file=${source_mediawiki_dir}/LocalSettings.php
+  [[ -f ${source_local_settings_file} ]] || fail "no LocalSettings.php found in ${source_mediawiki_dir}"
 
-  database_host=$(cat ${database_metadata_file} | grep "database_host=" | sed -e 's/^.*=\([^ ]*\) *$/\1/') || exit 1
-  database_user=$(cat ${database_metadata_file} | grep "database_user=" | sed -e 's/^.*=\([^ ]*\) *$/\1/') || exit 1
-  database_password=$(cat ${database_metadata_file} | grep "database_password=" | sed -e 's/^.*=\([^ ]*\) *$/\1/') || exit 1
-  database_name=$(cat ${database_metadata_file} | grep "database_name=" | sed -e 's/^.*=\([^ ]*\) *$/\1/') || exit 1
+  database_host=$(get-php-defined-value "${source_local_settings_file}" wgDBserver) || exit 1
+  database_user=$(get-php-defined-value "${source_local_settings_file}" wgDBuser) || exit 1
+  database_password=$(get-php-defined-value "${source_local_settings_file}" wgDBpassword) || exit 1
+  database_name=$(get-php-defined-value "${source_local_settings_file}" wgDBname) || exit 1
 
   debug "database_host: ${database_host}"
   debug "database_user: ${database_user}"
   debug "database_password: ${database_password}"
   debug "database_name: ${database_name}"
+
+  echo "database_host: ${database_host}, database_user: ${database_user}, database_password: ${database_password}, database_name: ${database_name}"
+  exit 0
 
   if create-database "${backup_dir}" "${database_host}" "${database_user}" \
                      "${database_password}" "${database_name}" "${database_root_password}"; then
