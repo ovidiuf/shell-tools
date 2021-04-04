@@ -251,6 +251,10 @@ function backup-mediawiki-tools() {
   debug "backing up mediawiki tools to ${tmp_dir} ..."
 
   local src_dir="/root/bin"
+  if [[ ! -d ${src_dir} ]]; then
+    warn "no ${src_dir} directory found, it will not be backed up"
+    return 0
+  fi
   local target_dir=${tmp_dir}${src_dir}
   mkdir -p "${target_dir}"
   if cp ${src_dir}/* ${target_dir}; then
