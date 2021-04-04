@@ -75,6 +75,7 @@ function backup-mediawiki() {
   backup-httpd-configuration "${dated_tmp_dir}"
   backup-certificates "${dated_tmp_dir}"
   backup-php-configuration "${dated_tmp_dir}"
+  backup-network-configuration "${dated_tmp_dir}"
   build-backup-archive "${dated_tmp_dir}" "${target_dir}"
 }
 
@@ -164,11 +165,10 @@ function backup-certificates {
   local target_dir=${tmp_dir}${src_dir}
   mkdir -p "${target_dir}"
   if cp ${src_dir}/*.crt ${target_dir}; then
-    info "${src_dir}*.crt TLS certificate backup successful"
+    info "${src_dir}/*.crt TLS certificate backup successful"
   else
     fail "failed to backup TLS certificates *.crt from ${src_dir}"
   fi
-
   #
   # remove some generic files to eliminate confusion
   #
@@ -184,7 +184,6 @@ function backup-certificates {
   else
     fail "failed to backup private key from ${src_dir}"
   fi
-
   #
   # remove some generic files to eliminate confusion
   #
@@ -207,6 +206,22 @@ function backup-php-configuration {
     info "PHP configuration backup successful"
   else
     fail "failed to backup PHP configuration"
+  fi
+}
+
+function backup-network-configuration() {
+
+  debug "${FUNCNAME[0]}($*)"
+  local tmp_dir=$1
+  debug "backing up network configuration to ${tmp_dir} ..."
+
+  local src_dir="/etc/sysconfig/network-scripts"
+  local target_dir=${tmp_dir}${src_dir}
+  mkdir -p "${target_dir}"
+  if cp ${src_dir}/ifcfg-* ${target_dir}; then
+    info "${src_dir}/ifcfg-* backup successful"
+  else
+    fail "failed to backup network configuration ifcfg-* from ${src_dir}"
   fi
 }
 
