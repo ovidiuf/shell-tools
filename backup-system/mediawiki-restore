@@ -69,26 +69,22 @@ function restore-mediawiki() {
 
   local target_mediawiki_version
   target_mediawiki_version=$(ensure-valid-mediawiki-dir "${target_mediawiki_dir}")
-
   local database_root_password
   database_root_password=$(read-database-root-password)
-
   local backup_dir dropped_skins_SEPARATOR_dropped_extensions
   backup_dir=$(expand-backup "${backup_file}" "${tmp_dir}") || exit 1
   debug "backup_dir: ${backup_dir}"
-
   local source_mediawiki_dir source_mediawiki_version
   source_mediawiki_dir=$(backup-dir-to-mediawiki-dir "${backup_dir}")
   source_mediawiki_version=$(ensure-valid-mediawiki-dir "${source_mediawiki_dir}")
-
   debug "target MediaWiki version: ${target_mediawiki_version}, source MediaWiki version: ${source_mediawiki_version}"
-  exit 0
 
   restore-database "${backup_dir}" "${database_root_password}"
   dropped_skins_SEPARATOR_dropped_extensions=$(restore-local-settings "${backup_dir}" "${target_mediawiki_dir}") || exit 1
   restore-image-files "${backup_dir}" "${target_mediawiki_dir}"
   restore-certificates-and-keys "${backup_dir}"
-  manual-post-install-warning "${backup_dir}" "${target_mediawiki_dir}" "${dropped_skins_SEPARATOR_dropped_extensions}"
+  manual-post-install-warning "${backup_dir}" "${target_mediawiki_dir}" \
+    "${dropped_skins_SEPARATOR_dropped_extensions}" "${source_mediawiki_version}" "${target_mediawiki_version}"
 }
 
 #
@@ -404,21 +400,30 @@ function manual-post-install-warning() {
   local backup_dir=$1
   local target_mediawiki_dir=$2
   local dropped_skins_SEPARATOR_dropped_extensions=$3
+  local source_mediawiki_version=$4
+  local target_mediawiki_version=$5
   [[ -z ${backup_dir} ]] && fail "'backup_dir' not provided"
   [[ -z ${target_mediawiki_dir} ]] && fail "'target_mediawiki_dir' not provided"
-
+  [[ -z ${source_mediawiki_version} ]] && fail "'source_mediawiki_version' not provided"
+  [[ -z ${target_mediawiki_version} ]] && fail "'target_mediawiki_version' not provided"
   info ""
   info ""
   local dropped_skins=${dropped_skins_SEPARATOR_dropped_extensions%${SEPARATOR}*}
   [[ -n ${dropped_skins} ]] && info "commented out skins: ${dropped_skins}" || info "no skins were commented out"
   local dropped_extensions=${dropped_skins_SEPARATOR_dropped_extensions#*${SEPARATOR}}
   [[ -n ${dropped_extensions} ]] && info "commented out extensions: ${dropped_extensions}" || info "no extensions were commented out"
+
+  local listen_directive
+  listen_directive=$(cat ${backup_dir}/etc/httpd/conf.d/ssl.conf | grep "^Listen")
+
   info ""
   info ""
-  warn "continue with manual post-restore steps:"
+  warn "Continue with manual post-restore steps:"
   warn ""
-  warn " - if this was an upgrade to a newer MediaWiki version, run php update in ${target_mediawiki_dir}/maintenance"
-  warn " - configure the Listen directive and the virtual host in /etc/httpd/conf.d/ssl.conf"
+  if [[ ${source_mediawiki_version} != "${target_mediawiki_version}" ]]; then
+      warn " 1. This MediaWiki version (${target_mediawiki_version}) is different from source version (${source_mediawiki_version}), run php update in ${target_mediawiki_dir}/maintenance"
+  fi
+  warn " 2. configure the Listen directive and the virtual host in /etc/httpd/conf.d/ssl.conf to \"${listen_directive}\""
   warn " - update custom configurations from the backup php.ini into /etc/php.ini"
   [[ -n ${dropped_extensions} ]] && warn " - re-install the following extensions: ${dropped_extensions}"
   info ""
