@@ -219,9 +219,18 @@ function backup-network-configuration() {
   local target_dir=${tmp_dir}${src_dir}
   mkdir -p "${target_dir}"
   if cp ${src_dir}/ifcfg-* ${target_dir}; then
+    rm -rf "${target_dir}/ifcfg-lo"
     info "${src_dir}/ifcfg-* backup successful"
   else
-    fail "failed to backup network configuration ifcfg-* from ${src_dir}"
+    fail "failed to backup network interface configuration files ifcfg-* from ${src_dir}"
+  fi
+
+  local src_dir="/etc/sysconfig"
+  local target_dir=${tmp_dir}${src_dir}
+  if cp ${src_dir}/iptables ${target_dir}; then
+    info "${src_dir}/iptables backup successful"
+  else
+    fail "failed to backup iptables configuration from ${src_dir}"
   fi
 }
 
