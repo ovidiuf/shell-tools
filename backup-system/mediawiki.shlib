@@ -111,7 +111,7 @@ function get-php-defined-value() {
     local name=$2
     [[ -f ${f} ]] || fail "no such file: ${f}"
     local value
-    value=$(cat ${f} | grep "\$${name} *= *" | sed -e 's/^.* *= *"\(.*\)".*$/\1/')
+    value=$(cat ${f} | grep "\$${name} *= *" | sed -e 's/^.* *= *[\x27"]\(.*\)[\x27"].*$/\1/')
     [[ -z ${value} ]] && fail "\$${name}  not defined in ${f}"
     echo "${value}"
 }
