@@ -64,14 +64,14 @@ function restore-mediawiki() {
   local backup_file=$1
   local target_mediawiki_dir=$2
   local tmp_dir=$3
-  local post_installation_examples_dir=$4
+  local post_installation_examples_parent_dir=$4
 
   debug "backup_file: ${backup_file}"
   debug "target_mediawiki_dir: ${target_mediawiki_dir}"
   debug "tmp_dir: ${tmp_dir}"
 
-  [[ -z ${post_installation_examples_dir} ]] && post_installation_examples_dir=$(pwd)
-  debug "post_installation_examples_dir: ${post_installation_examples_dir}"
+  [[ -z ${post_installation_examples_parent_dir} ]] && post_installation_examples_parent_dir=$(pwd)
+  debug "post_installation_examples_parent_dir: ${post_installation_examples_parent_dir}"
 
   ensure-root
 
@@ -92,7 +92,7 @@ function restore-mediawiki() {
   restore-image-files "${backup_dir}" "${target_mediawiki_dir}"
   restore-certificates-and-keys "${backup_dir}"
   manual-post-install-warning "${backup_dir}" "${target_mediawiki_dir}" "${dropped_skins_SEPARATOR_dropped_extensions}" \
-    "${source_mediawiki_version}" "${target_mediawiki_version}" "${post_installation_examples_dir}"
+    "${source_mediawiki_version}" "${target_mediawiki_version}" "${post_installation_examples_parent_dir}"
 }
 
 #
@@ -410,14 +410,14 @@ function manual-post-install-warning() {
   local dropped_skins_SEPARATOR_dropped_extensions=$3
   local source_mediawiki_version=$4
   local target_mediawiki_version=$5
-  local post_installation_examples_dir=$6
+  local post_installation_examples_parent_dir=$6
 
   [[ -z ${backup_dir} ]] && fail "'backup_dir' not provided"
   [[ -z ${target_mediawiki_dir} ]] && fail "'target_mediawiki_dir' not provided"
   [[ -z ${source_mediawiki_version} ]] && fail "'source_mediawiki_version' not provided"
   [[ -z ${target_mediawiki_version} ]] && fail "'target_mediawiki_version' not provided"
-  [[ -z ${post_installation_examples_dir} ]] && fail "'post_installation_examples_dir' not provided"
-  [[ -d ${post_installation_examples_dir} ]] || fail "'post_installation_examples_dir' not a valid directory: ${post_installation_examples_dir}"
+  [[ -z ${post_installation_examples_parent_dir} ]] && fail "'post_installation_examples_parent_dir' not provided"
+  [[ -d ${post_installation_examples_parent_dir} ]] || fail "'post_installation_examples_parent_dir' not a valid directory: ${post_installation_examples_parent_dir}"
   info ""
   info ""
   local dropped_skins=${dropped_skins_SEPARATOR_dropped_extensions%${SEPARATOR}*}
@@ -428,9 +428,12 @@ function manual-post-install-warning() {
   #
   # copy examples
   #
+  local post_installation_examples_dir=${post_installation_examples_parent_dir}/mediawiki-restore-examples
+  [[ ! -d ${post_installation_examples_dir} ]] && mkdir ${post_installation_examples_dir}
   cp ${backup_dir}/etc/httpd/conf.d/ssl.conf ${post_installation_examples_dir} || \
     fail "failed to copy ${backup_dir}/etc/httpd/conf.d/ssl.conf in ${post_installation_examples_dir}"
-
+  cp ${backup_dir}/etc/php.ini ${post_installation_examples_dir} || \
+    fail "failed to copy ${backup_dir}/etc/php.ini in ${post_installation_examples_dir}"
   local listen_directive
   listen_directive=$(cat ${post_installation_examples_dir}/ssl.conf | grep "^Listen")
 
@@ -439,11 +442,13 @@ function manual-post-install-warning() {
   warn "Continue with manual post-restore steps:"
   warn ""
   if [[ ${source_mediawiki_version} != "${target_mediawiki_version}" ]]; then
-      warn " 1. This MediaWiki version (${target_mediawiki_version}) is different from source version (${source_mediawiki_version}), run php update in ${target_mediawiki_dir}/maintenance"
+      warn " - This MediaWiki version (${target_mediawiki_version}) is different from source version (${source_mediawiki_version}), run php update in ${target_mediawiki_dir}/maintenance"
   fi
-  warn " 2. Configure the Listen directive and the virtual host in /etc/httpd/conf.d/ssl.conf to \"${listen_directive}\""
-  warn " 3. Update custom configurations from the backup php.ini into /etc/php.ini"
-  [[ -n ${dropped_extensions} ]] && warn " - re-install the following extensions: ${dropped_extensions}"
+  warn " - Configure the Listen directive and the virtual host in /etc/httpd/conf.d/ssl.conf to \"${listen_directive}\""
+  warn "   Example available in ${post_installation_examples_dir}/ssl.conf"
+  warn " - Update custom configurations from the backup php.ini into /etc/php.ini"
+  warn "   Example available in ${post_installation_examples_dir}/php.ini"
+  [[ -n ${dropped_extensions} ]] && warn " - Re-install the following extensions: ${dropped_extensions}"
   info ""
 }
 
