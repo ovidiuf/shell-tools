@@ -76,6 +76,7 @@ function backup-mediawiki() {
   backup-certificates "${dated_tmp_dir}"
   backup-php-configuration "${dated_tmp_dir}"
   backup-network-configuration "${dated_tmp_dir}"
+  backup-mediawiki-tools "${dated_tmp_dir}"
   build-backup-archive "${dated_tmp_dir}" "${target_dir}"
 }
 
@@ -231,6 +232,23 @@ function backup-network-configuration() {
     info "${src_dir}/iptables backup successful"
   else
     fail "failed to backup iptables configuration from ${src_dir}"
+  fi
+}
+
+function backup-mediawiki-tools() {
+
+  debug "${FUNCNAME[0]}($*)"
+  local tmp_dir=$1
+  debug "backing up mediawiki tools to ${tmp_dir} ..."
+
+  local src_dir="/root/bin"
+  local target_dir=${tmp_dir}${src_dir}
+  mkdir -p "${target_dir}"
+  if cp ${src_dir}/* ${target_dir}; then
+    rm -rf "${target_dir}/read-temperature"
+    info "${src_dir}/* backup successful"
+  else
+    fail "failed to backup mediawiki tools from ${src_dir}"
   fi
 }
 
