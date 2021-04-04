@@ -77,20 +77,26 @@ function restore-mediawiki() {
 
   local target_mediawiki_version
   target_mediawiki_version=$(ensure-valid-mediawiki-dir "${target_mediawiki_dir}")
+
   local database_root_password
   database_root_password=$(read-database-root-password)
+
   local backup_dir dropped_skins_SEPARATOR_dropped_extensions
   backup_dir=$(expand-backup "${backup_file}" "${tmp_dir}") || exit 1
   debug "backup_dir: ${backup_dir}"
-  local source_mediawiki_dir source_mediawiki_version
-  source_mediawiki_dir=$(backup-dir-to-mediawiki-dir "${backup_dir}")
-  source_mediawiki_version=$(ensure-valid-mediawiki-dir "${source_mediawiki_dir}")
+
+  local source_mediawiki_version
+  source_mediawiki_version=$(ensure-valid-mediawiki-dir "$(backup-dir-to-mediawiki-dir ${backup_dir})")
   debug "target MediaWiki version: ${target_mediawiki_version}, source MediaWiki version: ${source_mediawiki_version}"
 
   restore-database "${backup_dir}" "${database_root_password}"
+
   dropped_skins_SEPARATOR_dropped_extensions=$(restore-local-settings "${backup_dir}" "${target_mediawiki_dir}") || exit 1
+
   restore-image-files "${backup_dir}" "${target_mediawiki_dir}"
+
   restore-certificates-and-keys "${backup_dir}"
+
   manual-post-install-warning "${backup_dir}" "${target_mediawiki_dir}" "${dropped_skins_SEPARATOR_dropped_extensions}" \
     "${source_mediawiki_version}" "${target_mediawiki_version}" "${post_installation_examples_parent_dir}"
 }
@@ -312,7 +318,6 @@ function filter-locally-absent-extensions() {
   echo "${extensions_to_remove}"
 }
 
-
 function restore-image-files() {
 
   debug "${FUNCNAME[0]}($*)"
@@ -328,6 +333,10 @@ function restore-image-files() {
   cp -r ${source_image_dir} ${target_mediawiki_dir} || fail "failed to copy ${source_image_dir} to ${target_mediawiki_dir}"
   local target_image_dir=${target_mediawiki_dir}/images
   chown -R ${APACHE_USER}:${APACHE_GROUP} ${target_image_dir} || fail "failed to chown ${APACHE_USER}:${APACHE_GROUP} ${target_image_dir}"
+  if [[ $(getenforce) = "Enforcing" ]]; then
+      info "configuring SELinux context on ${target_image_dir}"
+      chcon -R -t httpd_sys_script_rw_t ${target_image_dir} || fail "failed to -R -t httpd_sys_script_rw_t ${target_image_dir}"
+  fi
   info "$(basename ${target_image_dir}) directory restored"
 }
 
@@ -448,6 +457,7 @@ function manual-post-install-warning() {
   warn "   Example available in ${post_installation_examples_dir}/ssl.conf"
   warn " - Update custom configurations from the backup php.ini into /etc/php.ini"
   warn "   Example available in ${post_installation_examples_dir}/php.ini"
+  warn " - Restore site name symbolic link to $(basename ${target_mediawiki_dir}) in /var/www (e.g. kb.novaordis.com → $(basename ${target_mediawiki_dir}))"
   [[ -n ${dropped_extensions} ]] && warn " - Re-install the following extensions: ${dropped_extensions}"
   info ""
 }
