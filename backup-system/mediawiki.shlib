@@ -43,8 +43,6 @@ function ensure-valid-mediawiki-dir() {
   mediawiki_version=$(get-php-defined-value ${mediawiki_dir}/includes/DefaultSettings.php wgVersion) || \
     fail "failed to read version from ${mediawiki_dir}/includes/DefaultSettings.php"
 
-  [[ -z ${mediawiki_version} ]] && fail "no MediaWiki version could be read from ${mediawiki_dir}/includes/DefaultSettings.php"
-
   if [[ -z ${mediawiki_version} || ${mediawiki_version} =~ MW_VERSION ]]; then
     #
     # post 1.35, the version is kept in the MW_VERSION constant.
