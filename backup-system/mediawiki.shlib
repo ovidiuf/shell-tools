@@ -42,11 +42,8 @@ function ensure-valid-mediawiki-dir() {
   local mediawiki_version
   mediawiki_version=$(get-php-defined-value ${mediawiki_dir}/includes/DefaultSettings.php wgVersion) || \
     fail "failed to read version from ${mediawiki_dir}/includes/DefaultSettings.php"
-
   if [[ -z ${mediawiki_version} || ${mediawiki_version} =~ MW_VERSION ]]; then
-    #
-    # post 1.35, the version is kept in the MW_VERSION constant.
-    #
+    debug "post 1.35, the version is kept in the MW_VERSION constant"
     [[ ! -f ${mediawiki_dir}/includes/Defines.php ]] && fail "not a mediawiki directory, missing includes/Defines.php: ${mediawiki_dir}"
     mediawiki_version=$(grep "define(. MW_VERSION.*);" ${mediawiki_dir}/includes/Defines.php | sed -e "s/^.*, *'\(.*\)'.*$/\1/")
   fi
