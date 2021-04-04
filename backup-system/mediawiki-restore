@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 [[ -f $(dirname "$0")/../lib/bash.shlib ]] && . $(dirname $0)/../lib/bash.shlib || { echo "$(dirname $0)/../lib/bash.shlib not found" 1>&2; exit 1; }
-[[ -f $(dirname "$0")/mediawiki.shlib ]] && . $(dirname "$0")/mediawiki.shlib || { echo "$(dirname "$0")/mediawiki.shlib not found" 1>&2; exit 1; }
+[[ -f $(dirname "$0")/mediawiki.shlib ]] && . $(dirname $0)/mediawiki.shlib || { echo "$(dirname "$0")/mediawiki.shlib not found" 1>&2; exit 1; }
 
 VERSION=0.2.0
 
@@ -359,7 +359,7 @@ function restore-certificates-and-keys() {
   [[ -d ${source_dir} ]] || fail "no key directory found in ${backup_dir}: ${source_dir}"
   for i in ${source_dir}/*.key; do
     cp ${i} /etc/pki/tls/private || fail "failed to copy ${i} to /etc/pki/tls/private"
-    chmod go-rwx /etc/pki/tls/private/$(basename ${i}) || fail "failed to chmod /etc/pki/tls/private/$(basename ${i})"
+    chmod go-rwx "/etc/pki/tls/private/$(basename ${i})" || fail "failed to chmod /etc/pki/tls/private/$(basename ${i})"
   done
   info "certificates and private keys restored in /etc/pki/tls"
 }
@@ -491,5 +491,4 @@ function manual-post-install-warning() {
   info ""
 }
 
-filter-locally-absent-extensions "$@"
-#main "$@"
+main "$@"
