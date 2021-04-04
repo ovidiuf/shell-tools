@@ -65,7 +65,10 @@ function backup-mediawiki() {
   debug "tmp_dir: ${tmp_dir}"
   debug "target_dir: ${target_dir}"
 
-  ensure-valid-mediawiki-dir "${mediawiki_dir}" --expect-LocalSettings
+  local mediawiki_version
+  mediawiki_version=$(ensure-valid-mediawiki-dir "${mediawiki_dir}" --expect-LocalSettings)
+  debug "mediawiki version: ${mediawiki_version}"
+
   ensure-root
 
   local dated_tmp_dir

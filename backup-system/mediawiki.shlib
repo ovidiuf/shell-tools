@@ -18,6 +18,8 @@ function ensure-root() {
 # Options:
 #  --expect-LocalSettings
 #
+# For a valid MediaWiki directory, return the MediaWiki version at stdout.
+#
 function ensure-valid-mediawiki-dir() {
 
   debug "${FUNCNAME[0]}($*)"
@@ -36,6 +38,13 @@ function ensure-valid-mediawiki-dir() {
   [[ ! -f ${mediawiki_dir}/resources/assets/mediawiki.png ]] && fail "not a mediawiki directory, missing resources/assets/mediawiki.png: ${mediawiki_dir}"
   [[ ! -f ${mediawiki_dir}/includes/DefaultSettings.php ]] && fail "not a mediawiki directory, missing includes/DefaultSettings.php: ${mediawiki_dir}"
   ${expect_LocalSettings} && [[ ! -f ${mediawiki_dir}/LocalSettings.php ]] && fail "not a mediawiki directory, missing LocalSettings.php: ${mediawiki_dir}"
+
+  local mediawiki_version
+  mediawiki_version=$(get-php-defined-value ${mediawiki_dir}/includes/DefaultSettings.php wgVersion) || \
+    fail "failed to read version from ${mediawiki_dir}/includes/DefaultSettings.php"
+
+  [[ -z ${mediawiki_version} ]] && fail "no MediaWiki version could be read from ${mediawiki_dir}/includes/DefaultSettings.php"
+  echo "${mediawiki_version}"
 }
 
 #
