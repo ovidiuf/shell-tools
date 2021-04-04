@@ -50,7 +50,7 @@ function ensure-valid-mediawiki-dir() {
     # post 1.35, the version is kept in the MW_VERSION constant.
     #
     [[ ! -f ${mediawiki_dir}/includes/Defines.php ]] && fail "not a mediawiki directory, missing includes/Defines.php: ${mediawiki_dir}"
-    mediawiki_version=$(grep "define(. MW_VERSION.*);" ${mediawiki_dir}/includes/Defines.php | sed -e "s/,*, *'\(.*\)'/\1/")
+    mediawiki_version=$(grep "define(. MW_VERSION.*);" ${mediawiki_dir}/includes/Defines.php | sed -e "s/, *'\(.*\)'/\1/")
     [[ -z ${mediawiki_version} ]] && fail "no MediaWiki version could be read from ${mediawiki_dir}/includes/Defines.php"
   fi
   echo "${mediawiki_version}"
