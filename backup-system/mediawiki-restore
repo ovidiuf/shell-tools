@@ -69,8 +69,6 @@ function restore-mediawiki() {
 
   local target_mediawiki_version
   target_mediawiki_version=$(ensure-valid-mediawiki-dir "${target_mediawiki_dir}")
-  echo ${target_mediawiki_version}
-  exit 0
 
   local database_root_password
   database_root_password=$(read-database-root-password)
@@ -78,6 +76,13 @@ function restore-mediawiki() {
   local backup_dir dropped_skins_SEPARATOR_dropped_extensions
   backup_dir=$(expand-backup "${backup_file}" "${tmp_dir}") || exit 1
   debug "backup_dir: ${backup_dir}"
+
+  local source_mediawiki_version
+  source_mediawiki_version=$(ensure-valid-mediawiki-dir "${backup_dir}")
+
+  debug "target MediaWiki version: ${target_mediawiki_version}, source MediaWiki version: ${source_mediawiki_version}"
+  exit 0
+
   restore-database "${backup_dir}" "${database_root_password}"
   dropped_skins_SEPARATOR_dropped_extensions=$(restore-local-settings "${backup_dir}" "${target_mediawiki_dir}") || exit 1
   restore-image-files "${backup_dir}" "${target_mediawiki_dir}"
@@ -86,8 +91,7 @@ function restore-mediawiki() {
 }
 
 #
-# Expand the backup file and ensure it is a valid mediawiki backup.
-# Return the backup directory at stdout.
+# Expand the backup file and ensure it is a valid mediawiki backup. Return the backup directory at stdout.
 #
 function expand-backup() {
 
