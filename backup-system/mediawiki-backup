@@ -246,7 +246,7 @@ function backup-mediawiki-tools() {
   mkdir -p "${target_dir}"
   if cp ${src_dir}/* ${target_dir}; then
     rm -rf "${target_dir}/read-temperature"
-    info "${src_dir}/* backup successful"
+    info "${src_dir} backup successful"
   else
     fail "failed to backup mediawiki tools from ${src_dir}"
   fi
