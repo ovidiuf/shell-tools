@@ -300,6 +300,9 @@ function filter-locally-absent-extensions() {
   for e in $(cat ${source_local_settings_file} | grep "wfLoadExtension(.*)" | sed -e 's/^.*wfLoadExtension( *.\(.*\)[^ ] *).*$/\1/'); do
       [[ -z ${source_extensions} ]] && source_extensions=${e} || source_extensions="${source_extensions} ${e}"
   done
+  for e in $(cat ${source_local_settings_file} | grep "require_once.*/extensions/" | sed -e 's/^.*extensions\/\(.*\)\/.*$/\1/'); do
+      [[ -z ${source_extensions} ]] && source_extensions=${e} || source_extensions="${source_extensions} ${e}"
+  done
   [[ -z ${source_extensions} ]] && { warn "no extensions defined in ${source_local_settings_file}"; return 0; }
   local extensions_to_remove
   for e in ${source_extensions}; do
@@ -426,7 +429,7 @@ function restore-top-symbolic-link() {
   dir_name=$(basename ${target_mediawiki_dir})
   symlink_name=$(cat ${backup_dir}/etc/httpd/conf.d/ssl.conf | grep ServerName | tail -1 | sed -e 's/^.* \(.*\) *$/\1/')
   debug "parent_dir: ${parent_dir}, dir_name: ${dir_name}, symlink_name: ${symlink_name}"
-  (cd ${parent_dir} || exit 1; ln -s ./${dir_name} ${symlink_name}) && \
+  (cd ${parent_dir} || exit 1; ln -sF ./${dir_name} ${symlink_name}) && \
     info "restored symbolic link ${symlink_name} → ${dir_name} in ${parent_dir}" || \
     fail "failed to restore symbolic link ${symlink_name} → ${dir_name} in ${parent_dir}"
   if [[ $(getenforce) = "Enforcing" ]]; then
@@ -476,16 +479,17 @@ function manual-post-install-warning() {
   warn "Continue with manual post-restore steps:"
   warn ""
   if [[ ${source_mediawiki_version} != "${target_mediawiki_version}" ]]; then
-      warn " - This MediaWiki version (${target_mediawiki_version}) is different from source version (${source_mediawiki_version}), run php update in ${target_mediawiki_dir}/maintenance."
+      warn " - This MediaWiki version (${target_mediawiki_version}) is different from source version (${source_mediawiki_version}), run 'php update in ${target_mediawiki_dir}/maintenance'."
   fi
   warn " - Configure the Listen directive in /etc/httpd/conf.d/ssl.conf to \"${listen_directive}\"."
   warn "   Example available in ${post_installation_examples_dir}/ssl.conf."
-  warn " - Configure the HTTPS VirtualHost in /etc/httpd/conf.d/ssl.conf to \"${listen_directive}\""
+  warn " - Configure the HTTPS VirtualHost in /etc/httpd/conf.d/ssl.conf to \"${listen_directive}\". Possibly adjust or remove  SSLProtocol and SSLCipherSuite"
   warn "   Example available in ${post_installation_examples_dir}/ssl.conf."
   warn " - Update custom configurations from the backup php.ini into /etc/php.ini."
-  warn "   Example available in ${post_installation_examples_dir}/php.ini."
+  warn "   Example available in ${post_installation_examples_dir}/php.ini. Check 'upload_max_filesize' and 'post_max_size' values."
   [[ -n ${dropped_extensions} ]] && warn " - Re-install the following extensions: ${dropped_extensions}."
   info ""
 }
 
-main "$@"
+filter-locally-absent-extensions "$@"
+#main "$@"
