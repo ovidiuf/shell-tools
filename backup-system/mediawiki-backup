@@ -84,15 +84,17 @@ function backup-mediawiki() {
 }
 
 #
-# Creates a dated subdirectory in the given directory and return the path to stdout. The parent must exist
+# Creates a dated subdirectory in the given directory and return the path to stdout. The parent must exist.
 #
 function create-dated-subdir() {
 
   debug "${FUNCNAME[0]}($*)"
   local parent_dir=$1
   [[ -d ${parent_dir} ]] || fail "parent directory does not exist: ${parent_dir}"
-  local dir
-  dir=${parent_dir}/$(date +'%Y.%m.%d-%H.%M.%S')-mediawiki-backup
+  local dir hostname
+  hostname=$(uname -n)
+  hostname=${hostname%%.*}
+  dir=${parent_dir}/$(date +'%Y.%m.%d-%H.%M.%S')-${hostname}-mediawiki-backup
   mkdir "${dir}" || fail "failed to create dated subdirectory: ${dir}"
   echo "${dir}"
 }
@@ -231,10 +233,14 @@ function backup-network-configuration() {
 
   local src_dir="/etc/sysconfig"
   local target_dir=${tmp_dir}${src_dir}
-  if cp ${src_dir}/iptables ${target_dir}; then
-    info "${src_dir}/iptables backup successful"
+  if [[ ! -f ${src_dir}/iptables ]]; then
+      warn "no ${src_dir}/iptables file found, it will not be backed up"
   else
-    fail "failed to backup iptables configuration from ${src_dir}"
+    if cp ${src_dir}/iptables ${target_dir}; then
+      info "${src_dir}/iptables backup successful"
+    else
+      fail "failed to backup iptables configuration from ${src_dir}"
+    fi
   fi
 }
 
