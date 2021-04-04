@@ -77,8 +77,9 @@ function restore-mediawiki() {
   backup_dir=$(expand-backup "${backup_file}" "${tmp_dir}") || exit 1
   debug "backup_dir: ${backup_dir}"
 
-  local source_mediawiki_version
-  source_mediawiki_version=$(ensure-valid-mediawiki-dir "${backup_dir}")
+  local source_mediawiki_dir source_mediawiki_version
+  source_mediawiki_dir=$(backup-dir-to-mediawiki-dir "${backup_dir}")
+  source_mediawiki_version=$(ensure-valid-mediawiki-dir "${source_mediawiki_dir}")
 
   debug "target MediaWiki version: ${target_mediawiki_version}, source MediaWiki version: ${source_mediawiki_version}"
   exit 0
