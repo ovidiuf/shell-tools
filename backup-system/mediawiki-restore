@@ -97,6 +97,8 @@ function restore-mediawiki() {
 
   restore-certificates-and-keys "${backup_dir}"
 
+  restore-top-symbolic-link "${backup_dir}" "${target_mediawiki_dir}"
+
   manual-post-install-warning "${backup_dir}" "${target_mediawiki_dir}" "${dropped_skins_SEPARATOR_dropped_extensions}" \
     "${source_mediawiki_version}" "${target_mediawiki_version}" "${post_installation_examples_parent_dir}"
 }
@@ -411,6 +413,29 @@ function restore-extensions() {
   done
 }
 
+function restore-top-symbolic-link() {
+
+  debug "${FUNCNAME[0]}($*)"
+  local backup_dir=$1
+  local target_mediawiki_dir=$2
+  [[ -z ${backup_dir} ]] && fail "'backup_dir' not provided"
+  [[ -z ${target_mediawiki_dir} ]] && fail "'target_mediawiki_dir' not provided"
+
+  local parent_dir dir_name symlink_name
+  parent_dir=$(dirname ${target_mediawiki_dir})
+  dir_name=$(basename ${target_mediawiki_dir})
+  symlink_name=$(cat ${backup_dir}/etc/httpd/conf.d/ssl.conf | grep ServerName | tail -1 | sed -e 's/^.* \(.*\) *$/\1/')
+  debug "parent_dir: ${parent_dir}, dir_name: ${dir_name}, symlink_name: ${symlink_name}"
+  (cd ${parent_dir} || exit 1; ln -s ./${dir_name} ${symlink_name}) && \
+    info "restored symbolic link ${symlink_name} → ${dir_name} in ${parent_dir}" || \
+    fail "failed to restore symbolic link ${symlink_name} → ${dir_name} in ${parent_dir}"
+  if [[ $(getenforce) = "Enforcing" ]]; then
+      restorecon -FR ${parent_dir}/${symlink_name} && \
+        info "configured SELinux context on ${parent_dir}/${symlink_name}" || \
+        fail "failed to restorecon -FR ${parent_dir}/${symlink_name}"
+  fi
+}
+
 function manual-post-install-warning() {
 
   debug "${FUNCNAME[0]}($*)"
@@ -451,14 +476,15 @@ function manual-post-install-warning() {
   warn "Continue with manual post-restore steps:"
   warn ""
   if [[ ${source_mediawiki_version} != "${target_mediawiki_version}" ]]; then
-      warn " - This MediaWiki version (${target_mediawiki_version}) is different from source version (${source_mediawiki_version}), run php update in ${target_mediawiki_dir}/maintenance"
+      warn " - This MediaWiki version (${target_mediawiki_version}) is different from source version (${source_mediawiki_version}), run php update in ${target_mediawiki_dir}/maintenance."
   fi
-  warn " - Configure the Listen directive and the virtual host in /etc/httpd/conf.d/ssl.conf to \"${listen_directive}\""
-  warn "   Example available in ${post_installation_examples_dir}/ssl.conf"
-  warn " - Update custom configurations from the backup php.ini into /etc/php.ini"
-  warn "   Example available in ${post_installation_examples_dir}/php.ini"
-  warn " - Restore site name symbolic link to $(basename ${target_mediawiki_dir}) in /var/www (e.g. kb.novaordis.com → $(basename ${target_mediawiki_dir}))"
-  [[ -n ${dropped_extensions} ]] && warn " - Re-install the following extensions: ${dropped_extensions}"
+  warn " - Configure the Listen directive in /etc/httpd/conf.d/ssl.conf to \"${listen_directive}\"."
+  warn "   Example available in ${post_installation_examples_dir}/ssl.conf."
+  warn " - Configure the HTTPS VirtualHost in /etc/httpd/conf.d/ssl.conf to \"${listen_directive}\""
+  warn "   Example available in ${post_installation_examples_dir}/ssl.conf."
+  warn " - Update custom configurations from the backup php.ini into /etc/php.ini."
+  warn "   Example available in ${post_installation_examples_dir}/php.ini."
+  [[ -n ${dropped_extensions} ]] && warn " - Re-install the following extensions: ${dropped_extensions}."
   info ""
 }
 
