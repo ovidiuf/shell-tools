@@ -72,7 +72,7 @@ function backup-mediawiki() {
   ensure-root
 
   local dated_tmp_dir
-  dated_tmp_dir=$(create-dated-subdir "${tmp_dir}") || exit 1
+  dated_tmp_dir=$(create-dated-subdir "${tmp_dir}" "${mediawiki_dir}") || exit 1
   backup-database "${mediawiki_dir}" "${dated_tmp_dir}"
   backup-server-files "${mediawiki_dir}" "${dated_tmp_dir}"
   backup-httpd-configuration "${dated_tmp_dir}"
@@ -90,11 +90,14 @@ function create-dated-subdir() {
 
   debug "${FUNCNAME[0]}($*)"
   local parent_dir=$1
+  local mediawiki_dir=$2
   [[ -d ${parent_dir} ]] || fail "parent directory does not exist: ${parent_dir}"
-  local dir hostname
+  local dir hostname server_name
   hostname=$(uname -n)
   hostname=${hostname%%.*}
-  dir=${parent_dir}/$(date +'%Y.%m.%d-%H.%M.%S')-${hostname}-mediawiki-backup
+  server_name=$(get-php-defined-value "${mediawiki_dir}/LocalSettings.php" wgServer)
+  server_name=${server_name#.*://}
+  dir=${parent_dir}/$(date +'%Y.%m.%d-%H.%M.%S')-${hostname}-${server_name}-backup
   mkdir "${dir}" || fail "failed to create dated subdirectory: ${dir}"
   echo "${dir}"
 }
