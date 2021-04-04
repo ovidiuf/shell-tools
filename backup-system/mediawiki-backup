@@ -96,7 +96,7 @@ function create-dated-subdir() {
   hostname=$(uname -n)
   hostname=${hostname%%.*}
   server_name=$(get-php-defined-value "${mediawiki_dir}/LocalSettings.php" wgServer)
-  server_name=${server_name#.*://}
+  server_name=${server_name#*:\/\/}
   dir=${parent_dir}/$(date +'%Y.%m.%d-%H.%M.%S')-${hostname}-${server_name}-backup
   mkdir "${dir}" || fail "failed to create dated subdirectory: ${dir}"
   echo "${dir}"
