@@ -3,7 +3,7 @@
 [[ -f $(dirname "$0")/../lib/bash.shlib ]] && . $(dirname $0)/../lib/bash.shlib || { echo "$(dirname $0)/../lib/bash.shlib not found" 1>&2; exit 1; }
 [[ -f $(dirname "$0")/mediawiki.shlib ]] && . $(dirname "$0")/mediawiki.shlib || { echo "$(dirname "$0")/mediawiki.shlib not found" 1>&2; exit 1; }
 
-VERSION=0.2.1
+VERSION=0.2.2
 
 function usage() {
 
@@ -20,8 +20,8 @@ Usage:
 Arguments:
 
   <mediawiki-installation-dir> is the local file system directory where the mediawiki instance is installed (by default
-    /var/www/mediawiki-<version>). The backup file is placed in the current directory, unless -t|--target-dir option is
-    used.
+    /var/www/mediawiki-<version>). Do not use a symbolic link to initiate the backup. The backup file is placed in the
+    current directory, unless -t|--target-dir option is used.
 
 Options:
 
