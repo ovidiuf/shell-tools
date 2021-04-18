@@ -3,7 +3,7 @@
 [[ -f $(dirname "$0")/../lib/bash.shlib ]] && . $(dirname $0)/../lib/bash.shlib || { echo "$(dirname $0)/../lib/bash.shlib not found" 1>&2; exit 1; }
 [[ -f $(dirname "$0")/mediawiki.shlib ]] && . $(dirname $0)/mediawiki.shlib || { echo "$(dirname "$0")/mediawiki.shlib not found" 1>&2; exit 1; }
 
-VERSION=0.2.0
+VERSION=0.2.1
 
 function usage() {
 
@@ -352,8 +352,8 @@ function restore-certificates-and-keys() {
   [[ -z ${backup_dir} ]] && fail "'backup_dir' not provided"
 
   local source_dir=${backup_dir}/etc/pki/tls/certs
-  [[ -d ${source_dir} ]] || fail "no certificate directory found in ${backup_dir}: ${source_dir}"
-  cp ${source_dir}/*.crt /etc/pki/tls/certs || fail "failed to copy ${source_dir}/*.crt to /etc/pki/tls/certs"
+  [[ -d ${source_dir} ]] || { warn "no certificate directory found in ${backup_dir}: ${source_dir}, no certificates will be restored"; return 0; }
+  cp "${source_dir}"/*.crt /etc/pki/tls/certs || { warn "failed to copy ${source_dir}/*.crt to /etc/pki/tls/certs, no certificates will be restored"; return 0; }
 
   local source_dir=${backup_dir}/etc/pki/tls/private
   [[ -d ${source_dir} ]] || fail "no key directory found in ${backup_dir}: ${source_dir}"
@@ -486,6 +486,7 @@ function manual-post-install-warning() {
   warn " - Configure the HTTPS VirtualHost in /etc/httpd/conf.d/ssl.conf to \"${listen_directive}\". Possibly adjust or remove  SSLProtocol and SSLCipherSuite"
   warn "   Example available in ${post_installation_examples_dir}/ssl.conf."
   warn " - Update custom configurations from the backup php.ini into /etc/php.ini."
+  warn " - If the wiki will be accessed externally with a different server address (including port), modify LocalSettings.php \$wgServer setting."
   warn "   Example available in ${post_installation_examples_dir}/php.ini. Check 'upload_max_filesize' and 'post_max_size' values."
   [[ -n ${dropped_extensions} ]] && warn " - Re-install the following extensions: ${dropped_extensions}."
   info ""
