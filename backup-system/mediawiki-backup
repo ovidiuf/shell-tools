@@ -3,7 +3,7 @@
 [[ -f $(dirname "$0")/../lib/bash.shlib ]] && . $(dirname $0)/../lib/bash.shlib || { echo "$(dirname $0)/../lib/bash.shlib not found" 1>&2; exit 1; }
 [[ -f $(dirname "$0")/mediawiki.shlib ]] && . $(dirname "$0")/mediawiki.shlib || { echo "$(dirname "$0")/mediawiki.shlib not found" 1>&2; exit 1; }
 
-VERSION=0.2.2
+VERSION=0.2.3
 
 function usage() {
 
@@ -191,7 +191,7 @@ function backup-certificates {
   if cp ${src_dir}/* ${target_dir}; then
     info "${src_dir} private key backup successful"
   else
-    fail "failed to backup private key from ${src_dir}"
+    warn "failed to backup private key from ${src_dir}, no private key will be available in the backup"
   fi
   #
   # remove some generic files to eliminate confusion
