@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
-GRADLE_SHLIB_VERSION=0.1.1
+GRADLE_SHLIB_VERSION=0.2
 
 #
 # return 0 if the directory passed as argument is a Gradle project home, non-zero otherwise
 #
 function is-gradle-project() {
 
-    debug "${FUNCNAME[0]}($@)"
+    debug "${FUNCNAME[0]}($*)"
 
     local project_dir=$1
 
@@ -29,7 +29,7 @@ function is-gradle-project() {
 #
 function get-gradle-runtime-classpath() {
 
-    debug "${FUNCNAME[0]}($@)"
+    debug "${FUNCNAME[0]}($*)"
 
     local project_dir=$1
 
@@ -37,10 +37,26 @@ function get-gradle-runtime-classpath() {
     [[ -d ${project_dir} ]] || fail "${FUNCNAME[0]}(): project_dir not a directory: ${project_dir}"
     [[ -f ${project_dir}/build.gradle ]] || fail "${FUNCNAME[0]}(): project_dir ${project_dir} not a Gradle project directory, build.gradle missing"
 
-    (cd ${project_dir}; gradle -q printClasspath)
+    (cd "${project_dir}" || { echo "failed to cd ${project_dir}"; exit 1; } && gradle -q printClasspath)
 }
 
 function main() {
-
-    java -cp ${CLASSPATH} ${MAIN_CLASS} "$@"
+  declare -a ARGS
+  local index=0
+  local DEBUG=false
+  while [[ -n $1 ]]; do
+    if [[ $1 = "-d" ]]; then
+      DEBUG=true
+    else
+      ARGS[${index}]=$1
+      ((index++))
+    fi
+    shift
+  done
+  local debug_args
+  if ${DEBUG}; then
+    debug_args="-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005"
+  fi
+  set -- "${ARGS[@]}"
+  java -cp "${CLASSPATH}" ${debug_args} "${MAIN_CLASS}" "$@"
 }
