@@ -1,20 +1,40 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC1090,SC2086,SC2015
+for i in bash.shlib brew.shlib; do [ -f "$(dirname $0)"/lib/${i} ] && source "$(dirname $0)"/lib/${i} || { echo "[error]: $(dirname $0)/lib/${i} not found" 1>&2; exit 1; } done
 
-[ -f $(dirname $0)/lib/bash.shlib ] && . $(dirname $0)/lib/bash.shlib || { echo "$(dirname $0)/lib/bash.shlib not found" 1>&2; exit 1; }
-[ -f $(dirname $0)/lib/brew.shlib ] && . $(dirname $0)/lib/brew.shlib || { echo "$(dirname $0)/lib/brew.shlib not found" 1>&2; exit 1; }
+function ensure-brew() {
+  if ! brew --version 2>/dev/null 1>&2; then
+    warn "brew not installed, will install in-line ..."
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  fi
+}
 
-DEBUG=false
+function ensure-up-to-date-bash() {
+  local bash_major_version
+  bash_major_version=$(bash-major-version)
+  if [ ${bash_major_version} -lt 5 ]; then
+    warn "obsolete bash ${bash_major_version} found, installing latest bash"
+    /usr/local/bin/brew install bash
+    warn "the latest bash was installed, re-run $(basename $0)"
+    exit 0
+  fi
+}
+
+ensure-brew
+ensure-up-to-date-bash
 
 declare -A POST_INSTALLATION_STEPS
 
-function help() {
-
+function usage() {
 cat <<EOF
 
 The authoritative source of logic to fully configure a new development Mac or to periodically
-update a previously configured Mac. Executing the utility with 'help' displays this.
+update a previously configured Mac. The script will automatically install brew if not found
+and will automatically upgrade bash to an up-to-date version.
 
-	mac-setup help
+Executing the utility with 'help' or '--help' displays this.
+
+	mac-setup help|--help
 
 Executing the utility with no arguments attempts to install/update all tracked packages.
 Theoretically is safe to repeatedly run the utility without any bad side effects, except
@@ -26,495 +46,242 @@ with brew and we resort to custom only when brew cannot help.
 Individual packages can be installed/upgraded by specifying their name on command line, separated
 by spaces.
 
-
 	mac-setup gnu-sed
 
 EOF
 }
 
-function setup-sequence() {
-
-    debug "args: $*"
-
-    setup-bash-startup-files
-
-    generate-ssh-key
-
-    install-shell-tools
-
-    create-tmp
-
-    #
-    # Package installation
-    #
-
-    local all=true
-
-    #
-    # TODO: this is awkward, we should replace with variable substitution or an associative array
-    #
-
-    local brew=false
-    local bash=false
-    local gnu_sed=false
-    local gnu_getopt=false
-    local thunderbird=false
-    local iterm2=false
-    local secure_pipes=false
-    local intellij=false
-    local java=false
-    local maven=false
-    local git=false
-    local openoffice=false
-    local chrome=false
-    local docker=false
-    local jq=false
-
-    while [ -n "$1" ]; do
-
-        #
-        # TODO: this is awkward, we should replace with variable substitution or an associative array
-        #
-        all=false
-
-        if [ "$1" = "brew" ]; then
-            brew=true
-        elif [ "$1" = "bash" ]; then
-            bash=true
-        elif [ "$1" = "gnu-sed" ]; then
-            gnu_sed=true
-        elif [ "$1" = "gnu-getopt" ]; then
-            gnu_getopt=true
-        elif [ "$1" = "thunderbird" ]; then
-            thunderbird=true
-        elif [ "$1" = "iterm2" ]; then
-            iterm2=true
-        elif [ "$1" = "secure-pipes" ]; then
-            secure_pipes=true
-        elif [ "$1" = "intellij" ]; then
-            intellij=true
-        elif [ "$1" = "java" ]; then
-            java=true
-        elif [ "$1" = "maven" ]; then
-            maven=true
-        elif [ "$1" = "git" ]; then
-            git=true
-        elif [ "$1" = "openoffice" ]; then
-            openoffice=true
-        elif [ "$1" = "chrome" ]; then
-            chrome=true
-        elif [ "$1" = "docker" ]; then
-            docker=true
-        elif [ "$1" = "jq" ]; then
-            jq=true
+function main() {
+    local args
+    while [[ -n "$1" ]]; do
+        if [ "$1" = "-v" ]; then
+            # shellcheck disable=SC2034
+            VERBOSE=true
+        elif [ -z "${args}" ]; then
+            args=$1
+        else
+            args="${args} $1"
         fi
-
-        shift 
+        shift;
     done
+    if [[ "${args}" == "help" || "${args}" == "--help"  ]]; then
+        usage;
+        exit 1
+    fi
+    setup-sequence ${args}
+}
 
-    debug "brew: ${brew}"
-    debug "bash: ${bash}"
-    debug "gnu_sed: ${gnu_sed}"
-    debug "gnu_getopt: ${gnu_getopt}"
-    debug "thunderbird: ${thunderbird}"
-    debug "iterm2: ${iterm2}"
-    debug "secure_pipes: ${secure_pipes}"
-    debug "intellij: ${intellij}"
-    debug "java: ${java}"
-    debug "maven: ${maven}"
-    debug "git: ${git}"
-    debug "openoffice: ${openoffice}"
-    debug "chrome: ${chrome}"
-    debug "docker: ${docker}"
-    debug "jq: ${jq}"
-
-
-    (${all} || ${brew}) && install-or-update-brew
-    (${all} || ${bash}) && install-or-update-bash
-    (${all} || ${gnu_sed}) && install-or-update-gnu-sed
-    (${all} || ${gnu_getopt}) && install-or-update-gnu-getopt
-    (${all} || ${thunderbird}) && install-thunderbird
-    (${all} || ${iterm2}) && install-or-upgrade-iterm2
-    (${all} || ${secure_pipes}) && install-or-upgrade-secure-pipes
-    (${all} || ${intellij}) && install-or-upgrade-intellij
-    (${all} || ${java}) && install-or-upgrade-java
-    (${all} || ${maven}) && install-or-upgrade-maven
-    (${all} || ${git}) && install-or-upgrade-git
-    (${all} || ${openoffice}) && install-or-upgrade-openoffice
-    (${all} || ${chrome}) && install-or-upgrade-chrome
-    (${all} || ${docker}) && install-or-upgrade-docker
-    (${all} || ${jq}) && install-or-upgrade-jq
-
+function setup-sequence() {
+    debug "args: $*"
+    setup-bash-startup-files
+    generate-ssh-key
+    install-shell-tools
+    create-tmp
     #
-    # optional
+    # Packages
     #
+    update-brew
+    update-bash
+    install-or-update-gnu-sed
+    install-or-update-gnu-getopt
+    install-thunderbird
+    install-or-upgrade-iterm2
+    install-or-upgrade-secure-pipes
+    #install-or-upgrade-git
+    install-or-upgrade-git-lfs
+    install-or-upgrade-chrome
 
-    # brew cask install postman
+    #install-or-upgrade-java
+    #install-or-upgrade-docker
+#    (${all} || ${docker}) && install-or-upgrade-docker
+#    (${all} || ${maven}) && install-or-upgrade-maven
+#    (${all} || ${openoffice}) && install-or-upgrade-openoffice
+#    (${all} || ${jq}) && install-or-upgrade-jq
 
     post-configuration-report-and-next-steps
 }
 
-function main() {
-
-    #
-    # This code was written to be as portable as possible, so it can be executed by a really old
-    # version of bash - at this point we don't know if we have a new bash version
-    #
-
-    local args 
-
-    while [ -n "$1" ]; do
-
-        if [ "$1" = "-d" ]; then
-
-            DEBUG=true
-
-        elif [ -z "${args}" ]; then
-
-            args=$1
-
-        else
-
-            args="${args} $1"
-        fi
-
-        shift;
-
-    done
-
-    if [ "${args}" = "help" ]; then
-
-        help;
-        exit 1
-
-    fi
-
-    setup-sequence ${args};
-}
-
-#
-# an error will stop the entire script execution and make it exit with a non-zero value
-#
-function error() {
-
-    echo "[mac-setup error]: $@" 1>&2
-    exit 1
-}
-
-function debug() {
-
-    ${DEBUG} && echo "${FUNCNAME[1]}(): $@" 1>&2;
-}
-
-function info() {
-
-    echo "[mac-setup]: $@" 1>&2;
-}
-
-#
-# Indempotent
-#
 function setup-bash-startup-files() {
-
-    debug 
-
-    [ ! -f ~/.bash_profile ] && { echo 'if [ -f ~/.bashrc ]; then . ~/.bashrc; fi' > ~/.bash_profile; info "created .bash_profile"; }
-
-    if [ ! -f ~/.bashrc ]; then
-
-        touch > ~/.bashrc
-
-        #
-        # convenience aliases
-        #
-
-        echo "alias h='history'" >> ~/.bashrc
-        echo "alias cdt='cd ~/tmp'" >> ~/.bashrc
-        echo "# Docker | clean dangling images" >> ~/.bashrc
-        echo "alias dcd='docker rmi \$(docker images --filter \"dangling=true\" -q --no-trunc)'"  >> ~/.bashrc
-        
-
-        info "created .bashrc"
+    if [[ ! -f ~/.bash_profile ]]; then
+      cat > ~/.bash_profile <<EOF
+export BASH_SILENCE_DEPRECATION_WARNING=1
+[[ -f ~/.bashrc ]] && source ~/.bashrc
+EOF
+      info "created .bash_profile"
+    fi
+    if [[ ! -f ~/.bashrc ]]; then
+      #
+      # convenience aliases
+      #
+      cat >> ~/.bashrc <<EOF
+alias h='history'
+alias cdt='cd ~/tmp'
+# Docker | clean dangling images
+alias dcd='docker rmi \$(docker images --filter \"dangling=true\" -q --no-trunc)'
+EOF
+      info "created .bashrc"
     fi
 }
 
-#
-# Indempotent
-#
 function generate-ssh-key() {
-
-    debug
-
-    [ -f ~/.ssh/id_rsa ] && return 0
-
+    [[ -f ~/.ssh/id_rsa ]] && return 0
     ssh-keygen -q -b 2048 -P "" -f ~/.ssh/id_rsa -t rsa || error "failed to create SSH key"
-
     chmod -R go-rwx ~/.ssh
-
     info "created SSH key"
 }
 
-#
-# Indempotent
-#
 function install-shell-tools() {
-
-    local dir=$(dirname $0)
+    local dir
+    dir=$(dirname $0)
     dir=$(to-absolute-path ${dir})
     add-to-head-of-user-path ${dir}
-
     #
     # "install" cdw
     #
-
     if grep "^alias cdw=" ~/.bashrc >/dev/null; then
-
         debug "cdw already installed"
-
     else
-
         info "installing cdw ..."
         echo "alias cdw='. cdwi'" >> ~/.bashrc
     fi
 }
 
-#
-# Indempotent
-#
 function create-tmp() {
-
     if [ ! -d ~/tmp ]; then
         mkdir ~/tmp
         info "created ~/tmp"
     fi
 }
 
-#
-# Idempotent, if the path exists, won't be added
-#
 function add-to-head-of-user-path() {
-
-    debug $*
-
-    [ -z "$1" ] && return 0
-
+    debug "$*"
+    [[ -z "$1" ]] && return 0
     #
     # if it is already there, noop
     #
-
     local regex=${1//\//\\/}
-
-    debug "regex: ${regex}"
-
     if grep ${regex} ~/.bashrc > /dev/null; then
-
         debug "$1 already in PATH"
         return 0
     fi
-
     echo "export PATH=$1:\${PATH}" >> ~/.bashrc
-
     info "added $1 to the head of user PATH"
-    
-} 
+}
 
 function post-configuration-report-and-next-steps() {
-
-    if [ "${#POST_INSTALLATION_STEPS[@]}" = "0" ]; then
+    if [[ "${#POST_INSTALLATION_STEPS[@]}" = "0" ]]; then
         echo ""
         echo "There are no post-installation steps."
         echo ""
         return 0;
     fi
-
     echo ""
     echo "Post-installation steps:"
     echo ""
-
     local cnt=1
-
     for i in "${!POST_INSTALLATION_STEPS[@]}"; do
-        printf "$((cnt++)). ${POST_INSTALLATION_STEPS[${i}]}"
+        printf '%s' "$((cnt++)). ${POST_INSTALLATION_STEPS[${i}]}"
         echo ""
         echo ""
     done
 }
 
-function install-or-update-brew() {
-
-    if brew --version 1>/dev/null 2>&1; then
-
-        info "upgrading brew ..."
-
-        brew update && info "brew updated" || exit 1
-
-        #
-        # we don't want to exit, we just want to see the warnings
-        #
-        brew doctor && info "brew installation verified" || warn "brew doctor detected problems"
-
-    else
-
-        info "installing brew ..."
-
-        /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" && \
-            info "brew installed" || \
-            { error "failed to install brew"; exit 1; }
-
-        info "installing cask ..."
-
-        brew tap caskroom/cask && info "cask installed" || exit 1
-
-        info "running homebrew doctor ..."
-        brew doctor info "doctor ok" || exit 1
-    fi
+function update-brew() {
+  info "updating brew ..."
+  brew update || fail "failed to update brew"
+  #
+  # we don't want to exit, we just want to see the warnings
+  #
+  brew doctor && info "brew installation verified" || warn "brew doctor detected problems"
 }
 
-function install-or-update-bash() {
-
-    info "installing/upgrading bash ..."
-
-    brew install bash && info "bash installed/upgraded ..." || { error "failed to install/upgrade bash"; exit 1; }
+function update-bash() {
+  info "upgrading bash ..."
+  brew upgrade bash || fail "failed to upgrade bash"
 }
 
 function install-or-update-gnu-sed() {
-
     local upgrade=false
-
     sed --version 2>&1 | grep "GNU sed" > /dev/null 2>&1 && upgrade=true
-
     local text
-
     ${upgrade} && text="upgrad" || text="install"
-
     info "${text}ing GNU sed ..."
-
-    brew install gnu-sed && info "GNU sed ${text}ed" || { error "failed to ${text} GNU sed"; exit 1; }
-
-    #
+    brew install gnu-sed || fail "failed to ${text} GNU sed"
     # --with-default-names has been removed since Jan 2019, so we need to to this instead:
-    #
-
     add-to-head-of-user-path /usr/local/opt/gnu-sed/libexec/gnubin
 }
 
 function install-or-update-gnu-getopt() {
-
     info "installing/upgrading GNU getopt ..."
-
-    brew install gnu-getopt && info "GNU getopt installed/upgraded" || { error "failed to handle GNU getopt"; exit 1; }
-
-#    #
-#    # --with-default-names has been removed since Jan 2019, so we need to to this instead:
-#    #
-#
-#    add-to-head-of-user-path /usr/local/opt/gnu-sed/libexec/gnubin
+    brew install gnu-getopt || fail "failed to handle GNU getopt"
+    # --with-default-names has been removed since Jan 2019, so we need to to this instead:
+    add-to-head-of-user-path /usr/local/opt/gnu-getopt/bin
 }
 
-
 function install-thunderbird() {
-
-    [ -d /Applications/Thunderbird.app ] && { info "Thunderbird already installed"; return 0; }
-
-    info "installing Thunderbird ..."
-
-    brew cask install thunderbird && info "Thunderbird installed ..." || { error "failed to install Thunderbird"; exit 1; }
-
-    POST_INSTALLATION_STEPS["thunderbird"]="Start Thunderbird and configure accounts manually. See https://kb.novaordis.com/index.php/Thunderbird_Configuration#Overview."
+  [[ -d /Applications/Thunderbird.app ]] && { info "Thunderbird already installed"; return 0; }
+  info "installing Thunderbird ..."
+  brew install --cask thunderbird && info "Thunderbird installed ..." || fail "failed to install Thunderbird"
+  POST_INSTALLATION_STEPS["thunderbird"]="Start Thunderbird and configure accounts manually. See https://kb.novaordis.com/index.php/Thunderbird_Configuration#Overview."
 }
 
 function install-or-upgrade-iterm2() {
-
     info "installing iterm2 ..."
-
-    brew cask install iterm2 && info "iterm2 installed" || { error "failed to install iterm2"; exit 1; }
-
+    brew install --cask iterm2 || fail "failed to install iterm2"
     POST_INSTALLATION_STEPS["iterm2"]="Start iterm2, 'Keep in Dock' and move on the right position in Dock.\n   Then configure: Profiles -> Open Profiles -> Edit Profiles -> Default\n       Colors -> Color Presets -> Light Background\n       Text -> Font -> 12 pt Menlo Regular"
 }
 
 function install-or-upgrade-secure-pipes() {
-
     info "installing secure-pipes ..."
-
-    brew cask install secure-pipes && info "secure-pipes installed" || { error "failed to install secure-pipes"; exit 1; }
-
+    brew install --cask secure-pipes || fail "failed to install secure-pipes"
     POST_INSTALLATION_STEPS["secure-pipes"]="Configure secure-pipes"
 }
 
-function install-or-upgrade-intellij() {
+#function install-or-upgrade-git() {
+#    info "installing git and git-lfs ..."
+#    brew install git || fail "failed to install git"
+#}
 
-    info "installing IntelliJ IDEA ..."
-
-    brew cask install intellij-idea && info "IntelliJ IDEA installed" || { error "failed to install IntelliJ IDEA"; exit 1; }
-
-    POST_INSTALLATION_STEPS["intellij"]="Configure IntelliJ\n    * Install license\n    * Install the bash plugin"
-}
-
-function install-or-upgrade-java() {
-
-    warn ""
-    warn ""
-    warn " As per July 2019, java8 not available as a brew install anymore - figure this out, maybe use openjdk?"
-    warn ""
-    warn ""
-}
-
-function install-or-upgrade-maven() {
-
-    info "installing maven ..."
-
-    brew install maven && info "maven installed" || { error "failed to install maven"; exit 1; }
-}
-
-function install-or-upgrade-git() {
-
-    info "installing git and git-lfs ..."
-
-    brew install git && info "git installed" || { error "failed to install git"; exit 1; }
-
-    #
+function install-or-upgrade-git-lfs() {
+    info "installing git-lfs ..."
     # brew install git-lfs does not handle nicely an already installed git-lfs so we query it ourselves
-    #
-
     if is-installed git-lfs; then
-
-        info "git-lfs already installed ..."
+      info "git-lfs already installed ..."
     else
-
-        brew install git-lfs && info "git-lfs installed" || { error "failed to install git-lfs"; exit 1; }
+      brew install git-lfs || fail "failed to install git-lfs"
     fi
 }
 
-function install-or-upgrade-openoffice() {
-
-    info "installing openoffice ..."
-
-    brew cask install openoffice && info "openoffice installed" || { error "failed to install openoffice"; exit 1; }
-}
-
 function install-or-upgrade-chrome() {
-
     info "installing chrome ..."
-
-    brew cask install google-chrome && info "chrome installed" || { error "failed to install chrome"; exit 1; }
+    brew install --cask google-chrome || fail "failed to install chrome"
 }
 
 function install-or-upgrade-docker() {
-
     info "installing Docker Desktop ..."
-
-    brew cask install docker && info "Docker Desktop installed" || { error "failed to install Docker Desktop"; exit 1; }
-
+    brew cask install --cask docker && info "Docker Desktop installed" || { error "failed to install Docker Desktop"; exit 1; }
     POST_INSTALLATION_STEPS["docker"]="Finish Docker Desktop installation\nGo to Applications folder and click on Docker, follow instructions.\nWhen you get access to Docker Desktop, go to Preferences → Kubernetes → Enable Kubernetes"
 }
 
-function install-or-upgrade-jq() {
-
-    info "installing jq ..."
-
-    brew install jq && info "jq installed" || { error "failed to install jq"; exit 1; }
+function install-or-upgrade-maven() {
+    info "installing maven ..."
+    brew install maven && info "maven installed" || { error "failed to install maven"; exit 1; }
 }
 
+function install-or-upgrade-openoffice() {
+    info "installing openoffice ..."
+    brew cask install openoffice && info "openoffice installed" || { error "failed to install openoffice"; exit 1; }
+}
+
+#function install-or-upgrade-java() {
+#    info "installing corretto 11 ..."
+#    brew install --cask corretto11 || fail "failed to install corretto11"
+#}
+
+function install-or-upgrade-jq() {
+    info "installing jq ..."
+    brew install jq && info "jq installed" || { error "failed to install jq"; exit 1; }
+}
 
 main "$@"
 

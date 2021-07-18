@@ -1,25 +1,18 @@
 #!/usr/bin/env bash
-
 #
 # Generic brew functionality. Assumes that bash.shlib was sourced by someone above us.
 #
-
 
 #
 # returns 0 is the specified brew formula is installed, 1 otherwise
 #
 function is-installed() {
-
-    debug "${FUNCNAME[0]}($@)"
-
+    debug "${FUNCNAME[0]}($*)"
     local formula=$1
-
     [[ -z ${formula} ]] && { error "is-installed(): 'formula' not provided"; exit 10; }
-
     local versions
-    versions=$(brew list --versions ${formula}) || return 1
+    versions=$(brew list --versions "${formula}") || return 1
     [[ -z ${versions} ]] && return 1
-
     debug "${formula} version(s) ${versions} installed"
     return 0
 }
