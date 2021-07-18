@@ -1,0 +1,103 @@
+#!/bin/bash
+
+root_name=toera
+
+function display-help() {
+
+cat <<EOF
+
+    toera pack|p
+    toera unpack|u
+
+EOF
+
+}
+
+function main() {
+
+    local command=$1
+
+    if [[ -z "${command}" ]]; then
+        display-status;
+
+    elif [[ "${command}" = "pack" || "${command}" = "p" ]]; then
+
+        pack
+
+    elif [[ "${command}" = "unpack" || "${command}" = "u" ]]; then
+
+        unpack
+
+    elif [[ "${command}" = "help" || "${command}" = "--help" ]]; then
+
+        display-help
+    else
+        echo "[error]: unknown command: ${command}" 1>&2; exit 1;
+    fi
+}
+
+function is-packed() {
+
+    [[ -f ~/tmp/${root_name}.zip ]] && return 0 || return 1
+}
+
+function is-unpacked() {
+
+    [[ -d ~/tmp/${root_name} ]] && return 0 || return 1
+}
+
+function display-status() {
+
+    if is-packed; then
+        if is-unpacked; then
+            echo "[error]: both packed and unpacked, this is an invalid state, go to ~/tmp and check" 1>&2;
+        else
+            echo "packed, safe"
+        fi
+    else
+        if ! is-unpacked; then
+            echo "[error]: neither packed or unpacked, seems to be missing, this is an invalid state, go to ~/tmp and check" 1>&2;
+        else
+            echo "unpacked, unsafe"
+        fi
+    fi
+}
+
+function pack() {
+
+    if is-packed; then
+        echo "already packed, nothing to do ..."
+        return 0
+    fi
+
+    if (cd ~/tmp; zip -r ${root_name}.zip ./${root_name}); then
+
+        echo "packed"
+
+        if rm -r ~/tmp/${root_name}; then
+
+            echo "deleted"
+        fi
+    fi
+}
+
+function unpack() {
+
+    if is-unpacked; then
+        echo "already unpacked, nothing to do ..."
+        return 0
+    fi
+
+    if unzip ~/tmp/${root_name}.zip -d ~/tmp; then
+
+        echo "unpacked"
+
+        if rm ~/tmp/${root_name}.zip; then
+
+            echo "deleted"
+        fi
+    fi
+}
+
+main "$@"
+
