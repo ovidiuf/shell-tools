@@ -89,6 +89,7 @@ function setup-sequence() {
     install-or-upgrade-secure-pipes
     install-or-upgrade-git-lfs
     install-or-upgrade-chrome
+    install-or-upgrade-rsync
 
     #install-or-upgrade-git
     #install-or-upgrade-java
@@ -253,6 +254,11 @@ function install-or-upgrade-git-lfs() {
 function install-or-upgrade-chrome() {
     info "installing chrome ..."
     brew install --cask google-chrome || fail "failed to install chrome"
+}
+
+function install-or-upgrade-rsync() {
+    info "installing rsync ..."
+    brew install rsync || fail "failed to install rsync"
 }
 
 #
