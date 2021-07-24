@@ -87,16 +87,15 @@ function setup-sequence() {
     install-thunderbird
     install-or-upgrade-iterm2
     install-or-upgrade-secure-pipes
-    #install-or-upgrade-git
     install-or-upgrade-git-lfs
     install-or-upgrade-chrome
 
+    #install-or-upgrade-git
     #install-or-upgrade-java
     #install-or-upgrade-docker
-#    (${all} || ${docker}) && install-or-upgrade-docker
-#    (${all} || ${maven}) && install-or-upgrade-maven
-#    (${all} || ${openoffice}) && install-or-upgrade-openoffice
-#    (${all} || ${jq}) && install-or-upgrade-jq
+    #install-or-upgrade-maven
+    #install-or-upgrade-openoffice
+    #install-or-upgrade-jq
 
     post-configuration-report-and-next-steps
 }
@@ -116,6 +115,10 @@ EOF
       cat >> ~/.bashrc <<EOF
 alias h='history'
 alias cdt='cd ~/tmp'
+alias nodocker='ssh -p 58585 docker@192.168.1.2'
+alias rackstation='ssh root@192.168.1.4'
+alias not500='ssh -p 58585 root@192.168.1.10'
+alias noper430='ssh root@192.168.1.13'
 # Docker | clean dangling images
 alias dcd='docker rmi \$(docker images --filter \"dangling=true\" -q --no-trunc)'
 EOF
@@ -237,11 +240,6 @@ function install-or-upgrade-secure-pipes() {
     POST_INSTALLATION_STEPS["secure-pipes"]="Configure secure-pipes"
 }
 
-#function install-or-upgrade-git() {
-#    info "installing git and git-lfs ..."
-#    brew install git || fail "failed to install git"
-#}
-
 function install-or-upgrade-git-lfs() {
     info "installing git-lfs ..."
     # brew install git-lfs does not handle nicely an already installed git-lfs so we query it ourselves
@@ -257,6 +255,20 @@ function install-or-upgrade-chrome() {
     brew install --cask google-chrome || fail "failed to install chrome"
 }
 
+#
+# Under consideration
+#
+
+function install-or-upgrade-git() {
+    info "installing git and git-lfs ..."
+    brew install git || fail "failed to install git"
+}
+
+function install-or-upgrade-java() {
+    info "installing corretto 11 ..."
+    brew install --cask corretto11 || fail "failed to install corretto11"
+}
+
 function install-or-upgrade-docker() {
     info "installing Docker Desktop ..."
     brew cask install --cask docker && info "Docker Desktop installed" || { error "failed to install Docker Desktop"; exit 1; }
@@ -270,13 +282,8 @@ function install-or-upgrade-maven() {
 
 function install-or-upgrade-openoffice() {
     info "installing openoffice ..."
-    brew cask install openoffice && info "openoffice installed" || { error "failed to install openoffice"; exit 1; }
+    brew install --cask openoffice && info "openoffice installed" || { error "failed to install openoffice"; exit 1; }
 }
-
-#function install-or-upgrade-java() {
-#    info "installing corretto 11 ..."
-#    brew install --cask corretto11 || fail "failed to install corretto11"
-#}
 
 function install-or-upgrade-jq() {
     info "installing jq ..."
