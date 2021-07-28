@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-BASH_SHLIB_VERSION=1.14.3
+BASH_SHLIB_VERSION=1.15.0
 
 #
 # Generic bash functionality
@@ -1018,4 +1018,43 @@ function yaml-path-exists() {
     [[ -n ${output} && ${output} != "null" ]] && \
         { debug "path ${path} exists"; return 0; } || \
         { debug "path ${path} does not exist"; return 1; }
+}
+
+#
+# Execute the binary specified as first argument and extract various information about the runtime. Update the
+# JAVA_INFO associative array with:
+# - major_version
+# - minor_version (not yet implemented)
+# - patch_version (not yet implemented)
+# - vendor (Amazon, OpenJDK, etc)
+# Fail if unsuccessful.
+function java-info() {
+    debug "${FUNCNAME[0]}($*)"
+    local java_bin=$1
+    declare -A | grep -q "declare -A JAVA_INFO" || fail "no 'JAVA_INFO' associative array declared"
+    [[ -z ${java_bin} ]] && fail "'java_bin' not provided"
+    [[ -f ${java_bin} ]] || fail "Java binary does not exist, or it cannot be read: ${java_bin}"
+    [[ -x ${java_bin} ]] || fail "Java binary is not executable: ${java_bin}"
+    local output major_version
+    # shellcheck disable=SC2046
+    while IFS= read -r line; do
+      output="${output} ${line}"
+      if [[ ${line} =~ "Corretto-" ]]; then
+        JAVA_INFO['vendor']=Amazon
+        major_version=${line##*Corretto-}
+        major_version=${major_version%%.*}
+        JAVA_INFO['major_version']=${major_version}
+        break;
+      elif [[ ${line} =~ Java\(TM\) ]]; then
+        JAVA_INFO['vendor']=Oracle
+        major_version=${line##*build }
+        if [[ ${major_version:0:2} = '1.' ]]; then
+          major_version=${major_version:2}
+        fi
+        major_version=${major_version%%.*}
+        JAVA_INFO['major_version']=${major_version}
+        break;
+      fi
+    done <<< $("${java_bin}" -version 2>&1)
+    [[ -z ${JAVA_INFO['major_version']} ]] && { echo "failed to extract version information from ${java_bin} -version output:${output}" 1>&2; exit 1; }
 }
