@@ -82,6 +82,7 @@ function setup-sequence() {
     #
     update-brew
     update-bash
+    brew install tree
     install-or-update-gnu-sed
     install-or-update-gnu-getopt
     install-thunderbird
