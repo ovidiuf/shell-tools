@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 
-[[ -f $(dirname "$0")/../lib/bash.shlib ]] && . $(dirname $0)/../lib/bash.shlib || { echo "$(dirname $0)/../lib/bash.shlib not found" 1>&2; exit 1; }
-[[ -f $(dirname "$0")/mediawiki.shlib ]] && . $(dirname "$0")/mediawiki.shlib || { echo "$(dirname "$0")/mediawiki.shlib not found" 1>&2; exit 1; }
+[[ -f $(dirname "$0")/../lib/bash.shlib ]] && . "$(dirname $0)"/../lib/bash.shlib || { echo "$(dirname $0)/../lib/bash.shlib not found" 1>&2; exit 1; }
+[[ -f $(dirname "$0")/mediawiki.shlib ]] && . "$(dirname $0)"/mediawiki.shlib || { echo "$(dirname "$0")/mediawiki.shlib not found" 1>&2; exit 1; }
 
-VERSION=0.2.3
+# shellcheck disable=SC2034
+VERSION=0.2.4
 
 function usage() {
 
@@ -35,6 +36,7 @@ EOF
 
 function main() {
 
+  # shellcheck disable=SC2015
   process-common-arguments "$@" && set -- "${ARGS[@]}" || fail "failed to process common arguments"
 
   ${HELP} || [[ -z $1 ]] && { usage; exit 0; }
@@ -49,6 +51,7 @@ function main() {
 
   local tmp_dir
   tmp_dir=$(get-tmp-dir) || exit 1
+  # shellcheck disable=SC2064
   trap "mediawiki-cleanup ${tmp_dir} ${OPTIONS[--preserve-tmp]}" EXIT
 
   backup-mediawiki "${ARGS[0]}" "${tmp_dir}" "${OPTIONS[--target-dir]}"
@@ -120,12 +123,12 @@ function backup-database() {
   debug "database_name: ${database_name}"
 
   local database_backup_dir=${tmp_dir}/${DATABASE_BACKUP_DIR_NAME}
-  mkdir ${database_backup_dir} || fail "failed to create database backup directory: ${database_backup_dir}"
+  mkdir "${database_backup_dir}" || fail "failed to create database backup directory: ${database_backup_dir}"
 
   local backup_file=${tmp_dir}/${DATABASE_BACKUP_FILE}
   debug "backing up database in ${backup_file} ..."
-  if mysqldump -h ${database_host} -u ${database_user} --password=${database_password} --default-character-set=binary ${database_name} > ${backup_file}; then
-    info "database backup successful, backup size $(wc -c ${backup_file} | awk '{print $1}') bytes"
+  if mysqldump -h "${database_host}" -u "${database_user}" --password="${database_password}" --default-character-set=binary "${database_name}" > "${backup_file}"; then
+    info "database backup successful, backup size $(wc -c "${backup_file}" | awk '{print $1}') bytes"
   else
     fail "failed to backup database"
   fi
@@ -150,14 +153,13 @@ function backup-server-files() {
 }
 
 function backup-httpd-configuration {
-
   debug "${FUNCNAME[0]}($*)"
   local tmp_dir=$1 # tmp dir is supposed to exist
   debug "backing up httpd configuration to ${tmp_dir} ..."
 
   local target_dir=${tmp_dir}/etc/httpd
   mkdir -p "${target_dir}"
-  if cp -r /etc/httpd/conf /etc/httpd/conf.d /etc/httpd/conf.modules.d ${target_dir}; then
+  if cp -r /etc/httpd/conf /etc/httpd/conf.d /etc/httpd/conf.modules.d "${target_dir}"; then
     info "httpd configuration backup successful"
   else
     fail "failed to backup httpd configuration"
@@ -165,7 +167,6 @@ function backup-httpd-configuration {
 }
 
 function backup-certificates {
-
   debug "${FUNCNAME[0]}($*)"
   local tmp_dir=$1 # tmp dir is supposed to exist
   debug "backing up TLS certificates to ${tmp_dir} ..."
@@ -173,7 +174,7 @@ function backup-certificates {
   local src_dir="/etc/pki/tls/certs"
   local target_dir=${tmp_dir}${src_dir}
   mkdir -p "${target_dir}"
-  if cp ${src_dir}/*.crt ${target_dir}; then
+  if cp ${src_dir}/*.crt "${target_dir}"; then
     info "${src_dir}/*.crt TLS certificate backup successful"
   else
     fail "failed to backup TLS certificates *.crt from ${src_dir}"
@@ -181,14 +182,14 @@ function backup-certificates {
   #
   # remove some generic files to eliminate confusion
   #
-  rm -f ${target_dir}/ca-bundle.crt
-  rm -f ${target_dir}/ca-bundle.trust.crt
-  rm -f ${target_dir}/localhost.crt
+  rm -f "${target_dir}/ca-bundle.crt"
+  rm -f "${target_dir}/ca-bundle.trust.crt"
+  rm -f "${target_dir}/localhost.crt"
 
   src_dir="/etc/pki/tls/private"
   target_dir=${tmp_dir}${src_dir}
   mkdir -p "${target_dir}"
-  if cp ${src_dir}/* ${target_dir}; then
+  if cp ${src_dir}/* "${target_dir}"; then
     info "${src_dir} private key backup successful"
   else
     warn "failed to backup private key from ${src_dir}, no private key will be available in the backup"
@@ -196,7 +197,19 @@ function backup-certificates {
   #
   # remove some generic files to eliminate confusion
   #
-  rm -f ${target_dir}/localhost.key
+  rm -f "${target_dir}/localhost.key"
+  #
+  # backup Let's Encrypt files, if they exist
+  #
+  src_dir="/etc/letsencrypt"
+  target_dir="${tmp_dir}/etc"
+  if [[ -d ${src_dir} ]]; then
+      if cp -r ${src_dir} "${target_dir}"; then
+        info "${src_dir} Let's Encrypt backup successful"
+      else
+        warn "failed to backup Let's Encrypt directory ${src_dir}, no Let's Encrypt private key or certificates will be available in the backup"
+      fi
+  fi
 }
 
 function backup-php-configuration {
@@ -211,7 +224,7 @@ function backup-php-configuration {
   local src_dir="/etc"
   local target_dir=${tmp_dir}${src_dir}
   [[ ! -d ${target_dir} ]] && mkdir -p "${target_dir}"
-  if cp ${src_dir}/php.ini* ${target_dir}; then
+  if cp ${src_dir}/php.ini* "${target_dir}"; then
     info "PHP configuration backup successful"
   else
     fail "failed to backup PHP configuration"
@@ -227,7 +240,7 @@ function backup-network-configuration() {
   local src_dir="/etc/sysconfig/network-scripts"
   local target_dir=${tmp_dir}${src_dir}
   mkdir -p "${target_dir}"
-  if cp ${src_dir}/ifcfg-* ${target_dir}; then
+  if cp ${src_dir}/ifcfg-* "${target_dir}"; then
     rm -rf "${target_dir}/ifcfg-lo"
     info "${src_dir}/ifcfg-* backup successful"
   else
@@ -239,7 +252,7 @@ function backup-network-configuration() {
   if [[ ! -f ${src_dir}/iptables ]]; then
       warn "no ${src_dir}/iptables file found, it will not be backed up"
   else
-    if cp ${src_dir}/iptables ${target_dir}; then
+    if cp ${src_dir}/iptables "${target_dir}"; then
       info "${src_dir}/iptables backup successful"
     else
       fail "failed to backup iptables configuration from ${src_dir}"
@@ -260,7 +273,7 @@ function backup-mediawiki-tools() {
   fi
   local target_dir=${tmp_dir}${src_dir}
   mkdir -p "${target_dir}"
-  if cp ${src_dir}/* ${target_dir}; then
+  if cp ${src_dir}/* "${target_dir}"; then
     rm -rf "${target_dir}/read-temperature"
     info "${src_dir} backup successful"
   else
@@ -275,8 +288,8 @@ function build-backup-archive() {
   local target_dir=$2
   local name command
   target_dir=${target_dir%/}
-  name=$(basename ${dated_tmp_dir})
-  command="tar -cpszf ${target_dir}/${name}.tgz -C $(dirname ${dated_tmp_dir}) ${name}"
+  name=$(basename "${dated_tmp_dir}")
+  command="tar -cpszf ${target_dir}/${name}.tgz -C $(dirname "${dated_tmp_dir}") ${name}"
   debug "executing ${command}"
   if ${command}; then
     info "backup archive: ${target_dir}/${name}.tgz"
