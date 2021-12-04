@@ -91,14 +91,16 @@ function setup-sequence() {
     install-or-upgrade-git-lfs
     install-or-upgrade-chrome
     install-or-upgrade-rsync
+    install-or-upgrade-openoffice
 
     #install-or-upgrade-git
     #install-or-upgrade-java
     #install-or-upgrade-docker
     #install-or-upgrade-maven
-    #install-or-upgrade-openoffice
+
     #install-or-upgrade-jq
 
+    POST_INSTALLATION_STEPS["catch-all"]="Configure bash as default shell"
     post-configuration-report-and-next-steps
 }
 
