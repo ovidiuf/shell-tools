@@ -4,16 +4,14 @@
 #
 
 #
-# Send to stdout the current prompt. Handle git directories detecting and displaying the work tree and the current
-# branch.
+# Send to stdout the current prompt. Handle git directories detecting and displaying the work
+# tree and the current branch. To use, source this file in .bashrc and set PS1 as such:
+#
+# source /Users/ovidiu/shell-tools/lib/interactive.shlib
+# export PS1="\$(generate-prompt)"
 #
 function generate-prompt() {
-
-    local prompt
-    local git_dir
-    local work_tree_root_abs_path
-    local tree_symbol="ᛘ"
-    local branch_symbol="ᚴ"
+    local prompt git_dir work_tree_root_abs_path tree_symbol="ᛘ" branch_symbol="ᚴ"
     if git_dir=$(git rev-parse --git-dir 2>&1); then
         #
         # we are in a git directory, provide information about worktree and branch
@@ -39,15 +37,15 @@ function generate-prompt() {
                 prompt="linked-${tree_symbol}:${tail}"
             fi
         fi
-        local branch=$(git rev-parse --abbrev-ref HEAD)
+        local branch rel_path
+        branch=$(git rev-parse --abbrev-ref HEAD)
         prompt+=" ${branch_symbol}:${branch}"
-        local rel_path=$(git rev-parse --show-prefix)
+        rel_path=$(git rev-parse --show-prefix)
         rel_path=${rel_path%/}
         prompt+=" ${rel_path}"
     else
         prompt=$(pwd)
     fi
-
     prompt+="> "
     echo "${prompt}"
 }
