@@ -1,48 +1,52 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2015
 
-[[ -f $(dirname "$0")/../lib/bash.shlib ]] && . $(dirname $0)/../lib/bash.shlib || { echo "$(dirname $0)/../lib/bash.shlib not found" 1>&2; exit 1; }
-[[ -f $(dirname "$0")/mediawiki.shlib ]] && . $(dirname $0)/mediawiki.shlib || { echo "$(dirname "$0")/mediawiki.shlib not found" 1>&2; exit 1; }
+[[ -f $(dirname "$0")/../lib/bash.shlib ]] && . "$(dirname $0)/../lib/bash.shlib" || { echo "$(dirname $0)/../lib/bash.shlib not found" 1>&2; exit 1; }
+# shellcheck disable=SC2086
+[[ -f $(dirname "$0")/mediawiki.shlib ]] && . "$(dirname $0)/mediawiki.shlib" || { echo "$(dirname "$0")/mediawiki.shlib not found" 1>&2; exit 1; }
 
-VERSION=0.2.1
+# shellcheck disable=SC2034
+VERSION=0.3.0-pre.1
 
 function usage() {
 
 cat <<EOF
 
-$(basename $0) is a tool to restore a mediawiki instance (database content, files, extensions, configuration and
-everything is needed to fully restore the instance) from a backup file created by mediawiki-backup script.
-$(basename $0) reads the backup file and restores the state of the old instance, given a new pre-installed but empty
-new instance.
+$(basename "$0") is a tool to restore a mediawiki instance (database content, files,
+extensions, configuration and everything is needed to a fully functional instance)
+from a backup file created by mediawiki-backup script. $(basename "$0") reads the
+backup file and restores the state of the old instance, given a new pre-installed
+but empty MediaWiki instance.
 
 The script will interactively request the MySQL root account password.
 
 Usage:
 
-  $(basename $0) <backup-file> <mediawiki-installation-dir> [-d|--post-install-dir post-installation-examples-dir]
+  $(basename "$0") <backup-file> <mediawiki-installation-dir> [-d|--post-install-dir post-installation-examples-dir]
 
 Arguments:
 
   <backup-file> is the backup file produced by the peer mediawiki-backup script.
 
-  <mediawiki-installation-dir> is the local file system directory where the mediawiki instance to restore state into
-    is installed (by default /var/www/mediawiki-<version>).
+  <mediawiki-installation-dir> is the local mediawiki directory. The default value
+      is /var/www/mediawiki-<version>.
 
 Options:
 
- -d|--post-install-dir <post-installation-examples-dir> - the directory where the post-installation examples are
-    written. If not specified the local directory is used to store the examples.
+  -d|--post-install-dir <post-installation-examples-dir> - the directory where the
+      post-installation examples are written. If not specified the local directory
+      is used to store the examples. The directory must exists, this script will not
+      create it.
 
- -p|--preserve-tmp Optional boolean flag that instructs the program to preserve the temporary directory.
+  -p|--preserve-tmp Optional boolean flag that instructs the program to preserve
+      the temporary directory.
 
 EOF
 }
 
 function main() {
-
   process-common-arguments "$@" && set -- "${ARGS[@]}" || fail "failed to process common arguments"
-
   ${HELP} || [[ -z $1 ]] && { usage; exit 0; }
-
   unset ARGS
   declare -a ARGS
   declare -A OPTIONS
@@ -50,113 +54,102 @@ function main() {
   OPTIONS["--post-install-dir"]="string -d"
   process-options "$@"
   fail-on-unknown-arguments 2
-
   local tmp_dir
   tmp_dir=$(get-tmp-dir) || exit 1
-  trap "mediawiki-cleanup ${tmp_dir} ${OPTIONS[--preserve-tmp]}" EXIT
-
-  restore-mediawiki "${ARGS[0]}" "${ARGS[1]}" "${tmp_dir}" "${OPTIONS[--post-install-dir]}"
+  # shellcheck disable=SC2064
+  trap "mediawiki_cleanup ${tmp_dir} ${OPTIONS[--preserve-tmp]}" EXIT
+  restore_mediawiki "${ARGS[0]}" "${ARGS[1]}" "${tmp_dir}" "${OPTIONS[--post-install-dir]}"
 }
 
-function restore-mediawiki() {
-
+function restore_mediawiki() {
   debug "${FUNCNAME[0]}($*)"
   local backup_file=$1
   local target_mediawiki_dir=$2
   local tmp_dir=$3
   local post_installation_examples_parent_dir=$4
-
   debug "backup_file: ${backup_file}"
   debug "target_mediawiki_dir: ${target_mediawiki_dir}"
   debug "tmp_dir: ${tmp_dir}"
-
   [[ -z ${post_installation_examples_parent_dir} ]] && post_installation_examples_parent_dir=$(pwd)
   debug "post_installation_examples_parent_dir: ${post_installation_examples_parent_dir}"
-
-  ensure-root
-
+  if [[ $(uname) != "Darwin" ]]; then
+    ensure_root
+  fi
   local target_mediawiki_version
-  target_mediawiki_version=$(ensure-valid-mediawiki-dir "${target_mediawiki_dir}")
-
+  target_mediawiki_version=$(ensure_valid_mediawiki_dir "${target_mediawiki_dir}")
   local database_root_password
-  database_root_password=$(read-database-root-password)
-
+  database_root_password=$(read_database_root_password)
   local backup_dir dropped_skins_SEPARATOR_dropped_extensions
-  backup_dir=$(expand-backup "${backup_file}" "${tmp_dir}") || exit 1
+  backup_dir=$(expand_backup "${backup_file}" "${tmp_dir}") || exit 1
   debug "backup_dir: ${backup_dir}"
-
   local source_mediawiki_version
-  source_mediawiki_version=$(ensure-valid-mediawiki-dir "$(backup-dir-to-mediawiki-dir ${backup_dir})")
+  # shellcheck disable=SC2086
+  source_mediawiki_version=$(ensure_valid_mediawiki_dir "$(backup_dir_to_mediawiki_dir ${backup_dir})")
   debug "target MediaWiki version: ${target_mediawiki_version}, source MediaWiki version: ${source_mediawiki_version}"
-
-  restore-database "${backup_dir}" "${database_root_password}"
-
-  dropped_skins_SEPARATOR_dropped_extensions=$(restore-local-settings "${backup_dir}" "${target_mediawiki_dir}") || exit 1
-
-  restore-image-files "${backup_dir}" "${target_mediawiki_dir}"
-
-  restore-certificates-and-keys "${backup_dir}"
-
-  restore-top-symbolic-link "${backup_dir}" "${target_mediawiki_dir}"
-
-  manual-post-install-warning "${backup_dir}" "${target_mediawiki_dir}" "${dropped_skins_SEPARATOR_dropped_extensions}" \
+  restore_database "${backup_dir}" "${database_root_password}"
+  exit 0
+  dropped_skins_SEPARATOR_dropped_extensions=$(restore_local_settings "${backup_dir}" "${target_mediawiki_dir}") || exit 1
+  restore_image_files "${backup_dir}" "${target_mediawiki_dir}"
+  restore_certificates_and_keys "${backup_dir}"
+  restore_top_symbolic_link "${backup_dir}" "${target_mediawiki_dir}"
+  manual_post_install_warning "${backup_dir}" "${target_mediawiki_dir}" "${dropped_skins_SEPARATOR_dropped_extensions}" \
     "${source_mediawiki_version}" "${target_mediawiki_version}" "${post_installation_examples_parent_dir}"
 }
 
 #
 # Expand the backup file and ensure it is a valid mediawiki backup. Return the backup directory at stdout.
 #
-function expand-backup() {
-
+function expand_backup() {
   debug "${FUNCNAME[0]}($*)"
-
   local backup_file=$1
   local tmp_dir=$2
   [[ -f ${backup_file} ]] || fail "no such backup file: ${backup_file}"
   info "extracting backup from ${backup_file} ..."
-  tar xfz ${backup_file} -C ${tmp_dir} || fail "failed to extract backup file ${backup_file} in ${tmp_dir}"
+  tar xfz "${backup_file}" -C "${tmp_dir}" || fail "failed to extract backup file ${backup_file} in ${tmp_dir}"
   local backup_dir_name
-  backup_dir_name=$(ls ${tmp_dir})
+  backup_dir_name=$(ls "${tmp_dir}")
   local backup_dir=${tmp_dir}/${backup_dir_name}
   [[ -d ${backup_dir} ]] || fail "the backed up content directory does not exist: ${backup_dir}"
-  echo ${backup_dir}
+  echo "${backup_dir}"
 }
 
-function restore-database() {
-
+function restore_database() {
   debug "${FUNCNAME[0]}($*)"
   local backup_dir=$1
   local database_root_password=$2
   [[ -z ${backup_dir} ]] && fail "'backup_dir' not provided"
   [[ -d ${backup_dir} ]] || fail "no such backup directory: ${backup_dir}"
   [[ -z ${database_root_password} ]] && fail "'database_root_password' not provided"
-
   local source_mediawiki_dir source_local_settings_file database_host database_user database_password database_name
-  source_mediawiki_dir=$(backup-dir-to-mediawiki-dir "${backup_dir}")
+  source_mediawiki_dir=$(backup_dir_to_mediawiki_dir "${backup_dir}")
   local source_local_settings_file=${source_mediawiki_dir}/LocalSettings.php
   [[ -f ${source_local_settings_file} ]] || fail "no LocalSettings.php found in ${source_mediawiki_dir}"
-
-  database_host=$(get-php-defined-value "${source_local_settings_file}" wgDBserver) || exit 1
-  database_user=$(get-php-defined-value "${source_local_settings_file}" wgDBuser) || exit 1
-  database_password=$(get-php-defined-value "${source_local_settings_file}" wgDBpassword) || exit 1
-  database_name=$(get-php-defined-value "${source_local_settings_file}" wgDBname) || exit 1
-
+  database_host=$(get_php_defined_value "${source_local_settings_file}" wgDBserver) || exit 1
+  database_user=$(get_php_defined_value "${source_local_settings_file}" wgDBuser) || exit 1
+  database_password=$(get_php_defined_value "${source_local_settings_file}" wgDBpassword) || exit 1
+  database_name=$(get_php_defined_value "${source_local_settings_file}" wgDBname) || exit 1
   debug "database_host: ${database_host}"
   debug "database_user: ${database_user}"
   debug "database_password: ${database_password}"
   debug "database_name: ${database_name}"
-
-  if create-database "${backup_dir}" "${database_host}" "${database_user}" \
-                     "${database_password}" "${database_name}" "${database_root_password}"; then
-      restore-database-content "${backup_dir}" "${database_user}" "${database_password}" "${database_name}"
+  if create_database "${backup_dir}" \
+                     "${database_host}" \
+                     "${database_user}" \
+                     "${database_password}" \
+                     "${database_name}" \
+                     "${database_root_password}"; then
+      restore_database_content \
+                      "${backup_dir}" \
+                     "${database_user}" \
+                     "${database_password}" \
+                     "${database_name}"
   fi
 }
 
 #
 # Returns 0 if the database was created, 1 if the database already exists. Fails on database creation failure.
 #
-function create-database() {
-
+function create_database() {
   debug "${FUNCNAME[0]}($*)"
   local backup_dir=$1
   local database_host=$2
@@ -170,15 +163,13 @@ function create-database() {
   [[ -z ${database_password} ]] && fail "'database_password' not provided"
   [[ -z ${database_name} ]] && fail "'database_name' not provided"
   [[ -z ${database_root_password} ]] && fail "'database_root_password' not provided"
-
   local result
-  result=$(mysql -u root -p${database_root_password} -e "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME='${database_name}'")
+  result=$(mysql -u root -p"${database_root_password}" -e "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME='${database_name}'")
   if [[ -n ${result} ]]; then
     info "database ${database_name} already exists, will not create and will not restore content; delete the database if you want to restore content"
     return 1
   fi
-
-cat <<EOF > ${backup_dir}/database-creation-statements.sql
+  cat <<EOF > "${backup_dir}/database-creation-statements.sql"
 CREATE USER '${database_user}'@'${database_host}' IDENTIFIED BY '${database_password}';
 CREATE DATABASE ${database_name};
 GRANT ALL PRIVILEGES ON ${database_name}.* TO '${database_user}'@'${database_host}';
@@ -187,7 +178,7 @@ COMMIT;
 exit
 EOF
   info "creating database ${database_name} ..."
-  if mysql -u root -p${database_root_password} < ${backup_dir}/database-creation-statements.sql; then
+  if mysql -u root -p"${database_root_password}" < "${backup_dir}/database-creation-statements.sql"; then
     info "database ${database_name} and user ${database_user} successfully created"
     return 0
   else
@@ -195,8 +186,7 @@ EOF
   fi
 }
 
-function restore-database-content() {
-
+function restore_database_content() {
   debug "${FUNCNAME[0]}($*)"
   local backup_dir=$1
   local database_user=$2
@@ -206,13 +196,11 @@ function restore-database-content() {
   [[ -z ${database_user} ]] && fail "'database_user' not provided"
   [[ -z ${database_password} ]] && fail "'database_password' not provided"
   [[ -z ${database_name} ]] && fail "'database_name' not provided"
-
   # shellcheck disable=SC2153
   local database_backup_file=${backup_dir}/${DATABASE_BACKUP_FILE}
   [[ -f ${database_backup_file} ]] || fail "database backup file not found: ${database_backup_file}"
-
   info "restoring content for database ${database_name} ..."
-  if mysql -u ${database_user} -p${database_password} ${database_name} < ${database_backup_file}; then
+  if mysql -u "${database_user}" -p"${database_password}" "${database_name}" < "${database_backup_file}"; then
     info "database ${database_name} successfully restored"
   else
     fail "failed to restore database ${database_name}"
@@ -223,8 +211,7 @@ function restore-database-content() {
 # Return at stdout the comma-separated list of dropped skins (may be empty), followed by SEPARATOR, followed by the
 # comma-separated list of extensions that were not found installed locally (they will have to be installed manually)
 #
-function restore-local-settings() {
-
+function restore_local_settings() {
   debug "${FUNCNAME[0]}($*)"
   local backup_dir=$1
   local target_mediawiki_dir=$2
@@ -233,7 +220,7 @@ function restore-local-settings() {
 
   local source_mediawiki_dir source_local_settings_file dropped_skins dropped_extensions target_local_settings_file
 
-  source_mediawiki_dir=$(backup-dir-to-mediawiki-dir "${backup_dir}")
+  source_mediawiki_dir=$(backup_dir_to_mediawiki_dir "${backup_dir}")
   source_local_settings_file=${source_mediawiki_dir}/LocalSettings.php
   [[ -f ${source_local_settings_file} ]] || fail "no LocalSettings.php found in ${source_mediawiki_dir}"
 
@@ -323,7 +310,7 @@ function filter-locally-absent-extensions() {
   echo "${extensions_to_remove}"
 }
 
-function restore-image-files() {
+function restore_image_files() {
 
   debug "${FUNCNAME[0]}($*)"
   local backup_dir=$1
@@ -331,7 +318,7 @@ function restore-image-files() {
   [[ -z ${backup_dir} ]] && fail "'backup_dir' not provided"
   [[ -z ${target_mediawiki_dir} ]] && fail "'target_mediawiki_dir' not provided"
   local source_mediawiki_dir
-  source_mediawiki_dir=$(backup-dir-to-mediawiki-dir "${backup_dir}")
+  source_mediawiki_dir=$(backup_dir_to_mediawiki_dir "${backup_dir}")
 
   local source_image_dir=${source_mediawiki_dir}/images
   [[ -d ${source_image_dir} ]] || fail "no image directory found in ${source_mediawiki_dir}"
@@ -345,7 +332,7 @@ function restore-image-files() {
   info "$(basename ${target_image_dir}) directory restored"
 }
 
-function restore-certificates-and-keys() {
+function restore_certificates_and_keys() {
 
   debug "${FUNCNAME[0]}($*)"
   local backup_dir=$1
@@ -376,7 +363,7 @@ function restore-skins() {
   [[ -z ${backup_dir} ]] && fail "'backup_dir' not provided"
   [[ -z ${target_mediawiki_dir} ]] && fail "'target_mediawiki_dir' not provided"
   local source_mediawiki_dir
-  source_mediawiki_dir=$(backup-dir-to-mediawiki-dir "${backup_dir}")
+  source_mediawiki_dir=$(backup_dir_to_mediawiki_dir "${backup_dir}")
 
   local skins="CologneBlue Modern"
 
@@ -402,44 +389,44 @@ function restore-extensions() {
   [[ -z ${backup_dir} ]] && fail "'backup_dir' not provided"
   [[ -z ${target_mediawiki_dir} ]] && fail "'target_mediawiki_dir' not provided"
   local source_mediawiki_dir
-  source_mediawiki_dir=$(backup-dir-to-mediawiki-dir "${backup_dir}")
+  source_mediawiki_dir=$(backup_dir_to_mediawiki_dir "${backup_dir}")
 
   local extensions="BreadCrumbs"
 
   for e in ${extensions}; do
     local source_extension_dir=${source_mediawiki_dir}/extensions/${e}
     [[ -d ${source_extension_dir} ]] || fail "no extension directory found: ${source_extension_dir}"
-    cp -r ${source_extension_dir} ${target_mediawiki_dir}/extensions || fail "failed to copy ${source_extension_dir} to ${target_mediawiki_dir}/extensions"
+    cp -r "${source_extension_dir}" "${target_mediawiki_dir}/extensions" || fail "failed to copy ${source_extension_dir} to ${target_mediawiki_dir}/extensions"
     local target_extension_dir=${target_mediawiki_dir}/extensions/${e}
-    chown -R ${APACHE_USER}:${APACHE_GROUP} ${target_extension_dir} || fail "failed to chown ${APACHE_USER}:${APACHE_GROUP} ${target_extension_dir}"
+    chown -R "${APACHE_USER}:${APACHE_GROUP}" "${target_extension_dir}" || fail "failed to chown ${APACHE_USER}:${APACHE_GROUP} ${target_extension_dir}"
+    # shellcheck disable=SC2086
     info "$(basename ${target_extension_dir}) extension restored"
   done
 }
 
-function restore-top-symbolic-link() {
-
+function restore_top_symbolic_link() {
   debug "${FUNCNAME[0]}($*)"
   local backup_dir=$1
   local target_mediawiki_dir=$2
   [[ -z ${backup_dir} ]] && fail "'backup_dir' not provided"
   [[ -z ${target_mediawiki_dir} ]] && fail "'target_mediawiki_dir' not provided"
-
   local parent_dir dir_name symlink_name
-  parent_dir=$(dirname ${target_mediawiki_dir})
-  dir_name=$(basename ${target_mediawiki_dir})
-  symlink_name=$(cat ${backup_dir}/etc/httpd/conf.d/ssl.conf | grep ServerName | tail -1 | sed -e 's/^.* \(.*\) *$/\1/')
+  parent_dir=$(dirname "${target_mediawiki_dir}")
+  dir_name=$(basename "${target_mediawiki_dir}")
+  # shellcheck disable=SC2002
+  symlink_name=$(cat "${backup_dir}/etc/httpd/conf.d/ssl.conf" | grep ServerName | tail -1 | sed -e 's/^.* \(.*\) *$/\1/')
   debug "parent_dir: ${parent_dir}, dir_name: ${dir_name}, symlink_name: ${symlink_name}"
-  (cd ${parent_dir} || exit 1; ln -sF ./${dir_name} ${symlink_name}) && \
+  (cd "${parent_dir}" || exit 1; ln -sF "./${dir_name}" "${symlink_name}") && \
     info "restored symbolic link ${symlink_name} → ${dir_name} in ${parent_dir}" || \
     fail "failed to restore symbolic link ${symlink_name} → ${dir_name} in ${parent_dir}"
   if [[ $(getenforce) = "Enforcing" ]]; then
-      restorecon -FR ${parent_dir}/${symlink_name} && \
+      restorecon -FR "${parent_dir}/${symlink_name}" && \
         info "configured SELinux context on ${parent_dir}/${symlink_name}" || \
         fail "failed to restorecon -FR ${parent_dir}/${symlink_name}"
   fi
 }
 
-function manual-post-install-warning() {
+function manual_post_install_warning() {
 
   debug "${FUNCNAME[0]}($*)"
   local backup_dir=$1
