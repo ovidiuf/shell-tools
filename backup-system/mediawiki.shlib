@@ -1,15 +1,14 @@
 #!/usr/bin/env bash
 
-DATABASE_BACKUP_DIR_NAME=database
-DATABASE_BACKUP_FILE=${DATABASE_BACKUP_DIR_NAME}/database-backup.sql
-APACHE_USER=apache
-APACHE_GROUP=apache
+export DATABASE_BACKUP_DIR_NAME=database
+export DATABASE_BACKUP_FILE=${DATABASE_BACKUP_DIR_NAME}/database-backup.sql
+export APACHE_USER=apache
+export APACHE_GROUP=apache
 
 #
 # fail if we are not root. We want to archive as root to preserve the original file ownership.
 #
-function ensure-root() {
-
+function ensure_root() {
   debug "${FUNCNAME[0]}()"
   [[ $(id -u) != "0" ]] && fail "$(basename $0) is not run as root but as $(id -u)"
 }
@@ -20,7 +19,7 @@ function ensure-root() {
 #
 # For a valid MediaWiki directory, return the MediaWiki version at stdout.
 #
-function ensure-valid-mediawiki-dir() {
+function ensure_valid_mediawiki_dir() {
 
   debug "${FUNCNAME[0]}($*)"
   local mediawiki_dir=$1
@@ -39,7 +38,7 @@ function ensure-valid-mediawiki-dir() {
   ${expect_LocalSettings} && [[ ! -f ${mediawiki_dir}/LocalSettings.php ]] && fail "not a mediawiki directory, missing LocalSettings.php: ${mediawiki_dir}"
 
   local mediawiki_version
-  mediawiki_version=$(get-php-defined-value ${mediawiki_dir}/includes/DefaultSettings.php wgVersion) || \
+  mediawiki_version=$(get_php_defined_value ${mediawiki_dir}/includes/DefaultSettings.php wgVersion) || \
     fail "failed to read version from ${mediawiki_dir}/includes/DefaultSettings.php"
   if [[ -z ${mediawiki_version} || ${mediawiki_version} =~ MW_VERSION ]]; then
     debug "post 1.35, the version is kept in the MW_VERSION constant"
@@ -54,7 +53,7 @@ function ensure-valid-mediawiki-dir() {
 # Get the expanded backup directory and extract the subdirectory that contains the file backup. Return the directory
 # at stdout
 #
-function backup-dir-to-mediawiki-dir() {
+function backup_dir_to_mediawiki_dir() {
 
   debug "${FUNCNAME[0]}($*)"
   local backup_dir=$1
@@ -78,7 +77,7 @@ function backup-dir-to-mediawiki-dir() {
 # If --ask-for-confirmation is among arguments, the password will be requested twice, for verification.
 # Once a match is confirmed, the value will be returned to stdout.
 # TODO: move to bash.shlib
-function read-database-root-password() {
+function read_database_root_password() {
 
   debug "${FUNCNAME[0]}()"
   local ask_for_confirmation=false
@@ -104,7 +103,7 @@ function read-database-root-password() {
 # Second argument is the variable name (wgDBserver for database server name, etc.)
 # Fail is no file or no corresponding value is found.
 #
-function get-php-defined-value() {
+function get_php_defined_value() {
 
     debug "${FUNCNAME[0]}($*)"
     local f=$1
@@ -116,7 +115,7 @@ function get-php-defined-value() {
     echo "${value}"
 }
 
-function mediawiki-cleanup() {
+function mediawiki_cleanup() {
 
   debug "${FUNCNAME[0]}($*)"
   local tmp_dir=$1

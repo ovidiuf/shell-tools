@@ -12,7 +12,7 @@ cat <<EOF
 
 $(basename $0) is a tool to backup a mediawiki instance (database content, files, extensions, configuration and
 everything is needed to fully restore the instance). $(basename $0) produces a single file that can be used as
-argument to restore-mediawiki to restore the instance.
+argument to restore_mediawiki to restore the instance.
 
 Usage:
 
@@ -52,7 +52,7 @@ function main() {
   local tmp_dir
   tmp_dir=$(get-tmp-dir) || exit 1
   # shellcheck disable=SC2064
-  trap "mediawiki-cleanup ${tmp_dir} ${OPTIONS[--preserve-tmp]}" EXIT
+  trap "mediawiki_cleanup ${tmp_dir} ${OPTIONS[--preserve-tmp]}" EXIT
 
   backup-mediawiki "${ARGS[0]}" "${tmp_dir}" "${OPTIONS[--target-dir]}"
 }
@@ -69,10 +69,10 @@ function backup-mediawiki() {
   debug "target_dir: ${target_dir}"
 
   local mediawiki_version
-  mediawiki_version=$(ensure-valid-mediawiki-dir "${mediawiki_dir}" --expect-LocalSettings)
+  mediawiki_version=$(ensure_valid_mediawiki_dir "${mediawiki_dir}" --expect-LocalSettings)
   debug "mediawiki version: ${mediawiki_version}"
 
-  ensure-root
+  ensure_root
 
   local dated_tmp_dir
   dated_tmp_dir=$(create-dated-subdir "${tmp_dir}" "${mediawiki_dir}") || exit 1
@@ -98,7 +98,7 @@ function create-dated-subdir() {
   local dir hostname server_name
   hostname=$(uname -n)
   hostname=${hostname%%.*}
-  server_name=$(get-php-defined-value "${mediawiki_dir}/LocalSettings.php" wgServer)
+  server_name=$(get_php_defined_value "${mediawiki_dir}/LocalSettings.php" wgServer)
   server_name=${server_name#*:\/\/}
   dir=${parent_dir}/$(date +'%Y.%m.%d-%H.%M.%S')-${hostname}-${server_name}-backup
   mkdir "${dir}" || fail "failed to create dated subdirectory: ${dir}"
@@ -112,10 +112,10 @@ function backup-database() {
   local tmp_dir=$2 # tmp dir is supposed to exist
   local local_settings_file=${mediawiki_dir}/LocalSettings.php
   local database_host database_user database_password database_name
-  database_host=$(get-php-defined-value "${local_settings_file}" wgDBserver) || exit 1
-  database_user=$(get-php-defined-value "${local_settings_file}" wgDBuser) || exit 1
-  database_password=$(get-php-defined-value "${local_settings_file}" wgDBpassword) || exit 1
-  database_name=$(get-php-defined-value "${local_settings_file}" wgDBname) || exit 1
+  database_host=$(get_php_defined_value "${local_settings_file}" wgDBserver) || exit 1
+  database_user=$(get_php_defined_value "${local_settings_file}" wgDBuser) || exit 1
+  database_password=$(get_php_defined_value "${local_settings_file}" wgDBpassword) || exit 1
+  database_name=$(get_php_defined_value "${local_settings_file}" wgDBname) || exit 1
 
   debug "database_host: ${database_host}"
   debug "database_user: ${database_user}"
