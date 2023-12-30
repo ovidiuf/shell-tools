@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2015
 
-[[ -f $(dirname "$0")/../lib/bash.shlib ]] && . "$(dirname $0)/../lib/bash.shlib" || { echo "$(dirname $0)/../lib/bash.shlib not found" 1>&2; exit 1; }
-# shellcheck disable=SC2086
-[[ -f $(dirname "$0")/mediawiki.shlib ]] && . "$(dirname $0)/mediawiki.shlib" || { echo "$(dirname "$0")/mediawiki.shlib not found" 1>&2; exit 1; }
+[[ -f $(dirname "$0")/../lib/bash.shlib ]] && . "$(dirname "$0")/../lib/bash.shlib" || { echo "$(dirname "$0")/../lib/bash.shlib not found" 1>&2; exit 1; }
+[[ -f $(dirname "$0")/mediawiki.shlib ]] && . "$(dirname "$0")/mediawiki.shlib" || { echo "$(dirname "$0")/mediawiki.shlib not found" 1>&2; exit 1; }
 
 # shellcheck disable=SC2034
-VERSION=0.3.0-pre.1
+VERSION=0.3.0
 
 function usage() {
 
@@ -22,7 +21,7 @@ The script will interactively request the MySQL root account password.
 
 Usage:
 
-  $(basename "$0") <backup-file> <mediawiki-installation-dir> [-d|--post-install-dir post-installation-examples-dir]
+  $(basename "$0") [options] <backup-file> <mediawiki-installation-dir>
 
 Arguments:
 
@@ -33,10 +32,15 @@ Arguments:
 
 Options:
 
+  --skip-database - Skip database restoration. This option is useful if the database
+      was already previously restored by other means.
+
+  --restore-certs-and-keys - Restore certificates and keys (Linux only). If the option
+      is not present, no certificates and keys will be restored.
+
   -d|--post-install-dir <post-installation-examples-dir> - the directory where the
-      post-installation examples are written. If not specified the local directory
-      is used to store the examples. The directory must exists, this script will not
-      create it.
+      post-installation examples are written. The directory will be created if it does not
+      exist. The local directory is used if -d|--post-install-dir not specified.
 
   -p|--preserve-tmp Optional boolean flag that instructs the program to preserve
       the temporary directory.
@@ -52,13 +56,20 @@ function main() {
   declare -A OPTIONS
   OPTIONS["--preserve-tmp"]="boolean -p"
   OPTIONS["--post-install-dir"]="string -d"
+  OPTIONS["--skip-database"]="boolean"
+  OPTIONS["--restore-certs-and-keys"]="boolean"
   process-options "$@"
   fail-on-unknown-arguments 2
   local tmp_dir
   tmp_dir=$(get-tmp-dir) || exit 1
   # shellcheck disable=SC2064
   trap "mediawiki_cleanup ${tmp_dir} ${OPTIONS[--preserve-tmp]}" EXIT
-  restore_mediawiki "${ARGS[0]}" "${ARGS[1]}" "${tmp_dir}" "${OPTIONS[--post-install-dir]}"
+  restore_mediawiki "${ARGS[0]}" \
+                    "${ARGS[1]}" \
+                    "${tmp_dir}" \
+                    "${OPTIONS[--post-install-dir]}" \
+                    "${OPTIONS[--skip-database]}" \
+                    "${OPTIONS[--restore-certs-and-keys]}"
 }
 
 function restore_mediawiki() {
@@ -67,37 +78,49 @@ function restore_mediawiki() {
   local target_mediawiki_dir=$2
   local tmp_dir=$3
   local post_installation_examples_parent_dir=$4
+  local skip_database=$5
+  local restore_certificates_and_keys=$6
   debug "backup_file: ${backup_file}"
   debug "target_mediawiki_dir: ${target_mediawiki_dir}"
   debug "tmp_dir: ${tmp_dir}"
   [[ -z ${post_installation_examples_parent_dir} ]] && post_installation_examples_parent_dir=$(pwd)
   debug "post_installation_examples_parent_dir: ${post_installation_examples_parent_dir}"
+  debug "skip_database: ${skip_database}"
   if [[ $(uname) != "Darwin" ]]; then
     ensure_root
   fi
-  local target_mediawiki_version
-  target_mediawiki_version=$(ensure_valid_mediawiki_dir "${target_mediawiki_dir}")
-  local database_root_password
-  database_root_password=$(read_database_root_password)
-  local backup_dir dropped_skins_SEPARATOR_dropped_extensions
+  local backup_dir source_mediawiki_dir source_mediawiki_version target_mediawiki_version
   backup_dir=$(expand_backup "${backup_file}" "${tmp_dir}") || exit 1
+  target_mediawiki_version=$(ensure_valid_mediawiki_dir "${target_mediawiki_dir}")
+  source_mediawiki_dir=$(backup_dir_to_mediawiki_dir "${backup_dir}")
+  source_mediawiki_version=$(get_mediawiki_version "${source_mediawiki_dir}")
+  info "restoring from Media Wiki ${source_mediawiki_version} to Media Wiki ${target_mediawiki_version}"
+  local database_root_password
+  if ${skip_database}; then
+    debug "skipping database restoration, no database root password necessary"
+  else
+    database_root_password=$(read_database_root_password)
+  fi
+  local obsolete_skins_SEPARATOR_missing_extensions
   debug "backup_dir: ${backup_dir}"
-  local source_mediawiki_version
-  # shellcheck disable=SC2086
-  source_mediawiki_version=$(ensure_valid_mediawiki_dir "$(backup_dir_to_mediawiki_dir ${backup_dir})")
-  debug "target MediaWiki version: ${target_mediawiki_version}, source MediaWiki version: ${source_mediawiki_version}"
-  restore_database "${backup_dir}" "${database_root_password}"
-  exit 0
-  dropped_skins_SEPARATOR_dropped_extensions=$(restore_local_settings "${backup_dir}" "${target_mediawiki_dir}") || exit 1
-  restore_image_files "${backup_dir}" "${target_mediawiki_dir}"
-  restore_certificates_and_keys "${backup_dir}"
+  if ${skip_database}; then
+    info "database restoration skipped"
+  else
+    restore_database "${backup_dir}" "${database_root_password}"
+  fi
+  obsolete_skins_SEPARATOR_missing_extensions=$(diff_local_settings "${backup_dir}" "${target_mediawiki_dir}") || exit 1
+  restore_image_files "${source_mediawiki_dir}" "${target_mediawiki_dir}"
+  if ${restore_certificates_and_keys}; then
+    restore_certificates_and_keys "${backup_dir}"
+  fi
   restore_top_symbolic_link "${backup_dir}" "${target_mediawiki_dir}"
-  manual_post_install_warning "${backup_dir}" "${target_mediawiki_dir}" "${dropped_skins_SEPARATOR_dropped_extensions}" \
+  manual_post_install_warning "${backup_dir}" "${target_mediawiki_dir}" "${obsolete_skins_SEPARATOR_missing_extensions}" \
     "${source_mediawiki_version}" "${target_mediawiki_version}" "${post_installation_examples_parent_dir}"
 }
 
 #
-# Expand the backup file and ensure it is a valid mediawiki backup. Return the backup directory at stdout.
+# Expand the backup file and ensure it is a valid mediawiki backup. Return the backup
+# directory at stdout.
 #
 function expand_backup() {
   debug "${FUNCNAME[0]}($*)"
@@ -147,7 +170,8 @@ function restore_database() {
 }
 
 #
-# Returns 0 if the database was created, 1 if the database already exists. Fails on database creation failure.
+# Returns 0 if the database was created, 1 if the database already exists. Fails on database
+# creation failure.
 #
 function create_database() {
   debug "${FUNCNAME[0]}($*)"
@@ -208,204 +232,148 @@ function restore_database_content() {
 }
 
 #
-# Return at stdout the comma-separated list of dropped skins (may be empty), followed by SEPARATOR, followed by the
-# comma-separated list of extensions that were not found installed locally (they will have to be installed manually)
+# Return at stdout the comma-separated list of dropped skins (may be empty), followed by 
+# SEPARATOR, followed by the comma-separated list of extensions that were not found installed 
+# locally (they will have to be installed manually)
 #
-function restore_local_settings() {
+function diff_local_settings() {
   debug "${FUNCNAME[0]}($*)"
   local backup_dir=$1
   local target_mediawiki_dir=$2
   [[ -z ${backup_dir} ]] && fail "'backup_dir' not provided"
   [[ -z ${target_mediawiki_dir} ]] && fail "'target_mediawiki_dir' not provided"
-
-  local source_mediawiki_dir source_local_settings_file dropped_skins dropped_extensions target_local_settings_file
-
+  local source_mediawiki_dir source_local_settings_file obsolete_skins missing_extensions
   source_mediawiki_dir=$(backup_dir_to_mediawiki_dir "${backup_dir}")
   source_local_settings_file=${source_mediawiki_dir}/LocalSettings.php
   [[ -f ${source_local_settings_file} ]] || fail "no LocalSettings.php found in ${source_mediawiki_dir}"
-
-  dropped_skins=$(filter-obsolete-skins "${source_local_settings_file}" "${target_mediawiki_dir}")
-  dropped_extensions=$(filter-locally-absent-extensions "${source_local_settings_file}" "${target_mediawiki_dir}")
-
-  cp ${source_local_settings_file} ${target_mediawiki_dir} || fail "failed to copy ${source_local_settings_file} to ${target_mediawiki_dir}"
-  target_local_settings_file=${target_mediawiki_dir}/LocalSettings.php
-  chown ${APACHE_USER}:${APACHE_GROUP} ${target_local_settings_file} || fail "failed to chown ${APACHE_USER}:${APACHE_GROUP} ${target_local_settings_file}"
-  chmod go-rwx ${target_local_settings_file} || fail "failed to chmod ${target_local_settings_file}"
-  info "$(basename ${target_local_settings_file}) restored"
-
-  echo "${dropped_skins}${SEPARATOR}${dropped_extensions}"
+  obsolete_skins=$(identify_obsolete_skins "${source_local_settings_file}" "${target_mediawiki_dir}")
+  missing_extensions=$(identify_locally_missing_extensions "${source_local_settings_file}" "${target_mediawiki_dir}")
+  echo "${obsolete_skins}${SEPARATOR}${missing_extensions}"
 }
 
 #
-# Update source LocalSettings.php in-place, dropping obsolete skins. Return at stdout a comma separated list of dropped
-# skins, or empty string if none was dropped.
+# Identify skins that exist in the source LocalSettings.php but not in the target
+# LocalSettings.php. Return at stdout a comma separated list of obsolete skins, or empty
+# string if no obsolete skin was identified.
 #
-function filter-obsolete-skins() {
-
+function identify_obsolete_skins() {
   debug "${FUNCNAME[0]}($*)"
   local source_local_settings_file=$1
   local target_mediawiki_dir=$2
   [[ -z ${source_local_settings_file} ]] && fail "'source_local_settings_file' not provided"
   [[ -z ${target_mediawiki_dir} ]] && fail "'target_mediawiki_dir' not provided"
   local source_skins=""
-  for s in $(cat ${source_local_settings_file} | grep "wfLoadSkin(.*)" | sed -e 's/^.*wfLoadSkin( *.\(.*\)[^ ] *).*$/\1/'); do
+  # shellcheck disable=SC2002,SC2013
+  for s in $(cat "${source_local_settings_file}" | grep "wfLoadSkin(.*)" | sed -e 's/^.*wfLoadSkin( *.\(.*\)[^ ] *).*$/\1/'); do
       [[ -z ${source_skins} ]] && source_skins=${s} || source_skins="${source_skins} ${s}"
   done
   [[ -z ${source_skins} ]] && { warn "no skins defined in ${source_local_settings_file}"; return 0; }
-  local skins_to_remove
+  local obsolete_skins
   for s in ${source_skins}; do
     if [[ ! -d ${target_mediawiki_dir}/skins/${s} ]]; then
-        #
         # the skin does not exist in the target MediaWiki installation, remove it from LocalSettings.php
-        #
         debug "skin ${s} does not exist in the target MediaWiki installation"
-        [[ -z ${skins_to_remove} ]] && skins_to_remove=${s} || skins_to_remove="${skins_to_remove} ${s}"
+        [[ -z ${obsolete_skins} ]] && obsolete_skins=${s} || obsolete_skins="${obsolete_skins} ${s}"
     fi
   done
-  [[ -z ${skins_to_remove} ]] && { info "no obsolete skins found"; return 0; }
-  for s in ${skins_to_remove}; do
-    sed -i -e 's/^\(.*wfLoadSkin( *.'${s}'[^ ] *).*\)$/\/\/ \1/' ${source_local_settings_file} && \
-      info "skin ${s} commented out in $(basename ${source_local_settings_file})" || \
-      fail "failed to comment out skin ${s} from ${source_local_settings_file}"
-  done
-  echo "${skins_to_remove}"
+  [[ -z ${obsolete_skins} ]] && { info "no obsolete skins found"; return 0; }
+  # We used to update the target LocalSettings.php in place, but not anymore
+#  for s in ${obsolete_skins}; do
+#    sed -i -e 's/^\(.*wfLoadSkin( *.'${s}'[^ ] *).*\)$/\/\/ \1/' "${source_local_settings_file}" && \
+#      info "skin ${s} commented out in $(basename ${source_local_settings_file})" || \
+#      fail "failed to comment out skin ${s} from ${source_local_settings_file}"
+#  done
+  echo "${obsolete_skins}"
 }
 
 #
-# Update source LocalSettings.php in-place, dropping extensions that are not found locally in the target MediaWiki
-# directory. Since we're upgrading, the old extensions are most likely obsolete and will have to be installed manually.
-# Return at stdout a comma separated list of extensions, or empty string if none was dropped.
+# Scan source and target LocalSettings.php and identify extensions that are not found locally
+# in the target MediaWiki directory. Since we're upgrading, the old extensions are most likely
+# obsolete and will have to be installed manually. Return at stdout a comma separated list of
+# locally missing extensions, or empty string if none was dropped.
 #
-function filter-locally-absent-extensions() {
-
+function identify_locally_missing_extensions() {
   debug "${FUNCNAME[0]}($*)"
   local source_local_settings_file=$1
   local target_mediawiki_dir=$2
   [[ -z ${source_local_settings_file} ]] && fail "'source_local_settings_file' not provided"
   [[ -z ${target_mediawiki_dir} ]] && fail "'target_mediawiki_dir' not provided"
   local source_extensions=""
-  for e in $(cat ${source_local_settings_file} | grep "wfLoadExtension(.*)" | sed -e 's/^.*wfLoadExtension( *.\(.*\)[^ ] *).*$/\1/'); do
+  # shellcheck disable=SC2002,SC2013
+  for e in $(cat "${source_local_settings_file}" | grep "wfLoadExtension(.*)" | sed -e 's/^.*wfLoadExtension( *.\(.*\)[^ ] *).*$/\1/'); do
       [[ -z ${source_extensions} ]] && source_extensions=${e} || source_extensions="${source_extensions} ${e}"
   done
-  for e in $(cat ${source_local_settings_file} | grep "require_once.*/extensions/" | sed -e 's/^.*extensions\/\(.*\)\/.*$/\1/'); do
+  # shellcheck disable=SC2002,SC2013
+  for e in $(cat "${source_local_settings_file}" | grep "require_once.*/extensions/" | sed -e 's/^.*extensions\/\(.*\)\/.*$/\1/'); do
       [[ -z ${source_extensions} ]] && source_extensions=${e} || source_extensions="${source_extensions} ${e}"
   done
   [[ -z ${source_extensions} ]] && { warn "no extensions defined in ${source_local_settings_file}"; return 0; }
-  local extensions_to_remove
+  local locally_missing_extensions
   for e in ${source_extensions}; do
     if [[ ! -d ${target_mediawiki_dir}/extensions/${e} ]]; then
-        #
-        # the extension does not exist in the target MediaWiki installation, remove it from LocalSettings.php
-        #
+        # the extension does not exist in the target MediaWiki installation, collect it
         debug "extension ${e} does not exist in the target MediaWiki installation"
-        [[ -z ${extensions_to_remove} ]] && extensions_to_remove=${e} || extensions_to_remove="${extensions_to_remove} ${e}"
+        [[ -z ${locally_missing_extensions} ]] && locally_missing_extensions=${e} || locally_missing_extensions="${locally_missing_extensions} ${e}"
     fi
   done
-  [[ -z ${extensions_to_remove} ]] && { info "no missing extensions found"; return 0; }
-  for e in ${extensions_to_remove}; do
-    sed -i -e 's/^\(.*wfLoadExtension( *.'${e}'[^ ] *).*\)$/\/\/ \1/' ${source_local_settings_file} && \
-      info "extension ${e} commented out in $(basename ${source_local_settings_file})" || \
-      fail "failed to comment out extension ${e} from ${source_local_settings_file}"
-  done
-  echo "${extensions_to_remove}"
+  [[ -z ${locally_missing_extensions} ]] && { info "no missing extensions found"; return 0; }
+  # We used to update the target LocalSettings.php in place, but not anymore
+#  for e in ${locally_missing_extensions}; do
+#    sed -i -e 's/^\(.*wfLoadExtension( *.'${e}'[^ ] *).*\)$/\/\/ \1/' ${source_local_settings_file} && \
+#      info "extension ${e} commented out in $(basename ${source_local_settings_file})" || \
+#      fail "failed to comment out extension ${e} from ${source_local_settings_file}"
+#  done
+  echo "${locally_missing_extensions}"
 }
 
 function restore_image_files() {
-
   debug "${FUNCNAME[0]}($*)"
-  local backup_dir=$1
+  local source_mediawiki_dir=$1
   local target_mediawiki_dir=$2
-  [[ -z ${backup_dir} ]] && fail "'backup_dir' not provided"
+  [[ -z ${source_mediawiki_dir} ]] && fail "'source_mediawiki_dir' not provided"
   [[ -z ${target_mediawiki_dir} ]] && fail "'target_mediawiki_dir' not provided"
-  local source_mediawiki_dir
-  source_mediawiki_dir=$(backup_dir_to_mediawiki_dir "${backup_dir}")
-
   local source_image_dir=${source_mediawiki_dir}/images
   [[ -d ${source_image_dir} ]] || fail "no image directory found in ${source_mediawiki_dir}"
-  cp -r ${source_image_dir} ${target_mediawiki_dir} || fail "failed to copy ${source_image_dir} to ${target_mediawiki_dir}"
+  cp -r "${source_image_dir}" "${target_mediawiki_dir}" || fail "failed to copy ${source_image_dir} to ${target_mediawiki_dir}"
   local target_image_dir=${target_mediawiki_dir}/images
-  chown -R ${APACHE_USER}:${APACHE_GROUP} ${target_image_dir} || fail "failed to chown ${APACHE_USER}:${APACHE_GROUP} ${target_image_dir}"
-  if [[ $(getenforce) = "Enforcing" ]]; then
-      info "configuring SELinux context on ${target_image_dir}"
-      chcon -R -t httpd_sys_script_rw_t ${target_image_dir} || fail "failed to -R -t httpd_sys_script_rw_t ${target_image_dir}"
+  if [[ $(uname) == "Darwin" ]]; then
+    debug "MacOS: no chmod and selinux configuration necessary"
+  else
+    chown -R "${APACHE_USER}:${APACHE_GROUP}" "${target_image_dir}" || fail "failed to chown ${APACHE_USER}:${APACHE_GROUP} ${target_image_dir}"
+    if [[ $(getenforce) = "Enforcing" ]]; then
+        info "configuring SELinux context on ${target_image_dir}"
+        chcon -R -t httpd_sys_script_rw_t "${target_image_dir}" || fail "failed to -R -t httpd_sys_script_rw_t ${target_image_dir}"
+    fi
   fi
-  info "$(basename ${target_image_dir}) directory restored"
+  info "image directory restored: ${target_image_dir}"
 }
 
 function restore_certificates_and_keys() {
-
   debug "${FUNCNAME[0]}($*)"
+  if [[ $(uname) == "Darwin" ]]; then
+    warn "no certificates and keys can be restored on MacOS, the --restore-certs-and-keys option is superfluous"
+    return 0
+  fi
   local backup_dir=$1
   [[ -z ${backup_dir} ]] && fail "'backup_dir' not provided"
-
   local source_dir=${backup_dir}/etc/pki/tls/certs
   [[ -d ${source_dir} ]] || { warn "no certificate directory found in ${backup_dir}: ${source_dir}, no certificates will be restored"; return 0; }
   cp "${source_dir}"/*.crt /etc/pki/tls/certs || { warn "failed to copy ${source_dir}/*.crt to /etc/pki/tls/certs, no certificates will be restored"; return 0; }
-
   local source_dir=${backup_dir}/etc/pki/tls/private
   [[ -d ${source_dir} ]] || fail "no key directory found in ${backup_dir}: ${source_dir}"
-  for i in ${source_dir}/*.key; do
-    cp ${i} /etc/pki/tls/private || fail "failed to copy ${i} to /etc/pki/tls/private"
-    chmod go-rwx "/etc/pki/tls/private/$(basename ${i})" || fail "failed to chmod /etc/pki/tls/private/$(basename ${i})"
+  for i in "${source_dir}"/*.key; do
+    cp "${i}" /etc/pki/tls/private || fail "failed to copy ${i} to /etc/pki/tls/private"
+    chmod go-rwx "/etc/pki/tls/private/$(basename "${i}")" || fail "failed to chmod /etc/pki/tls/private/$(basename "${i}")"
   done
   info "certificates and private keys restored in /etc/pki/tls"
 }
 
-#
-# Normally should not be used, as we do not want to backup and restore skins, but use the new ones that come with the
-# new version.
-#
-function restore-skins() {
-
-  debug "${FUNCNAME[0]}($*)"
-  local backup_dir=$1
-  local target_mediawiki_dir=$2
-  [[ -z ${backup_dir} ]] && fail "'backup_dir' not provided"
-  [[ -z ${target_mediawiki_dir} ]] && fail "'target_mediawiki_dir' not provided"
-  local source_mediawiki_dir
-  source_mediawiki_dir=$(backup_dir_to_mediawiki_dir "${backup_dir}")
-
-  local skins="CologneBlue Modern"
-
-  for s in ${skins}; do
-    local source_skin_dir=${source_mediawiki_dir}/skins/${s}
-    [[ -d ${source_skin_dir} ]] || fail "no skin directory found in ${source_mediawiki_dir}"
-    cp -r ${source_skin_dir} ${target_mediawiki_dir}/skins || fail "failed to copy ${source_skin_dir} to ${target_mediawiki_dir}/skins"
-    local target_skin_dir=${target_mediawiki_dir}/skins/${s}
-    chown -R ${APACHE_USER}:${APACHE_GROUP} ${target_skin_dir} || fail "failed to chown ${APACHE_USER}:${APACHE_GROUP} ${target_skin_dir}"
-    info "$(basename ${target_skin_dir}) skin restored"
-  done
-}
-
-#
-# Normally should not be used, as we do not want to backup and restore extensions, but install the up-to-date extensions
-# from scratch in top of the new version
-#
-function restore-extensions() {
-
-  debug "${FUNCNAME[0]}($*)"
-  local backup_dir=$1
-  local target_mediawiki_dir=$2
-  [[ -z ${backup_dir} ]] && fail "'backup_dir' not provided"
-  [[ -z ${target_mediawiki_dir} ]] && fail "'target_mediawiki_dir' not provided"
-  local source_mediawiki_dir
-  source_mediawiki_dir=$(backup_dir_to_mediawiki_dir "${backup_dir}")
-
-  local extensions="BreadCrumbs"
-
-  for e in ${extensions}; do
-    local source_extension_dir=${source_mediawiki_dir}/extensions/${e}
-    [[ -d ${source_extension_dir} ]] || fail "no extension directory found: ${source_extension_dir}"
-    cp -r "${source_extension_dir}" "${target_mediawiki_dir}/extensions" || fail "failed to copy ${source_extension_dir} to ${target_mediawiki_dir}/extensions"
-    local target_extension_dir=${target_mediawiki_dir}/extensions/${e}
-    chown -R "${APACHE_USER}:${APACHE_GROUP}" "${target_extension_dir}" || fail "failed to chown ${APACHE_USER}:${APACHE_GROUP} ${target_extension_dir}"
-    # shellcheck disable=SC2086
-    info "$(basename ${target_extension_dir}) extension restored"
-  done
-}
-
 function restore_top_symbolic_link() {
   debug "${FUNCNAME[0]}($*)"
+  if [[ $(uname) == "Darwin" ]]; then
+    info "no top symbolic link is restored on MacOS"
+    return 0
+  fi
   local backup_dir=$1
   local target_mediawiki_dir=$2
   [[ -z ${backup_dir} ]] && fail "'backup_dir' not provided"
@@ -427,15 +395,13 @@ function restore_top_symbolic_link() {
 }
 
 function manual_post_install_warning() {
-
   debug "${FUNCNAME[0]}($*)"
   local backup_dir=$1
   local target_mediawiki_dir=$2
-  local dropped_skins_SEPARATOR_dropped_extensions=$3
+  local obsolete_skins_SEPARATOR_missing_extensions=$3
   local source_mediawiki_version=$4
   local target_mediawiki_version=$5
   local post_installation_examples_parent_dir=$6
-
   [[ -z ${backup_dir} ]] && fail "'backup_dir' not provided"
   [[ -z ${target_mediawiki_dir} ]] && fail "'target_mediawiki_dir' not provided"
   [[ -z ${source_mediawiki_version} ]] && fail "'source_mediawiki_version' not provided"
@@ -444,38 +410,39 @@ function manual_post_install_warning() {
   [[ -d ${post_installation_examples_parent_dir} ]] || fail "'post_installation_examples_parent_dir' not a valid directory: ${post_installation_examples_parent_dir}"
   info ""
   info ""
-  local dropped_skins=${dropped_skins_SEPARATOR_dropped_extensions%${SEPARATOR}*}
-  [[ -n ${dropped_skins} ]] && info "commented out skins: ${dropped_skins}" || info "no skins were commented out"
-  local dropped_extensions=${dropped_skins_SEPARATOR_dropped_extensions#*${SEPARATOR}}
-  [[ -n ${dropped_extensions} ]] && info "commented out extensions: ${dropped_extensions}" || info "no extensions were commented out"
-
-  #
+  local obsolete_skins=${obsolete_skins_SEPARATOR_missing_extensions%${SEPARATOR}*}
+  [[ -n ${obsolete_skins} ]] && info "skins configured in the source installation that are not present locally: ${obsolete_skins}"
+  local missing_extensions=${obsolete_skins_SEPARATOR_missing_extensions#*${SEPARATOR}}
+  [[ -n ${missing_extensions} ]] && info "extension present in the source installation that are not present locally: ${missing_extensions}"
   # copy examples
-  #
   local post_installation_examples_dir=${post_installation_examples_parent_dir}/mediawiki-restore-examples
-  [[ ! -d ${post_installation_examples_dir} ]] && mkdir ${post_installation_examples_dir}
-  cp ${backup_dir}/etc/httpd/conf.d/ssl.conf ${post_installation_examples_dir} || \
+  [[ ! -d ${post_installation_examples_dir} ]] && mkdir -p "${post_installation_examples_dir}"
+  cp "${backup_dir}/etc/httpd/conf.d/ssl.conf" "${post_installation_examples_dir}" || \
     fail "failed to copy ${backup_dir}/etc/httpd/conf.d/ssl.conf in ${post_installation_examples_dir}"
-  cp ${backup_dir}/etc/php.ini ${post_installation_examples_dir} || \
+  cp "${backup_dir}/etc/php.ini" "${post_installation_examples_dir}" || \
     fail "failed to copy ${backup_dir}/etc/php.ini in ${post_installation_examples_dir}"
   local listen_directive
-  listen_directive=$(cat ${post_installation_examples_dir}/ssl.conf | grep "^Listen")
-
+  # shellcheck disable=SC2002
+  listen_directive=$(cat "${post_installation_examples_dir}/ssl.conf" | grep "^Listen")
   info ""
   info ""
   warn "Continue with manual post-restore steps:"
   warn ""
   if [[ ${source_mediawiki_version} != "${target_mediawiki_version}" ]]; then
-      warn " - This MediaWiki version (${target_mediawiki_version}) is different from source version (${source_mediawiki_version}), run 'php update in ${target_mediawiki_dir}/maintenance'."
+      warn " - This MediaWiki version (${target_mediawiki_version}) is different from source version (${source_mediawiki_version}),"
+      warn "   run 'php update in ${target_mediawiki_dir}/maintenance'."
   fi
   warn " - Configure the Listen directive in /etc/httpd/conf.d/ssl.conf to \"${listen_directive}\"."
   warn "   Example available in ${post_installation_examples_dir}/ssl.conf."
-  warn " - Configure the HTTPS VirtualHost in /etc/httpd/conf.d/ssl.conf to \"${listen_directive}\". Possibly adjust or remove  SSLProtocol and SSLCipherSuite"
+  warn " - Configure the HTTPS VirtualHost in /etc/httpd/conf.d/ssl.conf to \"${listen_directive}\"."
+  warn "   Possibly adjust or remove  SSLProtocol and SSLCipherSuite"
   warn "   Example available in ${post_installation_examples_dir}/ssl.conf."
   warn " - Update custom configurations from the backup php.ini into /etc/php.ini."
-  warn " - If the wiki will be accessed externally with a different server address (including port), modify LocalSettings.php \$wgServer setting."
-  warn "   Example available in ${post_installation_examples_dir}/php.ini. Check 'upload_max_filesize' and 'post_max_size' values."
-  [[ -n ${dropped_extensions} ]] && warn " - Re-install the following extensions: ${dropped_extensions}."
+  warn " - If the wiki will be accessed externally with a different server address (including port),"
+  warn "   modify LocalSettings.php \$wgServer setting."
+  warn "   Example available in ${post_installation_examples_dir}/php.ini."
+  warn "   Check 'upload_max_filesize' and 'post_max_size' values."
+  [[ -n ${missing_extensions} ]] && warn " - Re-install the following extensions, if needed: ${missing_extensions}."
   info ""
 }
 
