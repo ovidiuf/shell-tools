@@ -1,46 +1,47 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2015
 
-[[ -f $(dirname "$0")/../lib/bash.shlib ]] && . "$(dirname $0)"/../lib/bash.shlib || { echo "$(dirname $0)/../lib/bash.shlib not found" 1>&2; exit 1; }
-[[ -f $(dirname "$0")/mediawiki.shlib ]] && . "$(dirname $0)"/mediawiki.shlib || { echo "$(dirname "$0")/mediawiki.shlib not found" 1>&2; exit 1; }
+[[ -f $(dirname "$0")/../lib/bash.shlib ]] && . "$(dirname "$0")"/../lib/bash.shlib || { echo "$(dirname "$0")/../lib/bash.shlib not found" 1>&2; exit 1; }
+[[ -f $(dirname "$0")/mediawiki.shlib ]] && . "$(dirname "$0")"/mediawiki.shlib || { echo "$(dirname "$0")/mediawiki.shlib not found" 1>&2; exit 1; }
 
 # shellcheck disable=SC2034
-VERSION=0.2.4
+VERSION=0.3.0
 
 function usage() {
 
 cat <<EOF
 
-$(basename $0) is a tool to backup a mediawiki instance (database content, files, extensions, configuration and
-everything is needed to fully restore the instance). $(basename $0) produces a single file that can be used as
-argument to restore_mediawiki to restore the instance.
+$(basename "$0") is a tool to backup a mediawiki instance (database content, files,
+extensions, configuration and everything is needed to fully restore the instance).
+$(basename "$0") produces a single file that can be used as argument to the
+mediawiki-restore tool to restore the instance.
 
 Usage:
 
-  $(basename $0) <mediawiki-installation-dir> [-t|--target-dir <dir>]
+  $(basename "$0") [options] <mediawiki-installation-dir>
 
 Arguments:
 
-  <mediawiki-installation-dir> is the local file system directory where the mediawiki instance is installed (by default
-    /var/www/mediawiki-<version>). Do not use a symbolic link to initiate the backup. The backup file is placed in the
-    current directory, unless -t|--target-dir option is used.
+  <mediawiki-installation-dir> is the local file system directory where the mediawiki
+      instance is installed (by default /var/www/mediawiki-<version>). Do not use a
+      symbolic link to initiate the backup. The backup file is placed in the current
+      directory, unless -t|--target-dir option is used.
 
 Options:
 
- -t|--target-dir Optional designation of the target directory. If no option is specified, the current directory
-   is used as target directory.
+   -t|--target-dir - Optional designation of the target directory. If no option is specified,
+        the current directory is used as target directory.
 
- -p|--preserve-tmp Optional boolean flag that instructs the program to preserve the temporary directory.
+   -p|--preserve-tmp - Optional boolean flag that instructs the program to preserve the
+        temporary directory.
 
 EOF
 }
 
 function main() {
-
   # shellcheck disable=SC2015
   process-common-arguments "$@" && set -- "${ARGS[@]}" || fail "failed to process common arguments"
-
   ${HELP} || [[ -z $1 ]] && { usage; exit 0; }
-
   unset ARGS
   declare -a ARGS
   declare -A OPTIONS
@@ -48,49 +49,47 @@ function main() {
   OPTIONS["--preserve-tmp"]="boolean -p"
   process-options "$@"
   fail-on-unknown-arguments 1
-
   local tmp_dir
   tmp_dir=$(get-tmp-dir) || exit 1
   # shellcheck disable=SC2064
   trap "mediawiki_cleanup ${tmp_dir} ${OPTIONS[--preserve-tmp]}" EXIT
-
-  backup-mediawiki "${ARGS[0]}" "${tmp_dir}" "${OPTIONS[--target-dir]}"
+  backup_mediawiki "${ARGS[0]}" "${tmp_dir}" "${OPTIONS[--target-dir]}"
 }
 
-function backup-mediawiki() {
-
+function backup_mediawiki() {
   debug "${FUNCNAME[0]}($*)"
   local mediawiki_dir=$1
   local tmp_dir=$2
   local target_dir=${3:-.}
-
   debug "mediawiki_dir: ${mediawiki_dir}"
   debug "tmp_dir: ${tmp_dir}"
   debug "target_dir: ${target_dir}"
-
   local mediawiki_version
   mediawiki_version=$(ensure_valid_mediawiki_dir "${mediawiki_dir}" --expect-LocalSettings)
   debug "mediawiki version: ${mediawiki_version}"
-
-  ensure_root
-
+  if [[ $(uname) != "Darwin" ]]; then
+    ensure_root
+  fi
   local dated_tmp_dir
-  dated_tmp_dir=$(create-dated-subdir "${tmp_dir}" "${mediawiki_dir}") || exit 1
-  backup-database "${mediawiki_dir}" "${dated_tmp_dir}"
-  backup-server-files "${mediawiki_dir}" "${dated_tmp_dir}"
-  backup-httpd-configuration "${dated_tmp_dir}"
-  backup-certificates "${dated_tmp_dir}"
-  backup-php-configuration "${dated_tmp_dir}"
-  backup-network-configuration "${dated_tmp_dir}"
-  backup-mediawiki-tools "${dated_tmp_dir}"
-  build-backup-archive "${dated_tmp_dir}" "${target_dir}"
+  dated_tmp_dir=$(create_dated_subdir "${tmp_dir}" "${mediawiki_dir}") || exit 1
+  backup_database "${mediawiki_dir}" "${dated_tmp_dir}"
+  backup_mediawiki_instance "${mediawiki_dir}" "${dated_tmp_dir}"
+  if [[ $(uname) != "Darwin" ]]; then
+    backup_httpd_configuration "${dated_tmp_dir}"
+    backup_certificates "${dated_tmp_dir}"
+    backup_php_configuration "${dated_tmp_dir}"
+    backup_network_configuration "${dated_tmp_dir}"
+    backup_mediawiki_tools "${dated_tmp_dir}"
+  fi
+  write_mediawiki_restore_version "${dated_tmp_dir}"
+  build_backup_archive "${dated_tmp_dir}" "${target_dir}"
 }
 
 #
-# Creates a dated subdirectory in the given directory and return the path to stdout. The parent must exist.
+# Creates a dated subdirectory in the given directory and return the path to stdout.
+# The parent must exist.
 #
-function create-dated-subdir() {
-
+function create_dated_subdir() {
   debug "${FUNCNAME[0]}($*)"
   local parent_dir=$1
   local mediawiki_dir=$2
@@ -100,13 +99,13 @@ function create-dated-subdir() {
   hostname=${hostname%%.*}
   server_name=$(get_php_defined_value "${mediawiki_dir}/LocalSettings.php" wgServer)
   server_name=${server_name#*:\/\/}
+  server_name=${server_name/:/}
   dir=${parent_dir}/$(date +'%Y.%m.%d-%H.%M.%S')-${hostname}-${server_name}-backup
   mkdir "${dir}" || fail "failed to create dated subdirectory: ${dir}"
   echo "${dir}"
 }
 
-function backup-database() {
-
+function backup_database() {
   debug "${FUNCNAME[0]}($*)"
   local mediawiki_dir=$1
   local tmp_dir=$2 # tmp dir is supposed to exist
@@ -116,17 +115,14 @@ function backup-database() {
   database_user=$(get_php_defined_value "${local_settings_file}" wgDBuser) || exit 1
   database_password=$(get_php_defined_value "${local_settings_file}" wgDBpassword) || exit 1
   database_name=$(get_php_defined_value "${local_settings_file}" wgDBname) || exit 1
-
   debug "database_host: ${database_host}"
   debug "database_user: ${database_user}"
   debug "database_password: ${database_password}"
   debug "database_name: ${database_name}"
-
   local database_backup_dir=${tmp_dir}/${DATABASE_BACKUP_DIR_NAME}
   mkdir "${database_backup_dir}" || fail "failed to create database backup directory: ${database_backup_dir}"
-
   local backup_file=${tmp_dir}/${DATABASE_BACKUP_FILE}
-  debug "backing up database in ${backup_file} ..."
+  info "backing up database ${database_name} to ${backup_file} ..."
   if mysqldump -h "${database_host}" -u "${database_user}" --password="${database_password}" --default-character-set=binary "${database_name}" > "${backup_file}"; then
     info "database backup successful, backup size $(wc -c "${backup_file}" | awk '{print $1}') bytes"
   else
@@ -135,28 +131,29 @@ function backup-database() {
 }
 
 #
-# Recursively copies the entire mediawiki installation tree, preserving
+# Recursively copies the entire Media Wiki installation tree
 #
-function backup-server-files() {
-
+function backup_mediawiki_instance() {
   debug "${FUNCNAME[0]}($*)"
   local mediawiki_dir=$1
   local tmp_dir=$2 # tmp dir is supposed to exist
-
   mediawiki_dir=${mediawiki_dir%/}
-  debug "backing up server files from ${mediawiki_dir} to ${tmp_dir} ..."
-  if cp --archive "${mediawiki_dir}" "${tmp_dir}"; then
-    info "server directory backup successful: ${mediawiki_dir}"
+  info "backing up Media Wiki instance files from ${mediawiki_dir} to ${tmp_dir} ..."
+  local cp_flags="--archive"
+  if [[ $(uname) == "Darwin" ]]; then
+    cp_flags="-RpP"
+  fi
+  if cp "${cp_flags}" "${mediawiki_dir}" "${tmp_dir}"; then
+    info "Media Wiki instance files backup successful: ${mediawiki_dir}"
   else
-    fail "failed to backup server directory ${mediawiki_dir} in ${tmp_dir}"
+    fail "failed to backup Media Wiki instance files ${mediawiki_dir} in ${tmp_dir}"
   fi
 }
 
-function backup-httpd-configuration {
+function backup_httpd_configuration {
   debug "${FUNCNAME[0]}($*)"
   local tmp_dir=$1 # tmp dir is supposed to exist
   debug "backing up httpd configuration to ${tmp_dir} ..."
-
   local target_dir=${tmp_dir}/etc/httpd
   mkdir -p "${target_dir}"
   if cp -r /etc/httpd/conf /etc/httpd/conf.d /etc/httpd/conf.modules.d "${target_dir}"; then
@@ -166,11 +163,10 @@ function backup-httpd-configuration {
   fi
 }
 
-function backup-certificates {
+function backup_certificates {
   debug "${FUNCNAME[0]}($*)"
   local tmp_dir=$1 # tmp dir is supposed to exist
   debug "backing up TLS certificates to ${tmp_dir} ..."
-
   local src_dir="/etc/pki/tls/certs"
   local target_dir=${tmp_dir}${src_dir}
   mkdir -p "${target_dir}"
@@ -179,13 +175,10 @@ function backup-certificates {
   else
     fail "failed to backup TLS certificates *.crt from ${src_dir}"
   fi
-  #
   # remove some generic files to eliminate confusion
-  #
   rm -f "${target_dir}/ca-bundle.crt"
   rm -f "${target_dir}/ca-bundle.trust.crt"
   rm -f "${target_dir}/localhost.crt"
-
   src_dir="/etc/pki/tls/private"
   target_dir=${tmp_dir}${src_dir}
   mkdir -p "${target_dir}"
@@ -194,13 +187,9 @@ function backup-certificates {
   else
     warn "failed to backup private key from ${src_dir}, no private key will be available in the backup"
   fi
-  #
   # remove some generic files to eliminate confusion
-  #
   rm -f "${target_dir}/localhost.key"
-  #
   # backup Let's Encrypt files, if they exist
-  #
   src_dir="/etc/letsencrypt"
   target_dir="${tmp_dir}/etc"
   if [[ -d ${src_dir} ]]; then
@@ -212,14 +201,10 @@ function backup-certificates {
   fi
 }
 
-function backup-php-configuration {
-
+function backup_php_configuration {
   debug "${FUNCNAME[0]}($*)"
   local tmp_dir=$1 # tmp dir is supposed to exist
-
-  #
   # We rely on the fact that usually the php configuration resides in /etc/php.ini.*. Better logic can be implemented.
-  #
   debug "backing up PHP configuration to ${tmp_dir} ..."
   local src_dir="/etc"
   local target_dir=${tmp_dir}${src_dir}
@@ -231,12 +216,10 @@ function backup-php-configuration {
   fi
 }
 
-function backup-network-configuration() {
-
+function backup_network_configuration() {
   debug "${FUNCNAME[0]}($*)"
   local tmp_dir=$1
   debug "backing up network configuration to ${tmp_dir} ..."
-
   local src_dir="/etc/sysconfig/network-scripts"
   local target_dir=${tmp_dir}${src_dir}
   mkdir -p "${target_dir}"
@@ -246,7 +229,6 @@ function backup-network-configuration() {
   else
     fail "failed to backup network interface configuration files ifcfg-* from ${src_dir}"
   fi
-
   local src_dir="/etc/sysconfig"
   local target_dir=${tmp_dir}${src_dir}
   if [[ ! -f ${src_dir}/iptables ]]; then
@@ -260,12 +242,10 @@ function backup-network-configuration() {
   fi
 }
 
-function backup-mediawiki-tools() {
-
+function backup_mediawiki_tools() {
   debug "${FUNCNAME[0]}($*)"
   local tmp_dir=$1
   debug "backing up mediawiki tools to ${tmp_dir} ..."
-
   local src_dir="/root/bin"
   if [[ ! -d ${src_dir} ]]; then
     warn "no ${src_dir} directory found, it will not be backed up"
@@ -281,15 +261,23 @@ function backup-mediawiki-tools() {
   fi
 }
 
-function build-backup-archive() {
+function write_mediawiki_restore_version() {
+  debug "${FUNCNAME[0]}($*)"
+  local tmp_dir=$1
+  debug "writing $(basename "$0") version to  ${tmp_dir} ..."
+  echo "${VERSION}" > "${tmp_dir}/MEDIAWIKI_BACKUP_VERSION"
+}
 
+function build_backup_archive() {
   debug "${FUNCNAME[0]}($*)"
   local dated_tmp_dir=$1
   local target_dir=$2
   local name command
   target_dir=${target_dir%/}
   name=$(basename "${dated_tmp_dir}")
-  command="tar -cpszf ${target_dir}/${name}.tgz -C $(dirname "${dated_tmp_dir}") ${name}"
+  local tar_args="-cpszf"
+  [[ $(uname) == "Darwin" ]] && tar_args="-cpzf"
+  command="tar ${tar_args} ${target_dir}/${name}.tgz -C $(dirname "${dated_tmp_dir}") ${name}"
   debug "executing ${command}"
   if ${command}; then
     info "backup archive: ${target_dir}/${name}.tgz"

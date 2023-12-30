@@ -20,7 +20,6 @@ function ensure_root() {
 # For a valid MediaWiki directory, return the MediaWiki version at stdout.
 #
 function ensure_valid_mediawiki_dir() {
-
   debug "${FUNCNAME[0]}($*)"
   local mediawiki_dir=$1
   shift
@@ -31,27 +30,41 @@ function ensure_valid_mediawiki_dir() {
       fi
       shift
   done
-  [[ -z ${mediawiki_dir} ]] && fail "no MediaWiki directory specified"
+  [[ -z ${mediawiki_dir} ]] && fail "no Media Wiki directory specified"
   [[ ! -d ${mediawiki_dir} ]] && fail "not a directory: ${mediawiki_dir}"
   [[ -h ${mediawiki_dir} ]] && fail "provide the original directory, not a symbolic link: ${mediawiki_dir}"
   [[ ! -f ${mediawiki_dir}/includes/DefaultSettings.php ]] && fail "not a mediawiki directory, missing includes/DefaultSettings.php: ${mediawiki_dir}"
   ${expect_LocalSettings} && [[ ! -f ${mediawiki_dir}/LocalSettings.php ]] && fail "not a mediawiki directory, missing LocalSettings.php: ${mediawiki_dir}"
-
   local mediawiki_version
-  mediawiki_version=$(get_php_defined_value ${mediawiki_dir}/includes/DefaultSettings.php wgVersion) || \
-    fail "failed to read version from ${mediawiki_dir}/includes/DefaultSettings.php"
-  if [[ -z ${mediawiki_version} || ${mediawiki_version} =~ MW_VERSION ]]; then
-    debug "post 1.35, the version is kept in the MW_VERSION constant"
-    [[ ! -f ${mediawiki_dir}/includes/Defines.php ]] && fail "not a mediawiki directory, missing includes/Defines.php: ${mediawiki_dir}"
-    mediawiki_version=$(grep "define.*MW_VERSION" ${mediawiki_dir}/includes/Defines.php | sed -e "s/^.*, *'\(.*\)'.*$/\1/")
-  fi
-  [[ -z ${mediawiki_version} ]] && fail "no MediaWiki version could be read from ${mediawiki_dir}/includes/DefaultSettings.php or ${mediawiki_dir}/includes/Defines.php"
+  mediawiki_version=$(get_mediawiki_version "${mediawiki_dir}")
+  [[ -z ${mediawiki_version} ]] && fail "no Media Wiki version could be read from ${mediawiki_dir}"
   echo "${mediawiki_version}"
 }
 
 #
-# Get the expanded backup directory and extract the subdirectory that contains the file backup. Return the directory
-# at stdout
+# Return Media Wiki version at stdout. It takes into account that after 1.35 the version is
+# maintained as 'MW_VERSION' in includes/Defines.php and older versions maintain it as
+# 'wgVersion' in includes/DefaultSettings.php. Return an empty string if the version cannot
+# be determined.
+
+# Expects as first argument the Media Wiki root directory (/var/www/mediawiki-1.39.6)
+#
+function get_mediawiki_version() {
+  local mediawiki_dir=$1
+  [[ -z ${mediawiki_dir} ]] && fail "'mediawiki_dir' not provided"
+  [[ ! -d ${mediawiki_dir} ]] && fail "not a directory: ${mediawiki_dir}"
+  local mediawiki_version
+  if [[ -f ${mediawiki_dir}/includes/Defines.php ]]; then
+    mediawiki_version=$(grep "define.*MW_VERSION" "${mediawiki_dir}/includes/Defines.php" | sed -e "s/^.*, *'\(.*\)'.*$/\1/")
+  fi
+  [[ -n ${mediawiki_version} ]] && { echo "${mediawiki_version}"; return 0; }
+  mediawiki_version=$(get_php_defined_value "${mediawiki_dir}/includes/DefaultSettings.php" wgVersion)
+  echo "${mediawiki_version}"
+}
+
+#
+# Get the expanded backup directory and extract the subdirectory that contains the file
+# backup. Return the directory at stdout
 #
 function backup_dir_to_mediawiki_dir() {
 
