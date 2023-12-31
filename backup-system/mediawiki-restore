@@ -5,7 +5,7 @@
 [[ -f $(dirname "$0")/mediawiki.shlib ]] && . "$(dirname "$0")/mediawiki.shlib" || { echo "$(dirname "$0")/mediawiki.shlib not found" 1>&2; exit 1; }
 
 # shellcheck disable=SC2034
-VERSION=0.4.0
+VERSION=0.5.0
 
 function usage() {
 
@@ -32,11 +32,19 @@ Arguments:
 
 Options:
 
-  --skip-database - Skip database restoration. This option is useful if the database
-      was already previously restored by other means.
+  --skip-database - Skip database restoration and restore everything else (image files,
+      Media Wiki configuration, certificates and keys). This option is useful if the
+      database was already previously restored by other means.
 
-  --database-only - Only perform database restoration and skip file and configuration
-      restoration.
+  --database-only - Only perform database restoration and skip image files, Media Wiki
+      configuration, certificates and keys restoration. This option, together with
+      --image-files-only, is useful if restoring an old Media Wiki instance state after
+      a full new installation of the latest Media Wiki version.
+
+  --image-files-only - Only perform image file restoration. Skip database, Media Wiki
+       configuration and certificates and key restoration. This option, together with
+       --database-only, is useful if restoring an old Media Wiki instance state after
+       a full new installation of the latest Media Wiki version.
 
   --restore-certs-and-keys - Restore certificates and keys (Linux only). If the option
       is not present, no certificates and keys will be restored.
@@ -61,6 +69,7 @@ function main() {
   OPTIONS["--post-install-dir"]="string -d"
   OPTIONS["--skip-database"]="boolean"
   OPTIONS["--database-only"]="boolean"
+  OPTIONS["--image-files-only"]="boolean"
   OPTIONS["--restore-certs-and-keys"]="boolean"
   process-options "$@"
   fail-on-unknown-arguments 2
@@ -74,6 +83,7 @@ function main() {
                     "${OPTIONS[--post-install-dir]}" \
                     "${OPTIONS[--skip-database]}" \
                     "${OPTIONS[--database-only]}" \
+                    "${OPTIONS[--image-files-only]}" \
                     "${OPTIONS[--restore-certs-and-keys]}"
 }
 
@@ -85,7 +95,8 @@ function restore_mediawiki() {
   local post_installation_examples_parent_dir=$4
   local skip_database=$5
   local database_only=$6
-  local restore_certificates_and_keys=$7
+  local image_files_only=$7
+  local restore_certificates_and_keys=$8
   debug "backup_file: ${backup_file}"
   debug "target_mediawiki_dir: ${target_mediawiki_dir}"
   debug "tmp_dir: ${tmp_dir}"
@@ -102,14 +113,14 @@ function restore_mediawiki() {
   source_mediawiki_version=$(get_mediawiki_version "${source_mediawiki_dir}")
   info "restoring from Media Wiki ${source_mediawiki_version} to Media Wiki ${target_mediawiki_version}"
   local database_root_password
-  if ${skip_database}; then
+  if ${skip_database} || ${image_files_only}; then
     debug "skipping database restoration, no database root password necessary"
   else
     database_root_password=$(read_database_root_password)
   fi
   local obsolete_skins_SEPARATOR_missing_extensions
   debug "backup_dir: ${backup_dir}"
-  if ${skip_database}; then
+  if ${skip_database} || ${image_files_only}; then
     info "database restoration skipped"
   else
     restore_database "${backup_dir}" "${database_root_password}"
@@ -120,10 +131,12 @@ function restore_mediawiki() {
   fi
   obsolete_skins_SEPARATOR_missing_extensions=$(diff_local_settings "${backup_dir}" "${target_mediawiki_dir}") || exit 1
   restore_image_files "${source_mediawiki_dir}" "${target_mediawiki_dir}"
-  if ${restore_certificates_and_keys}; then
-    restore_certificates_and_keys "${backup_dir}"
+  if ! ${image_files_only}; then
+    if ${restore_certificates_and_keys}; then
+      restore_certificates_and_keys "${backup_dir}"
+    fi
+    restore_top_symbolic_link "${backup_dir}" "${target_mediawiki_dir}"
   fi
-  restore_top_symbolic_link "${backup_dir}" "${target_mediawiki_dir}"
   manual_post_install_warning "${backup_dir}" "${target_mediawiki_dir}" "${obsolete_skins_SEPARATOR_missing_extensions}" \
     "${source_mediawiki_version}" "${target_mediawiki_version}" "${post_installation_examples_parent_dir}"
 }
@@ -344,6 +357,12 @@ function restore_image_files() {
   [[ -z ${target_mediawiki_dir} ]] && fail "'target_mediawiki_dir' not provided"
   local source_image_dir=${source_mediawiki_dir}/images
   [[ -d ${source_image_dir} ]] || fail "no image directory found in ${source_mediawiki_dir}"
+  [[ ! -f ${target_mediawiki_dir}/images/.htaccess ]] && fail "target Media Wiki image directory does not have an .htaccess file, which means that the new Media Wiki installation failed somewhere"
+  # remove source .htaccess, the already installed instance has an up-to-date .htaccess
+  rm "${source_image_dir}/.htaccess"
+  # remove source 'deleted' and 'temp'
+  rm -rf "${source_image_dir}/deleted"
+  rm -rf "${source_image_dir}/temp"
   cp -r "${source_image_dir}" "${target_mediawiki_dir}" || fail "failed to copy ${source_image_dir} to ${target_mediawiki_dir}"
   local target_image_dir=${target_mediawiki_dir}/images
   if [[ $(uname) == "Darwin" ]]; then
