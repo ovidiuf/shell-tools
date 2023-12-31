@@ -5,7 +5,7 @@
 [[ -f $(dirname "$0")/mediawiki.shlib ]] && . "$(dirname "$0")"/mediawiki.shlib || { echo "$(dirname "$0")/mediawiki.shlib not found" 1>&2; exit 1; }
 
 # shellcheck disable=SC2034
-VERSION=0.3.0
+VERSION=0.4.0
 
 function usage() {
 
@@ -29,8 +29,11 @@ Arguments:
 
 Options:
 
-   -t|--target-dir - Optional designation of the target directory. If no option is specified,
-        the current directory is used as target directory.
+   --database-only - Backup the database content only, ignore files and configuration.
+
+   -t|--target-dir - Optional designation of the target directory. The final backup file
+        will be placed in the target directory. If no option is specified, the current
+        directory is used as target directory.
 
    -p|--preserve-tmp - Optional boolean flag that instructs the program to preserve the
         temporary directory.
@@ -47,13 +50,18 @@ function main() {
   declare -A OPTIONS
   OPTIONS["--target-dir"]="string -t"
   OPTIONS["--preserve-tmp"]="boolean -p"
+  OPTIONS["--database-only"]="boolean"
   process-options "$@"
   fail-on-unknown-arguments 1
   local tmp_dir
   tmp_dir=$(get-tmp-dir) || exit 1
   # shellcheck disable=SC2064
   trap "mediawiki_cleanup ${tmp_dir} ${OPTIONS[--preserve-tmp]}" EXIT
-  backup_mediawiki "${ARGS[0]}" "${tmp_dir}" "${OPTIONS[--target-dir]}"
+  backup_mediawiki \
+    "${ARGS[0]}" \
+    "${tmp_dir}" \
+    "${OPTIONS[--target-dir]}" \
+    "${OPTIONS[--database-only]}"
 }
 
 function backup_mediawiki() {
@@ -61,9 +69,11 @@ function backup_mediawiki() {
   local mediawiki_dir=$1
   local tmp_dir=$2
   local target_dir=${3:-.}
+  local database_only=$4
   debug "mediawiki_dir: ${mediawiki_dir}"
   debug "tmp_dir: ${tmp_dir}"
   debug "target_dir: ${target_dir}"
+  debug "database_only: ${database_only}"
   local mediawiki_version
   mediawiki_version=$(ensure_valid_mediawiki_dir "${mediawiki_dir}" --expect-LocalSettings)
   debug "mediawiki version: ${mediawiki_version}"
@@ -73,13 +83,17 @@ function backup_mediawiki() {
   local dated_tmp_dir
   dated_tmp_dir=$(create_dated_subdir "${tmp_dir}" "${mediawiki_dir}") || exit 1
   backup_database "${mediawiki_dir}" "${dated_tmp_dir}"
-  backup_mediawiki_instance "${mediawiki_dir}" "${dated_tmp_dir}"
-  if [[ $(uname) != "Darwin" ]]; then
-    backup_httpd_configuration "${dated_tmp_dir}"
-    backup_certificates "${dated_tmp_dir}"
-    backup_php_configuration "${dated_tmp_dir}"
-    backup_network_configuration "${dated_tmp_dir}"
-    backup_mediawiki_tools "${dated_tmp_dir}"
+  if ${database_only}; then
+    info "database backup completed, skipping everything else"
+  else
+    backup_mediawiki_instance "${mediawiki_dir}" "${dated_tmp_dir}"
+    if [[ $(uname) != "Darwin" ]]; then
+      backup_httpd_configuration "${dated_tmp_dir}"
+      backup_certificates "${dated_tmp_dir}"
+      backup_php_configuration "${dated_tmp_dir}"
+      backup_network_configuration "${dated_tmp_dir}"
+      backup_mediawiki_tools "${dated_tmp_dir}"
+    fi
   fi
   write_mediawiki_restore_version "${dated_tmp_dir}"
   build_backup_archive "${dated_tmp_dir}" "${target_dir}"
