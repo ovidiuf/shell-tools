@@ -67,14 +67,13 @@ function get_mediawiki_version() {
 # backup. Return the directory at stdout
 #
 function backup_dir_to_mediawiki_dir() {
-
   debug "${FUNCNAME[0]}($*)"
   local backup_dir=$1
   [[ -z ${backup_dir} ]] && fail "'backup_dir' not provided"
   [[ -d ${backup_dir} ]] || fail "not a backup directory: ${backup_dir}"
   backup_dir=${backup_dir%/}
   local candidate
-  for i in ${backup_dir}/*; do
+  for i in "${backup_dir}"/*; do
     local n=${i##*/}
     if [[ ${n} =~ mediawiki- ]]; then
         [[ -n ${candidate} ]] && fail "more than one mediawiki file backup directory found in ${backup_dir}: ${candidate}, ${n}"
