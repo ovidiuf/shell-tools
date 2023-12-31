@@ -5,7 +5,7 @@
 [[ -f $(dirname "$0")/mediawiki.shlib ]] && . "$(dirname "$0")"/mediawiki.shlib || { echo "$(dirname "$0")/mediawiki.shlib not found" 1>&2; exit 1; }
 
 # shellcheck disable=SC2034
-VERSION=0.4.0
+VERSION=0.4.1
 
 function usage() {
 
@@ -83,10 +83,10 @@ function backup_mediawiki() {
   local dated_tmp_dir
   dated_tmp_dir=$(create_dated_subdir "${tmp_dir}" "${mediawiki_dir}") || exit 1
   backup_database "${mediawiki_dir}" "${dated_tmp_dir}"
+  backup_mediawiki_instance "${mediawiki_dir}" "${dated_tmp_dir}" "${database_only}"
   if ${database_only}; then
     info "database backup completed, skipping everything else"
   else
-    backup_mediawiki_instance "${mediawiki_dir}" "${dated_tmp_dir}"
     if [[ $(uname) != "Darwin" ]]; then
       backup_httpd_configuration "${dated_tmp_dir}"
       backup_certificates "${dated_tmp_dir}"
@@ -151,16 +151,28 @@ function backup_mediawiki_instance() {
   debug "${FUNCNAME[0]}($*)"
   local mediawiki_dir=$1
   local tmp_dir=$2 # tmp dir is supposed to exist
+  local database_only=${3:-false} # if only backing up the database, we need to also store LocalSettings.php for credentials
   mediawiki_dir=${mediawiki_dir%/}
-  info "backing up Media Wiki instance files from ${mediawiki_dir} to ${tmp_dir} ..."
-  local cp_flags="--archive"
-  if [[ $(uname) == "Darwin" ]]; then
-    cp_flags="-RpP"
-  fi
-  if cp "${cp_flags}" "${mediawiki_dir}" "${tmp_dir}"; then
-    info "Media Wiki instance files backup successful: ${mediawiki_dir}"
+  if ${database_only}; then
+    [[ ! -d "${tmp_dir}/$(basename "${mediawiki_dir}")" ]] && mkdir -p "${tmp_dir}/$(basename "${mediawiki_dir}")/includes"
+    for f in "LocalSettings.php" "includes/DefaultSettings.php" "includes/Defines.php"; do
+      if cp "${mediawiki_dir}/${f}" "${tmp_dir}/$(basename "${mediawiki_dir}")/$(dirname ${f})"; then
+        info "${f} file backup successful"
+      else
+        fail "failed to backup ${mediawiki_dir}/${f} in ${tmp_dir}"
+      fi
+    done
   else
-    fail "failed to backup Media Wiki instance files ${mediawiki_dir} in ${tmp_dir}"
+    info "backing up Media Wiki instance files from ${mediawiki_dir} to ${tmp_dir} ..."
+    local cp_flags="--archive"
+    if [[ $(uname) == "Darwin" ]]; then
+      cp_flags="-RpP"
+    fi
+    if cp "${cp_flags}" "${mediawiki_dir}" "${tmp_dir}"; then
+      info "Media Wiki instance files backup successful: ${mediawiki_dir}"
+    else
+      fail "failed to backup Media Wiki instance files ${mediawiki_dir} in ${tmp_dir}"
+    fi
   fi
 }
 
