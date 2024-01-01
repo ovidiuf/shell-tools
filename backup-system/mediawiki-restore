@@ -5,7 +5,7 @@
 [[ -f $(dirname "$0")/mediawiki.shlib ]] && . "$(dirname "$0")/mediawiki.shlib" || { echo "$(dirname "$0")/mediawiki.shlib not found" 1>&2; exit 1; }
 
 # shellcheck disable=SC2034
-VERSION=0.5.0
+VERSION=0.5.1
 
 function usage() {
 
@@ -123,7 +123,7 @@ function restore_mediawiki() {
   if ${skip_database} || ${image_files_only}; then
     info "database restoration skipped"
   else
-    restore_database "${backup_dir}" "${database_root_password}"
+    restore_database "${backup_dir}" "${database_root_password}" "${target_mediawiki_dir}"
   fi
   if ${database_only}; then
     info "database restoration completed, skipping everything else"
@@ -163,6 +163,7 @@ function restore_database() {
   debug "${FUNCNAME[0]}($*)"
   local backup_dir=$1
   local database_root_password=$2
+  local target_mediawiki_dir=$3
   [[ -z ${backup_dir} ]] && fail "'backup_dir' not provided"
   [[ -d ${backup_dir} ]] || fail "no such backup directory: ${backup_dir}"
   [[ -z ${database_root_password} ]] && fail "'database_root_password' not provided"
@@ -189,6 +190,11 @@ function restore_database() {
                      "${database_user}" \
                      "${database_password}" \
                      "${database_name}"
+      restore_localsettings_db_config \
+        "${database_user}" \
+        "${database_password}" \
+        "${database_name}" \
+        "${target_mediawiki_dir}" || exit 1
   fi
 }
 
@@ -252,6 +258,28 @@ function restore_database_content() {
   else
     fail "failed to restore database ${database_name}"
   fi
+}
+
+#
+# Replaces the database configuration and credentials in the target LocalSettings.php
+# 
+function restore_localsettings_db_config() {
+  debug "${FUNCNAME[0]}($*)"
+  local database_user=$1
+  local database_password=$2
+  local database_name=$3
+  local target_mediawiki_dir=$4
+  local localsettings_file=${target_mediawiki_dir}/LocalSettings.php
+  [[ ! -f ${localsettings_file} ]] && fail "no target LocalSettings.php file: ${localsettings_file}"
+
+# '' '"${VERSION}"' on '"$(date +'%m/%d/%y %H:%M:%S')"'
+  # shellcheck disable=SC2016
+  sed -i \
+    -e 's/^\$wgDBname *= *.*$/$wgDBname = "'"${database_name}"'"; # Updated by '"$(basename "$0")"' '"${VERSION}"' on '"$(date +'%m-%d-%y %H:%M:%S')"'/' "${localsettings_file}" \
+    -e 's/^\$wgDBuser *= *.*$/$wgDBuser = "'"${database_user}"'"; # Updated by '"$(basename "$0")"' '"${VERSION}"' on '"$(date +'%m-%d-%y %H:%M:%S')"'/' "${localsettings_file}" \
+    -e 's/^\$wgDBpassword *= *.*$/$wgDBpassword = "'"${database_password}"'"; # Updated by '"$(basename "$0")"' '"${VERSION}"' on '"$(date +'%m-%d-%y %H:%M:%S')"'/' "${localsettings_file}" && \
+    debug "replaced in ${localsettings_file}: database name: ${database_name}, database user: ${database_user}, database password: ***" || \
+    fail "failed to replace database configuration in-place in ${localsettings_file}"
 }
 
 #
